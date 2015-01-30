@@ -247,5 +247,15 @@ class TestMatches(unittest.TestCase):
         )
 
 
+    def test_escaping(self):
+        self.given('''
+            orly
+                orly = "O RLY?"
+            ''',
+            expect_full_match=['O RLY?'],
+            no_match=['O RLY', 'O RL'],
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
