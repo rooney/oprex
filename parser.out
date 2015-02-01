@@ -4,41 +4,44 @@ Grammar
 
 Rule 0     S' -> oprex
 Rule 1     oprex -> <empty>
-Rule 2     oprex -> NEWLINE
-Rule 3     oprex -> NEWLINE expression
-Rule 4     oprex -> NEWLINE INDENT expression
-Rule 5     expression -> VARIABLE NEWLINE definitions
-Rule 6     expression -> chain NEWLINE definitions
-Rule 7     chain -> SLASH cell moreCells
-Rule 8     cell -> VARIABLE SLASH
-Rule 9     cell -> VARIABLE QUEST SLASH
-Rule 10    moreCells -> <empty>
-Rule 11    moreCells -> cell moreCells
-Rule 12    definitions -> <empty>
-Rule 13    definitions -> INDENT definition NEWLINE definitions
-Rule 14    definition -> VARIABLE EQUALS definition
-Rule 15    definition -> VARIABLE EQUALS expression
-Rule 16    definition -> VARIABLE EQUALS LITERAL
+Rule 2     oprex -> WHITESPACE
+Rule 3     oprex -> NEWLINE
+Rule 4     oprex -> NEWLINE expression
+Rule 5     oprex -> NEWLINE INDENT expression DEDENT
+Rule 6     expression -> VARIABLE NEWLINE
+Rule 7     expression -> VARIABLE NEWLINE INDENT definitions DEDENT
+Rule 8     expression -> SLASH cell moreCells NEWLINE
+Rule 9     expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT
+Rule 10    cell -> VARIABLE SLASH
+Rule 11    cell -> VARIABLE QUESTION SLASH
+Rule 12    moreCells -> <empty>
+Rule 13    moreCells -> cell moreCells
+Rule 14    definitions -> <empty>
+Rule 15    definitions -> definition definitions
+Rule 16    definition -> VARIABLE EQUALS definition
+Rule 17    definition -> VARIABLE EQUALS expression
+Rule 18    definition -> VARIABLE EQUALS LITERAL NEWLINE
 
 Terminals, with rules where they appear
 
-EQUALS               : 14 15 16
-INDENT               : 4 13
-LITERAL              : 16
-NEWLINE              : 2 3 4 5 6 13
-QUEST                : 9
-SLASH                : 7 8 9
-VARIABLE             : 5 8 9 14 15 16
+DEDENT               : 5 7 9
+EQUALS               : 16 17 18
+INDENT               : 5 7 9
+LITERAL              : 18
+NEWLINE              : 3 4 5 6 7 8 9 18
+QUESTION             : 11
+SLASH                : 8 9 10 11
+VARIABLE             : 6 7 10 11 16 17 18
+WHITESPACE           : 2
 error                : 
 
 Nonterminals, with rules where they appear
 
-cell                 : 7 11
-chain                : 6
-definition           : 13 14
-definitions          : 5 6 13
-expression           : 3 4 15
-moreCells            : 7 11
+cell                 : 8 9 13
+definition           : 15 16
+definitions          : 7 9 15
+expression           : 4 5 17
+moreCells            : 8 9 13
 oprex                : 0
 
 Parsing method: LALR
@@ -47,298 +50,350 @@ state 0
 
     (0) S' -> . oprex
     (1) oprex -> .
-    (2) oprex -> . NEWLINE
-    (3) oprex -> . NEWLINE expression
-    (4) oprex -> . NEWLINE INDENT expression
+    (2) oprex -> . WHITESPACE
+    (3) oprex -> . NEWLINE
+    (4) oprex -> . NEWLINE expression
+    (5) oprex -> . NEWLINE INDENT expression DEDENT
 
     $end            reduce using rule 1 (oprex -> .)
-    NEWLINE         shift and go to state 1
+    WHITESPACE      shift and go to state 2
+    NEWLINE         shift and go to state 3
 
-    oprex                          shift and go to state 2
+    oprex                          shift and go to state 1
 
 state 1
-
-    (2) oprex -> NEWLINE .
-    (3) oprex -> NEWLINE . expression
-    (4) oprex -> NEWLINE . INDENT expression
-    (5) expression -> . VARIABLE NEWLINE definitions
-    (6) expression -> . chain NEWLINE definitions
-    (7) chain -> . SLASH cell moreCells
-
-    $end            reduce using rule 2 (oprex -> NEWLINE .)
-    INDENT          shift and go to state 3
-    VARIABLE        shift and go to state 6
-    SLASH           shift and go to state 5
-
-    expression                     shift and go to state 7
-    chain                          shift and go to state 4
-
-state 2
 
     (0) S' -> oprex .
 
 
 
+state 2
+
+    (2) oprex -> WHITESPACE .
+
+    $end            reduce using rule 2 (oprex -> WHITESPACE .)
+
+
 state 3
 
-    (4) oprex -> NEWLINE INDENT . expression
-    (5) expression -> . VARIABLE NEWLINE definitions
-    (6) expression -> . chain NEWLINE definitions
-    (7) chain -> . SLASH cell moreCells
+    (3) oprex -> NEWLINE .
+    (4) oprex -> NEWLINE . expression
+    (5) oprex -> NEWLINE . INDENT expression DEDENT
+    (6) expression -> . VARIABLE NEWLINE
+    (7) expression -> . VARIABLE NEWLINE INDENT definitions DEDENT
+    (8) expression -> . SLASH cell moreCells NEWLINE
+    (9) expression -> . SLASH cell moreCells NEWLINE INDENT definitions DEDENT
+
+    $end            reduce using rule 3 (oprex -> NEWLINE .)
+    INDENT          shift and go to state 4
+    VARIABLE        shift and go to state 6
+    SLASH           shift and go to state 5
+
+    expression                     shift and go to state 7
+
+state 4
+
+    (5) oprex -> NEWLINE INDENT . expression DEDENT
+    (6) expression -> . VARIABLE NEWLINE
+    (7) expression -> . VARIABLE NEWLINE INDENT definitions DEDENT
+    (8) expression -> . SLASH cell moreCells NEWLINE
+    (9) expression -> . SLASH cell moreCells NEWLINE INDENT definitions DEDENT
 
     VARIABLE        shift and go to state 6
     SLASH           shift and go to state 5
 
     expression                     shift and go to state 8
-    chain                          shift and go to state 4
-
-state 4
-
-    (6) expression -> chain . NEWLINE definitions
-
-    NEWLINE         shift and go to state 9
-
 
 state 5
 
-    (7) chain -> SLASH . cell moreCells
-    (8) cell -> . VARIABLE SLASH
-    (9) cell -> . VARIABLE QUEST SLASH
+    (8) expression -> SLASH . cell moreCells NEWLINE
+    (9) expression -> SLASH . cell moreCells NEWLINE INDENT definitions DEDENT
+    (10) cell -> . VARIABLE SLASH
+    (11) cell -> . VARIABLE QUESTION SLASH
 
-    VARIABLE        shift and go to state 11
+    VARIABLE        shift and go to state 10
 
-    cell                           shift and go to state 10
+    cell                           shift and go to state 9
 
 state 6
 
-    (5) expression -> VARIABLE . NEWLINE definitions
+    (6) expression -> VARIABLE . NEWLINE
+    (7) expression -> VARIABLE . NEWLINE INDENT definitions DEDENT
 
-    NEWLINE         shift and go to state 12
+    NEWLINE         shift and go to state 11
 
 
 state 7
 
-    (3) oprex -> NEWLINE expression .
+    (4) oprex -> NEWLINE expression .
 
-    $end            reduce using rule 3 (oprex -> NEWLINE expression .)
+    $end            reduce using rule 4 (oprex -> NEWLINE expression .)
 
 
 state 8
 
-    (4) oprex -> NEWLINE INDENT expression .
+    (5) oprex -> NEWLINE INDENT expression . DEDENT
 
-    $end            reduce using rule 4 (oprex -> NEWLINE INDENT expression .)
+    DEDENT          shift and go to state 12
 
 
 state 9
 
-    (6) expression -> chain NEWLINE . definitions
-    (12) definitions -> .
-    (13) definitions -> . INDENT definition NEWLINE definitions
+    (8) expression -> SLASH cell . moreCells NEWLINE
+    (9) expression -> SLASH cell . moreCells NEWLINE INDENT definitions DEDENT
+    (12) moreCells -> .
+    (13) moreCells -> . cell moreCells
+    (10) cell -> . VARIABLE SLASH
+    (11) cell -> . VARIABLE QUESTION SLASH
 
-    $end            reduce using rule 12 (definitions -> .)
-    NEWLINE         reduce using rule 12 (definitions -> .)
-    INDENT          shift and go to state 14
+    NEWLINE         reduce using rule 12 (moreCells -> .)
+    VARIABLE        shift and go to state 10
 
-    definitions                    shift and go to state 13
+    cell                           shift and go to state 14
+    moreCells                      shift and go to state 13
 
 state 10
 
-    (7) chain -> SLASH cell . moreCells
-    (10) moreCells -> .
-    (11) moreCells -> . cell moreCells
-    (8) cell -> . VARIABLE SLASH
-    (9) cell -> . VARIABLE QUEST SLASH
+    (10) cell -> VARIABLE . SLASH
+    (11) cell -> VARIABLE . QUESTION SLASH
 
-    NEWLINE         reduce using rule 10 (moreCells -> .)
-    VARIABLE        shift and go to state 11
+    SLASH           shift and go to state 16
+    QUESTION        shift and go to state 15
 
-    cell                           shift and go to state 15
-    moreCells                      shift and go to state 16
 
 state 11
 
-    (8) cell -> VARIABLE . SLASH
-    (9) cell -> VARIABLE . QUEST SLASH
+    (6) expression -> VARIABLE NEWLINE .
+    (7) expression -> VARIABLE NEWLINE . INDENT definitions DEDENT
 
-    SLASH           shift and go to state 18
-    QUEST           shift and go to state 17
+    DEDENT          reduce using rule 6 (expression -> VARIABLE NEWLINE .)
+    VARIABLE        reduce using rule 6 (expression -> VARIABLE NEWLINE .)
+    $end            reduce using rule 6 (expression -> VARIABLE NEWLINE .)
+    INDENT          shift and go to state 17
 
 
 state 12
 
-    (5) expression -> VARIABLE NEWLINE . definitions
-    (12) definitions -> .
-    (13) definitions -> . INDENT definition NEWLINE definitions
+    (5) oprex -> NEWLINE INDENT expression DEDENT .
 
-    $end            reduce using rule 12 (definitions -> .)
-    NEWLINE         reduce using rule 12 (definitions -> .)
-    INDENT          shift and go to state 14
+    $end            reduce using rule 5 (oprex -> NEWLINE INDENT expression DEDENT .)
 
-    definitions                    shift and go to state 19
 
 state 13
 
-    (6) expression -> chain NEWLINE definitions .
+    (8) expression -> SLASH cell moreCells . NEWLINE
+    (9) expression -> SLASH cell moreCells . NEWLINE INDENT definitions DEDENT
 
-    $end            reduce using rule 6 (expression -> chain NEWLINE definitions .)
-    NEWLINE         reduce using rule 6 (expression -> chain NEWLINE definitions .)
+    NEWLINE         shift and go to state 18
 
 
 state 14
 
-    (13) definitions -> INDENT . definition NEWLINE definitions
-    (14) definition -> . VARIABLE EQUALS definition
-    (15) definition -> . VARIABLE EQUALS expression
-    (16) definition -> . VARIABLE EQUALS LITERAL
+    (13) moreCells -> cell . moreCells
+    (12) moreCells -> .
+    (13) moreCells -> . cell moreCells
+    (10) cell -> . VARIABLE SLASH
+    (11) cell -> . VARIABLE QUESTION SLASH
 
-    VARIABLE        shift and go to state 21
+    NEWLINE         reduce using rule 12 (moreCells -> .)
+    VARIABLE        shift and go to state 10
 
-    definition                     shift and go to state 20
+    cell                           shift and go to state 14
+    moreCells                      shift and go to state 19
 
 state 15
 
-    (11) moreCells -> cell . moreCells
-    (10) moreCells -> .
-    (11) moreCells -> . cell moreCells
-    (8) cell -> . VARIABLE SLASH
-    (9) cell -> . VARIABLE QUEST SLASH
+    (11) cell -> VARIABLE QUESTION . SLASH
 
-    NEWLINE         reduce using rule 10 (moreCells -> .)
-    VARIABLE        shift and go to state 11
+    SLASH           shift and go to state 20
 
-    cell                           shift and go to state 15
-    moreCells                      shift and go to state 22
 
 state 16
 
-    (7) chain -> SLASH cell moreCells .
+    (10) cell -> VARIABLE SLASH .
 
-    NEWLINE         reduce using rule 7 (chain -> SLASH cell moreCells .)
+    VARIABLE        reduce using rule 10 (cell -> VARIABLE SLASH .)
+    NEWLINE         reduce using rule 10 (cell -> VARIABLE SLASH .)
 
 
 state 17
 
-    (9) cell -> VARIABLE QUEST . SLASH
+    (7) expression -> VARIABLE NEWLINE INDENT . definitions DEDENT
+    (14) definitions -> .
+    (15) definitions -> . definition definitions
+    (16) definition -> . VARIABLE EQUALS definition
+    (17) definition -> . VARIABLE EQUALS expression
+    (18) definition -> . VARIABLE EQUALS LITERAL NEWLINE
 
-    SLASH           shift and go to state 23
+    DEDENT          reduce using rule 14 (definitions -> .)
+    VARIABLE        shift and go to state 22
 
+    definitions                    shift and go to state 23
+    definition                     shift and go to state 21
 
 state 18
 
-    (8) cell -> VARIABLE SLASH .
+    (8) expression -> SLASH cell moreCells NEWLINE .
+    (9) expression -> SLASH cell moreCells NEWLINE . INDENT definitions DEDENT
 
-    VARIABLE        reduce using rule 8 (cell -> VARIABLE SLASH .)
-    NEWLINE         reduce using rule 8 (cell -> VARIABLE SLASH .)
+    DEDENT          reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
+    VARIABLE        reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
+    $end            reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
+    INDENT          shift and go to state 24
 
 
 state 19
 
-    (5) expression -> VARIABLE NEWLINE definitions .
+    (13) moreCells -> cell moreCells .
 
-    $end            reduce using rule 5 (expression -> VARIABLE NEWLINE definitions .)
-    NEWLINE         reduce using rule 5 (expression -> VARIABLE NEWLINE definitions .)
+    NEWLINE         reduce using rule 13 (moreCells -> cell moreCells .)
 
 
 state 20
 
-    (13) definitions -> INDENT definition . NEWLINE definitions
+    (11) cell -> VARIABLE QUESTION SLASH .
 
-    NEWLINE         shift and go to state 24
+    VARIABLE        reduce using rule 11 (cell -> VARIABLE QUESTION SLASH .)
+    NEWLINE         reduce using rule 11 (cell -> VARIABLE QUESTION SLASH .)
 
 
 state 21
 
-    (14) definition -> VARIABLE . EQUALS definition
-    (15) definition -> VARIABLE . EQUALS expression
-    (16) definition -> VARIABLE . EQUALS LITERAL
+    (15) definitions -> definition . definitions
+    (14) definitions -> .
+    (15) definitions -> . definition definitions
+    (16) definition -> . VARIABLE EQUALS definition
+    (17) definition -> . VARIABLE EQUALS expression
+    (18) definition -> . VARIABLE EQUALS LITERAL NEWLINE
 
-    EQUALS          shift and go to state 25
+    DEDENT          reduce using rule 14 (definitions -> .)
+    VARIABLE        shift and go to state 22
 
+    definition                     shift and go to state 21
+    definitions                    shift and go to state 25
 
 state 22
 
-    (11) moreCells -> cell moreCells .
+    (16) definition -> VARIABLE . EQUALS definition
+    (17) definition -> VARIABLE . EQUALS expression
+    (18) definition -> VARIABLE . EQUALS LITERAL NEWLINE
 
-    NEWLINE         reduce using rule 11 (moreCells -> cell moreCells .)
+    EQUALS          shift and go to state 26
 
 
 state 23
 
-    (9) cell -> VARIABLE QUEST SLASH .
+    (7) expression -> VARIABLE NEWLINE INDENT definitions . DEDENT
 
-    VARIABLE        reduce using rule 9 (cell -> VARIABLE QUEST SLASH .)
-    NEWLINE         reduce using rule 9 (cell -> VARIABLE QUEST SLASH .)
+    DEDENT          shift and go to state 27
 
 
 state 24
 
-    (13) definitions -> INDENT definition NEWLINE . definitions
-    (12) definitions -> .
-    (13) definitions -> . INDENT definition NEWLINE definitions
+    (9) expression -> SLASH cell moreCells NEWLINE INDENT . definitions DEDENT
+    (14) definitions -> .
+    (15) definitions -> . definition definitions
+    (16) definition -> . VARIABLE EQUALS definition
+    (17) definition -> . VARIABLE EQUALS expression
+    (18) definition -> . VARIABLE EQUALS LITERAL NEWLINE
 
-    $end            reduce using rule 12 (definitions -> .)
-    NEWLINE         reduce using rule 12 (definitions -> .)
-    INDENT          shift and go to state 14
+    DEDENT          reduce using rule 14 (definitions -> .)
+    VARIABLE        shift and go to state 22
 
-    definitions                    shift and go to state 26
+    definitions                    shift and go to state 28
+    definition                     shift and go to state 21
 
 state 25
 
-    (14) definition -> VARIABLE EQUALS . definition
-    (15) definition -> VARIABLE EQUALS . expression
-    (16) definition -> VARIABLE EQUALS . LITERAL
-    (14) definition -> . VARIABLE EQUALS definition
-    (15) definition -> . VARIABLE EQUALS expression
-    (16) definition -> . VARIABLE EQUALS LITERAL
-    (5) expression -> . VARIABLE NEWLINE definitions
-    (6) expression -> . chain NEWLINE definitions
-    (7) chain -> . SLASH cell moreCells
+    (15) definitions -> definition definitions .
 
-    LITERAL         shift and go to state 28
-    VARIABLE        shift and go to state 29
-    SLASH           shift and go to state 5
+    DEDENT          reduce using rule 15 (definitions -> definition definitions .)
 
-    definition                     shift and go to state 27
-    chain                          shift and go to state 4
-    expression                     shift and go to state 30
 
 state 26
 
-    (13) definitions -> INDENT definition NEWLINE definitions .
+    (16) definition -> VARIABLE EQUALS . definition
+    (17) definition -> VARIABLE EQUALS . expression
+    (18) definition -> VARIABLE EQUALS . LITERAL NEWLINE
+    (16) definition -> . VARIABLE EQUALS definition
+    (17) definition -> . VARIABLE EQUALS expression
+    (18) definition -> . VARIABLE EQUALS LITERAL NEWLINE
+    (6) expression -> . VARIABLE NEWLINE
+    (7) expression -> . VARIABLE NEWLINE INDENT definitions DEDENT
+    (8) expression -> . SLASH cell moreCells NEWLINE
+    (9) expression -> . SLASH cell moreCells NEWLINE INDENT definitions DEDENT
 
-    $end            reduce using rule 13 (definitions -> INDENT definition NEWLINE definitions .)
-    NEWLINE         reduce using rule 13 (definitions -> INDENT definition NEWLINE definitions .)
+    LITERAL         shift and go to state 30
+    VARIABLE        shift and go to state 31
+    SLASH           shift and go to state 5
 
+    definition                     shift and go to state 29
+    expression                     shift and go to state 32
 
 state 27
 
-    (14) definition -> VARIABLE EQUALS definition .
+    (7) expression -> VARIABLE NEWLINE INDENT definitions DEDENT .
 
-    NEWLINE         reduce using rule 14 (definition -> VARIABLE EQUALS definition .)
+    DEDENT          reduce using rule 7 (expression -> VARIABLE NEWLINE INDENT definitions DEDENT .)
+    VARIABLE        reduce using rule 7 (expression -> VARIABLE NEWLINE INDENT definitions DEDENT .)
+    $end            reduce using rule 7 (expression -> VARIABLE NEWLINE INDENT definitions DEDENT .)
 
 
 state 28
 
-    (16) definition -> VARIABLE EQUALS LITERAL .
+    (9) expression -> SLASH cell moreCells NEWLINE INDENT definitions . DEDENT
 
-    NEWLINE         reduce using rule 16 (definition -> VARIABLE EQUALS LITERAL .)
+    DEDENT          shift and go to state 33
 
 
 state 29
 
-    (14) definition -> VARIABLE . EQUALS definition
-    (15) definition -> VARIABLE . EQUALS expression
-    (16) definition -> VARIABLE . EQUALS LITERAL
-    (5) expression -> VARIABLE . NEWLINE definitions
+    (16) definition -> VARIABLE EQUALS definition .
 
-    EQUALS          shift and go to state 25
-    NEWLINE         shift and go to state 12
+    VARIABLE        reduce using rule 16 (definition -> VARIABLE EQUALS definition .)
+    DEDENT          reduce using rule 16 (definition -> VARIABLE EQUALS definition .)
 
 
 state 30
 
-    (15) definition -> VARIABLE EQUALS expression .
+    (18) definition -> VARIABLE EQUALS LITERAL . NEWLINE
 
-    NEWLINE         reduce using rule 15 (definition -> VARIABLE EQUALS expression .)
+    NEWLINE         shift and go to state 34
+
+
+state 31
+
+    (16) definition -> VARIABLE . EQUALS definition
+    (17) definition -> VARIABLE . EQUALS expression
+    (18) definition -> VARIABLE . EQUALS LITERAL NEWLINE
+    (6) expression -> VARIABLE . NEWLINE
+    (7) expression -> VARIABLE . NEWLINE INDENT definitions DEDENT
+
+    EQUALS          shift and go to state 26
+    NEWLINE         shift and go to state 11
+
+
+state 32
+
+    (17) definition -> VARIABLE EQUALS expression .
+
+    VARIABLE        reduce using rule 17 (definition -> VARIABLE EQUALS expression .)
+    DEDENT          reduce using rule 17 (definition -> VARIABLE EQUALS expression .)
+
+
+state 33
+
+    (9) expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .
+
+    DEDENT          reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
+    VARIABLE        reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
+    $end            reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
+
+
+state 34
+
+    (18) definition -> VARIABLE EQUALS LITERAL NEWLINE .
+
+    VARIABLE        reduce using rule 18 (definition -> VARIABLE EQUALS LITERAL NEWLINE .)
+    DEDENT          reduce using rule 18 (definition -> VARIABLE EQUALS LITERAL NEWLINE .)
 

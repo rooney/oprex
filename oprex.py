@@ -1,5 +1,7 @@
 import regex, argparse
 from ply import lex, yacc
+from ply.lex import LexToken
+from collections import namedtuple, deque
 
 
 def oprex(source_code):
@@ -18,28 +20,34 @@ class OprexSyntaxError(Exception):
 
 
 def check_input(source_code):
-    source_lines = source_code.split('\n')
-    numlines = len(source_lines)
-
-    # we require the oprex source code to have leading and trailing empty lines
-    # to make proper look of indentation when it is a triple-quotes string
+    # oprex requires the source code to have leading and trailing blank lines to make
+    # "proper look of indentation" when it is a triple-quoted string
+    source_lines = regex.split('\r?\n', source_code)
     if source_lines[0].strip():
         raise OprexSyntaxError(1, 'First line must be blank, not: ' + source_lines[0])
     if source_lines[-1].strip():
-        raise OprexSyntaxError(numlines, 'Last line must be blank, not: ' + source_lines[-1])    
-    return source_code
+        numlines = len(source_lines)
+        raise OprexSyntaxError(numlines, 'Last line must be blank, not: ' + source_lines[-1])
 
+    return '\n'.join(source_lines) # all newlines are now just \n, simplifying the lexer
 
-# The followings are PLY-related
+def Token(t, type):
+    tok = LexToken()
+    tok.type = type
+    tok.value, tok.lineno, tok.lexpos = (t.value, t.lineno, t.lexpos) if t else ('', 0, 0)
+    return tok
+
 
 tokens = (
+    'DEDENT',
     'EQUALS',
     'INDENT',
     'LITERAL',
     'NEWLINE',
-    'QUEST',
+    'QUESTION',
     'SLASH',
     'VARIABLE',
+    'WHITESPACE',
 )
 
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
@@ -58,12 +66,6 @@ def t_LITERAL(t):
     return t
 
 
-def t_NEWLINE(t):
-    r'([ \t]*\n)+'
-    t.lexer.lineno += t.lexer.lexmatch.group(0).count('\n')
-    return t
-
-
 class Variable(str):
     pass
 
@@ -79,33 +81,59 @@ def t_VARIABLE(t):
     return t
 
 
-# Rules that may eat space/tab 
-# should be using the function form and be put before the INDENT rule
-# to make it run before INDENT
+# Rules that contain space/tab should be written in function form and be put 
+# before the t_WHITESPACE rule to make them get inspected first
 
 def t_EQUALS(t):
     r'[ \t]*=[ \t]*'
     return t
 
 
-def t_INDENT(t):
-    r'([ ]+|[\t]+)(?=(?P<indentee>.*))'
-    indenter = t.value[0]
-    try:
-        if indenter != t.lexer.indenter:
-            raise OprexSyntaxError(t.lineno, 'Cannot mix space and tab for indentation')
-    except AttributeError:
-        # this is the first INDENT encountered, record what character is used for indentation
-        # further indentation must use the same character
-        t.lexer.indenter = indenter
+def t_WHITESPACE(t):
+    r'[ \t\n]+'
+    lines = t.value.split('\n')
+    num_newlines = len(lines) - 1
+    if num_newlines:
+        t.type = 'NEWLINE'
+        t.lexer.lineno += num_newlines
+        if t.lexpos + len(t.value) == len(t.lexer.lexdata):
+            return t
 
-    indentee = t.lexer.lexmatch.group('indentee')
-    if not indentee:
-        return # indent requires something follows, i.e. indented empty line should not produce INDENT token
-    return t
+        # the whitespace after the last newline is indentation
+        indentation = lines[-1]
+        if indentation:
+            if ' ' in indentation and '\t' in indentation:
+                raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
+
+            indentchar = indentation[0]
+            try:
+                if indentchar != t.lexer.indentchar:
+                    raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
+            except AttributeError:
+                # this is the first indent encountered, record whether it uses space or tab,
+                # further indents must use the same character
+                t.lexer.indentchar = indentchar
+            indentlen = len(indentation)
+
+        else:
+            indentlen = 0
+
+        prev = t.lexer.indent_stack[-1]
+        if indentlen > prev: # deeper indentation
+            t.extra_tokens = [Token(t, 'INDENT')]
+            t.lexer.indent_stack.append(indentlen)
+        elif indentlen < prev:
+            t.extra_tokens = []
+            while indentlen < prev:
+                t.extra_tokens.append(Token(t, 'DEDENT'))
+                t.lexer.indent_stack.pop()
+                prev = t.lexer.indent_stack[-1]
+            if indentlen != prev:
+                raise OprexSyntaxError(t.lexer.lineno, 'Indentation error, %d %d' % (indentlen, prev))
+    return t 
 
 
-t_QUEST = r'\?'
+t_QUESTION = r'\?'
 t_SLASH = r'/'
 
 
@@ -115,36 +143,36 @@ def t_error(t):
 
 def p_oprex(t):
     '''oprex : 
+             | WHITESPACE
              | NEWLINE
              | NEWLINE expression
-             | NEWLINE INDENT expression'''
-    if len(t) <= 2:
-        t[0] = ''
+             | NEWLINE INDENT expression DEDENT'''
+    if len(t) == 3:
+        t[0] = t[2]
+    elif len(t) == 5:
+        t[0] = t[3]
     else:
-        t[0] = t[len(t)-1]
+        t[0] = ''
 
 
 def p_expression(t):
-    '''expression : VARIABLE NEWLINE definitions
-                  | chain    NEWLINE definitions'''
+    '''expression : VARIABLE NEWLINE
+                  | VARIABLE NEWLINE INDENT definitions DEDENT
+                  | SLASH cell moreCells NEWLINE
+                  | SLASH cell moreCells NEWLINE INDENT definitions DEDENT'''
     try:
         if isinstance(t[1], Variable):
             t[0] = t.lexer.vars[t[1]]
         else:
-            t[0] = t[1] % t.lexer.vars
+            t[0] = (t[2] + t[3]) % t.lexer.vars
 
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
 
 
-def p_chain(t):
-    '''chain : SLASH cell moreCells'''
-    t[0] = t[2] +t[3]
-
-
 def p_cell(t):
     '''cell : VARIABLE SLASH
-            | VARIABLE QUEST SLASH'''
+            | VARIABLE QUESTION SLASH'''
     t[0] = '%(' + t[1] + ')s'
     optional = t[2] == '?'
     if optional:
@@ -156,28 +184,26 @@ def p_moreCells(t):
                  | cell moreCells'''
     try:
         t[0] = t[1] + t[2]
-    except IndexError: # empty moreCells
+    except IndexError: # empty production
         t[0] = ''
 
 
 def p_definitions(t):
     '''definitions : 
-                   | INDENT definition NEWLINE definitions'''
+                   | definition definitions'''
 
 
 def p_definition(t):
     '''definition : VARIABLE EQUALS definition
                   | VARIABLE EQUALS expression
-                  | VARIABLE EQUALS LITERAL'''
+                  | VARIABLE EQUALS LITERAL NEWLINE'''
     defined_vars = t.lexer.vars
     try:
         defined_vars[t[1]]
     except KeyError:
-        pass
+        defined_vars[t[1]] = t[3]
     else:
         raise OprexSyntaxError(t.lineno(1), "Variable '%s' already defined (names must be unique within a scope)" % t[1])
-
-    defined_vars[t[1]] = t[3]
     t[0] = t[3]
 
 
@@ -186,7 +212,7 @@ def p_error(t):
         raise OprexSyntaxError(None, 'Unexpected end of input')
     errline = t.lexer.lexdata.split('\n')[t.lineno - 1]
     pointer = ' ' * (find_column(t)-1) + '^'
-    raise OprexSyntaxError(t.lineno, 'Unexpected token %s\n%s\n%s' % (t.type, errline, pointer))
+    raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
 
 
 def find_column(t):
@@ -196,12 +222,35 @@ def find_column(t):
     return t.lexpos - last_newline
 
 
+class CustomLexer:
+    def __init__(self, real_lexer):
+        self.__dict__ = real_lexer.__dict__
+        self.real_lexer = real_lexer
+        self.extra_tokens = []
+
+    def token(self):
+        try:
+            return self.extra_tokens.pop(0)
+        except IndexError:
+            token = self.real_lexer.token()
+            if token:
+                if hasattr(token, 'extra_tokens'):
+                    self.extra_tokens.extend(token.extra_tokens)
+                return token
+            else:
+                num_undedented = len(self.real_lexer.indent_stack) - 1
+                self.extra_tokens.extend([Token(token, 'DEDENT')] * num_undedented)
+                self.extra_tokens.append(None)
+                return self.extra_tokens.pop(0)
+
+
 lexer0 = lex.lex()
 def build_lexer(source_code):
     lexer = lexer0.clone()
-    lexer.vars = {}
+    lexer.indent_stack = [0]
     lexer.input(source_code)
-    return lexer
+    lexer.vars = {}
+    return CustomLexer(lexer)
 
 
 parser = yacc.yacc()

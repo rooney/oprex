@@ -45,7 +45,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             /to/be/?
         ''',
-        expect_error='''Line 2: Unexpected token QUEST
+        expect_error='''Line 2: Unexpected QUESTION
             /to/be/?
                    ^''')
 
@@ -199,11 +199,12 @@ class TestMatches(unittest.TestCase):
     def test_simple_optional(self):
         self.given('''
             /a?/ether/
+                ether = /e/ther/
+                    e = 'e'
+                    ther = 'ther'
                 a = 'a'
-                ether = 'ether'
             ''',
             expect_full_match=['ether', 'aether'],
-            no_match=['tether'],
         )
 
         self.given('''
