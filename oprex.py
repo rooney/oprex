@@ -1,6 +1,5 @@
 import regex, argparse
 from ply import lex, yacc
-from ply.lex import LexToken
 from collections import namedtuple, deque
 
 
@@ -31,12 +30,11 @@ def check_input(source_code):
 
     return '\n'.join(source_lines) # all newlines are now just \n, simplifying the lexer
 
-def Token(t, type):
-    tok = LexToken()
-    tok.type = type
-    tok.value, tok.lineno, tok.lexpos = (t.value, t.lineno, t.lexpos) if t else ('', 0, 0)
-    return tok
 
+Token = namedtuple('Token', 'type value lineno lexpos')
+TypeToken = lambda type: Token(type, None, 0, 0)
+INDENT = TypeToken('INDENT')
+DEDENT = TypeToken('DEDENT')
 
 tokens = (
     'DEDENT',
@@ -93,44 +91,58 @@ def t_WHITESPACE(t):
     r'[ \t\n]+'
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
-    if num_newlines:
-        t.type = 'NEWLINE'
-        t.lexer.lineno += num_newlines
-        if t.lexpos + len(t.value) == len(t.lexer.lexdata):
-            return t
+    if not num_newlines: # plain regular whitespace
+        return t
 
-        # the whitespace after the last newline is indentation
-        indentation = lines[-1]
-        if indentation:
-            if ' ' in indentation and '\t' in indentation:
+    # newline-containing whitespace
+
+    t.type = 'NEWLINE'
+    t.lexer.lineno += num_newlines
+    if t.lexpos + len(t.value) == len(t.lexer.lexdata):
+        # this whitespace is just before the end of input
+        # no further processing needed
+        return t
+
+    # the whitespace after the last newline is indentation
+    indentation = lines[-1]
+    if indentation:
+        if ' ' in indentation and '\t' in indentation:
+            raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
+
+        indentchar = indentation[0]
+        try:
+            if indentchar != t.lexer.indentchar:
                 raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
+        except AttributeError:
+            # this is the first indent encountered, record whether it uses space or tab,
+            # further indents must use the same character
+            t.lexer.indentchar = indentchar
+        indentlen = len(indentation)
 
-            indentchar = indentation[0]
-            try:
-                if indentchar != t.lexer.indentchar:
-                    raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
-            except AttributeError:
-                # this is the first indent encountered, record whether it uses space or tab,
-                # further indents must use the same character
-                t.lexer.indentchar = indentchar
-            indentlen = len(indentation)
+    else:
+        indentlen = 0
 
-        else:
-            indentlen = 0
+    # compare with previous indentation
+    prev = t.lexer.indent_stack[-1]
+    if indentlen == prev: # indentation of same depth, no special token needed
+        return t
 
-        prev = t.lexer.indent_stack[-1]
-        if indentlen > prev: # deeper indentation
-            t.extra_tokens = [Token(t, 'INDENT')]
-            t.lexer.indent_stack.append(indentlen)
-        elif indentlen < prev:
-            t.extra_tokens = []
-            while indentlen < prev:
-                t.extra_tokens.append(Token(t, 'DEDENT'))
-                t.lexer.indent_stack.pop()
-                prev = t.lexer.indent_stack[-1]
-            if indentlen != prev:
-                raise OprexSyntaxError(t.lexer.lineno, 'Indentation error, %d %d' % (indentlen, prev))
-    return t 
+    # indentation depth change, either start of a new block (INDENT) or end of block (DEDENT)
+
+    if indentlen > prev: # deeper indentation, start of a new block
+        t.extra_tokens = [INDENT]
+        t.lexer.indent_stack.append(indentlen)
+        return t
+
+    if indentlen < prev: # end of one or more blocks
+        t.extra_tokens = []
+        while indentlen < prev: # close all blocks with deeper indentation
+            t.extra_tokens.append(DEDENT)
+            t.lexer.indent_stack.pop()
+            prev = t.lexer.indent_stack[-1]
+        if indentlen != prev: # the indentation tries to return to a nonexistent level
+            raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
+        return t 
 
 
 t_QUESTION = r'\?'
@@ -226,22 +238,22 @@ class CustomLexer:
     def __init__(self, real_lexer):
         self.__dict__ = real_lexer.__dict__
         self.real_lexer = real_lexer
-        self.extra_tokens = []
+        self.extras_queue = deque([])
 
     def token(self):
         try:
-            return self.extra_tokens.pop(0)
+            return self.extras_queue.popleft()
         except IndexError:
             token = self.real_lexer.token()
             if token:
                 if hasattr(token, 'extra_tokens'):
-                    self.extra_tokens.extend(token.extra_tokens)
+                    self.extras_queue.extend(token.extra_tokens)
                 return token
             else:
                 num_undedented = len(self.real_lexer.indent_stack) - 1
-                self.extra_tokens.extend([Token(token, 'DEDENT')] * num_undedented)
-                self.extra_tokens.append(None)
-                return self.extra_tokens.pop(0)
+                self.extras_queue.extend([DEDENT] * num_undedented)
+                self.extras_queue.append(None)
+                return self.extras_queue.popleft()
 
 
 lexer0 = lex.lex()

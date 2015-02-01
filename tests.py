@@ -36,9 +36,9 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_unknown_symbol(self):
         self.given('''
-            `@#$%^&;{}[]\\
+            `@$%^&;{}[]\\
         ''',
-        expect_error='Line 2: Unsupported syntax: `@#$%^&;{}[]\\')
+        expect_error='Line 2: Unsupported syntax: `@$%^&;{}[]\\')
 
 
     def test_unexpected_token(self):
@@ -48,6 +48,45 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected QUESTION
             /to/be/?
                    ^''')
+
+        self.given('''
+            root
+                branch
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+                branch
+                      ^''')
+
+        self.given('''
+            root
+                root = '/'
+            root2
+        ''',
+        expect_error='''Line 4: Unexpected VARIABLE
+            root2
+            ^''')
+
+        self.given('''
+            root
+                root = '/'\nroot2
+        ''',
+        expect_error='''Line 4: Unexpected VARIABLE\nroot2\n^''')
+
+
+    def test_indentation_error(self):
+        self.given('''
+            root
+                branch
+               misaligned
+        ''',
+        expect_error='''Line 4: Indentation error''')
+
+        self.given('''
+                root
+                    branch
+            hyperroot
+        ''',
+        expect_error='''Line 4: Indentation error''')
 
 
     def test_mixed_indentation(self):
@@ -154,6 +193,14 @@ class TestOutput(unittest.TestCase):
 
         ''',
         expect_regex='')
+
+
+    def test_escaping(self):
+        self.given('''
+            stars
+                stars = '***'
+        ''',
+        expect_regex=r'\*\*\*')
 
 
 class TestMatches(unittest.TestCase):

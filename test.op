@@ -1,6 +1,8 @@
 
-            /a?/ether/
-                ether = /e/ther/
-                    e = 'e'
-                    ther = 'ther'
-                a = 'a'
+/moons/and/stars/
+    moons = /phobos/coma?/deimos/
+        phobos = 'Phobos'
+        coma = ', '
+        deimos = 'Deimos'
+    and = '&'
+    stars = '***'
