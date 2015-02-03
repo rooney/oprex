@@ -46,7 +46,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             /to/be/?
         ''',
-        expect_error='''Line 2: Unexpected QUESTION
+        expect_error='''Line 2: Unexpected QUESTMARK
             /to/be/?
                    ^''')
 
@@ -148,7 +148,7 @@ class TestErrorHandling(unittest.TestCase):
                 dejavu = 'Déjà vu'
                 dejavu = 'Déjà vu'
         ''',
-        expect_error="Line 4: Variable 'dejavu' already defined (names must be unique within a scope)")
+        expect_error="Line 4: Variable 'dejavu' is already defined (names must be unique within a scope)")
 
 
     def test_unclosed_literal(self):

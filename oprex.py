@@ -38,11 +38,11 @@ DEDENT = TypeToken('DEDENT')
 
 tokens = (
     'DEDENT',
-    'EQUALS',
+    'EQUALSIGN',
     'INDENT',
     'LITERAL',
     'NEWLINE',
-    'QUESTION',
+    'QUESTMARK',
     'SLASH',
     'VARIABLE',
     'WHITESPACE',
@@ -64,9 +64,6 @@ def t_LITERAL(t):
     return t
 
 
-class Variable(str):
-    pass
-
 def t_VARIABLE(t):
     r'[A-Za-z0-9_]+'
 
@@ -75,14 +72,13 @@ def t_VARIABLE(t):
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must start with a letter): ' + name)
     if name[-1] == '_':
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must not end with underscore): ' + name)
-    t.value = Variable(name)
     return t
 
 
 # Rules that contain space/tab should be written in function form and be put 
 # before the t_WHITESPACE rule to make them get inspected first
 
-def t_EQUALS(t):
+def t_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'
     return t
 
@@ -145,7 +141,7 @@ def t_WHITESPACE(t):
         return t 
 
 
-t_QUESTION = r'\?'
+t_QUESTMARK = r'\?'
 t_SLASH = r'/'
 
 
@@ -168,15 +164,15 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : VARIABLE NEWLINE
-                  | VARIABLE NEWLINE INDENT definitions DEDENT
+    '''expression : VARIABLE             NEWLINE
+                  | VARIABLE             NEWLINE INDENT definitions DEDENT
                   | SLASH cell moreCells NEWLINE
                   | SLASH cell moreCells NEWLINE INDENT definitions DEDENT'''
     try:
-        if isinstance(t[1], Variable):
-            t[0] = t.lexer.vars[t[1]]
-        else:
+        if t[1] == '/':
             t[0] = (t[2] + t[3]) % t.lexer.vars
+        else:
+            t[0] = t.lexer.vars[t[1]]
 
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
@@ -184,7 +180,7 @@ def p_expression(t):
 
 def p_cell(t):
     '''cell : VARIABLE SLASH
-            | VARIABLE QUESTION SLASH'''
+            | VARIABLE QUESTMARK SLASH'''
     t[0] = '%(' + t[1] + ')s'
     optional = t[2] == '?'
     if optional:
@@ -206,17 +202,23 @@ def p_definitions(t):
 
 
 def p_definition(t):
-    '''definition : VARIABLE EQUALS definition
-                  | VARIABLE EQUALS expression
-                  | VARIABLE EQUALS LITERAL NEWLINE'''
+    '''definition : VARIABLE assignment definition
+                  | VARIABLE assignment expression
+                  | VARIABLE assignment LITERAL NEWLINE'''
+    t.lexer.vars[t[1]] = t[3]
+    t[0] = t[3]
+
+
+def p_assignment(t):
+    '''assignment : EQUALSIGN'''
+    varname = t[-1]
     defined_vars = t.lexer.vars
     try:
-        defined_vars[t[1]]
+        defined_vars[varname]
     except KeyError:
-        defined_vars[t[1]] = t[3]
+        pass
     else:
-        raise OprexSyntaxError(t.lineno(1), "Variable '%s' already defined (names must be unique within a scope)" % t[1])
-    t[0] = t[3]
+        raise OprexSyntaxError(t.lineno(-1), "Variable '%s' is already defined (names must be unique within a scope)" % varname)
 
 
 def p_error(t):
