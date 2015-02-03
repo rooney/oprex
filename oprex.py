@@ -13,9 +13,9 @@ def oprex(source_code):
 class OprexSyntaxError(Exception):
     def __init__(self, lineno, msg):
         if lineno:
-            Exception.__init__(self, 'Line %d: %s' % (lineno, msg))
+            Exception.__init__(self, '\nLine %d: %s' % (lineno, msg))
         else:
-            Exception.__init__(self, msg)
+            Exception.__init__(self, '\n' + msg)
 
 
 def check_input(source_code):

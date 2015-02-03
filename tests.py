@@ -5,6 +5,7 @@ from oprex import oprex, OprexSyntaxError
 
 class TestErrorHandling(unittest.TestCase):
     def given(self, oprex_source, expect_error):
+        expect_error = '\n' + expect_error
         try:
             oprex(oprex_source)
         except Exception as err:
@@ -13,7 +14,7 @@ class TestErrorHandling(unittest.TestCase):
             got_error = ''
 
         if got_error != expect_error:
-            msg = 'For input: %s\n----------------------------- Got Error: -----------------------------\n%s\n\n-------------------------- Expected Error: ---------------------------\n%s'
+            msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
             raise AssertionError(msg % (
                 oprex_source or '(empty string)', 
                 got_error or '(no error)', 
