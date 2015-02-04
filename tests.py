@@ -220,6 +220,30 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 3: Unexpected WHITESPACE\n                shouldBeColon = A a\n                                 ^')
 
+        self.given('''
+            mixedAssignment
+                mixedAssignment := x
+        ''',
+        expect_error='Line 3: Unexpected WHITESPACE\n                mixedAssignment := x\n                               ^')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment:= x
+        ''',
+        expect_error='Line 3: Character class definition requires space after the : (colon)')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment=: x
+        ''',
+        expect_error='Line 3: Unexpected COLON\n                mixedAssignment=: x\n                                ^')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment =: x
+        ''',
+        expect_error='Line 3: Unexpected COLON\n                mixedAssignment =: x\n                                 ^')
+
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
