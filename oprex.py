@@ -60,13 +60,16 @@ def t_COLON(t):
     if len(chars) == 1:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    charclass = ''
+    charclass = []
     for char in chars[1:]:
+        if not char: # multiple spaces for separator is ok
+            continue
         if len(char) > 1:
-            raise OprexSyntaxError(t.lineno, 'Invalid character in character class definition (must be len==1): ' + char)
-        if char:
-            charclass += char
-    charclass = '[' + charclass + ']'
+            raise OprexSyntaxError(t.lineno, 'Invalid character in character class definition: ' + char + ' (each character must be len==1)')
+        if char in charclass:
+            raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
+        charclass.append(char)
+    charclass = '[' + ''.join(charclass) + ']'
     t.extra_tokens = [Token('CHARCLASS', charclass, t.lineno, t.lexpos)]
     return t
 

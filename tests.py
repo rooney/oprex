@@ -11,14 +11,14 @@ class TestErrorHandling(unittest.TestCase):
         except Exception as err:
             got_error = err.message
         else:
-            got_error = ''
+            got_error = '\n'
 
         if got_error != expect_error:
             msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
             raise AssertionError(msg % (
                 oprex_source or '(empty string)', 
-                got_error or '(no error)', 
-                expect_error or '(no error)',
+                got_error or '\n(no error)', 
+                expect_error or '\n(no error)',
             ))
 
 
@@ -165,6 +165,62 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="""Line 3: Missing closing quote: "'""")
 
 
+    def test_character_class(self):
+        self.given('''
+            empty_charclass
+                empty_charclass:
+        ''',
+        expect_error='Line 3: Empty character class is not allowed')
+
+        self.given('''
+            noSpaceAfterColon
+                noSpaceAfterColon:n o
+        ''',
+        expect_error='Line 3: Character class definition requires space after the : (colon)')
+
+        self.given('''
+            diphtong
+                diphtong: ae au
+        ''',
+        expect_error='Line 3: Invalid character in character class definition: ae (each character must be len==1)')
+
+        self.given('''
+            miscolon
+                miscolon: /colon/should/be/equal/sign/
+        ''',
+        expect_error='Line 3: Invalid character in character class definition: /colon/should/be/equal/sign/ (each character must be len==1)')
+
+        self.given('''
+            miscolon
+                miscolon: 'colon should be equal sign'
+        ''',
+        expect_error="Line 3: Invalid character in character class definition: 'colon (each character must be len==1)")
+
+        self.given('''
+            /A/a/
+                A: a: A a
+        ''',
+        expect_error='Line 3: Invalid character in character class definition: a: (each character must be len==1)')
+
+        self.given('''
+            /A/a/
+                A: a = A a
+        ''',
+        expect_error='Line 3: Duplicate character in character class definition: a')
+
+        self.given('''
+            /A/a/
+                A: a = A
+        ''',
+        expect_error="Line 2: Variable 'a' is not defined")
+
+        self.given('''
+            /shouldBeColon/
+                shouldBeColon = A a
+        ''',
+        expect_error='Line 3: Unexpected WHITESPACE\n                shouldBeColon = A a\n                                 ^')
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         regex_source = oprex(oprex_source)
@@ -212,6 +268,13 @@ class TestOutput(unittest.TestCase):
                     size: 0 1 2 3 4 5 6 7 8
         ''',
         expect_regex='[ABC][012345678]')
+
+        self.given('''
+            /A/a/
+                A = a: A a
+        ''',
+        expect_regex='[Aa][Aa]')
+
 
 
 class TestMatches(unittest.TestCase):
