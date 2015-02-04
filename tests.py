@@ -63,7 +63,7 @@ class TestErrorHandling(unittest.TestCase):
                 root = '/'
             root2
         ''',
-        expect_error='''Line 4: Unexpected VARIABLE
+        expect_error='''Line 4: Unexpected VARNAME
             root2
             ^''')
 
@@ -71,7 +71,7 @@ class TestErrorHandling(unittest.TestCase):
             root
                 root = '/'\nroot2
         ''',
-        expect_error='''Line 4: Unexpected VARIABLE\nroot2\n^''')
+        expect_error='''Line 4: Unexpected VARNAME\nroot2\n^''')
 
 
     def test_indentation_error(self):

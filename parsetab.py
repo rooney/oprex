@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = '\xb4\xe0\xe7X\x9f\x94\xf0Q\xf62\x13l\xf0\r\xc3\x84'
+_lr_signature = 'D`\xa4&\x02\xc4\xd0\xee\xe5usba\xd9\x1c\xb5'
     
-_lr_action_items = {'DEDENT':([8,11,17,18,21,23,24,25,28,29,30,33,34,35,],[12,-6,-14,-8,-14,28,-14,-15,-7,34,-16,-17,-9,-18,]),'QUESTMARK':([10,],[15,]),'INDENT':([3,11,18,],[4,17,24,]),'WHITESPACE':([0,],[2,]),'NEWLINE':([0,6,9,13,14,16,19,20,31,32,],[3,11,-12,18,-12,-10,-13,-11,35,11,]),'LITERAL':([26,27,],[31,-19,]),'SLASH':([3,4,10,15,26,27,],[5,5,16,20,5,-19,]),'VARIABLE':([3,4,5,9,11,14,16,17,18,20,21,24,26,27,28,30,33,34,35,],[6,6,10,10,-6,10,-10,22,-8,-11,22,22,32,-19,-7,-16,-17,-9,-18,]),'EQUALSIGN':([22,32,],[27,27,]),'$end':([0,1,2,3,7,11,12,18,28,34,],[-1,0,-2,-3,-4,-6,-5,-8,-7,-9,]),}
+_lr_action_items = {'DEDENT':([8,9,13,18,21,23,25,28,32,33,34,35,36,37,38,],[12,-6,-14,-14,33,-8,-15,-16,-17,-7,-14,-19,-18,38,-9,]),'QUESTMARK':([10,],[14,]),'INDENT':([3,9,23,],[4,13,34,]),'WHITESPACE':([0,],[2,]),'VARNAME':([3,4,6,9,11,13,15,17,18,20,22,23,26,27,28,32,33,34,35,36,38,],[5,5,10,-6,10,19,-10,10,19,31,-11,-8,-20,-21,-16,-17,-7,19,-19,-18,-9,]),'NEWLINE':([0,5,11,15,16,17,22,24,29,30,31,],[3,9,-12,-10,23,-12,-11,-13,35,36,9,]),'LITERAL':([20,26,27,],[29,-20,-21,]),'COLON':([19,31,],[27,27,]),'CHARCLASS':([20,26,27,],[30,-20,-21,]),'SLASH':([3,4,10,14,20,26,27,],[6,6,15,22,6,-20,-21,]),'EQUALSIGN':([19,31,],[26,26,]),'$end':([0,1,2,3,7,9,12,23,33,38,],[-1,0,-2,-3,-4,-6,-5,-8,-7,-9,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'definition':([17,21,24,26,],[21,21,21,30,]),'oprex':([0,],[1,]),'assignment':([22,32,],[26,26,]),'cell':([5,9,14,],[9,14,14,]),'moreCells':([9,14,],[13,19,]),'definitions':([17,21,24,],[23,25,29,]),'expression':([3,4,26,],[7,8,33,]),}
+_lr_goto_items = {'definition':([13,18,20,34,],[18,18,28,18,]),'oprex':([0,],[1,]),'assignment':([13,18,20,34,],[20,20,20,20,]),'cell':([6,11,17,],[11,17,17,]),'moreCells':([11,17,],[16,24,]),'definitions':([13,18,34,],[21,25,37,]),'expression':([3,4,20,],[7,8,32,]),}
 
 _lr_goto = { }
 for _k, _v in _lr_goto_items.items():
@@ -26,23 +26,25 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> oprex","S'",1,None,None,None),
-  ('oprex -> <empty>','oprex',0,'p_oprex','oprex.py',153),
-  ('oprex -> WHITESPACE','oprex',1,'p_oprex','oprex.py',154),
-  ('oprex -> NEWLINE','oprex',1,'p_oprex','oprex.py',155),
-  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','oprex.py',156),
-  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','oprex.py',157),
-  ('expression -> VARIABLE NEWLINE','expression',2,'p_expression','oprex.py',167),
-  ('expression -> VARIABLE NEWLINE INDENT definitions DEDENT','expression',5,'p_expression','oprex.py',168),
-  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','oprex.py',169),
-  ('expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT','expression',7,'p_expression','oprex.py',170),
-  ('cell -> VARIABLE SLASH','cell',2,'p_cell','oprex.py',183),
-  ('cell -> VARIABLE QUESTMARK SLASH','cell',3,'p_cell','oprex.py',184),
-  ('moreCells -> <empty>','moreCells',0,'p_moreCells','oprex.py',192),
-  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','oprex.py',193),
-  ('definitions -> <empty>','definitions',0,'p_definitions','oprex.py',201),
-  ('definitions -> definition definitions','definitions',2,'p_definitions','oprex.py',202),
-  ('definition -> VARIABLE assignment definition','definition',3,'p_definition','oprex.py',206),
-  ('definition -> VARIABLE assignment expression','definition',3,'p_definition','oprex.py',207),
-  ('definition -> VARIABLE assignment LITERAL NEWLINE','definition',4,'p_definition','oprex.py',208),
-  ('assignment -> EQUALSIGN','assignment',1,'p_assignment','oprex.py',220),
+  ('oprex -> <empty>','oprex',0,'p_oprex','oprex.py',175),
+  ('oprex -> WHITESPACE','oprex',1,'p_oprex','oprex.py',176),
+  ('oprex -> NEWLINE','oprex',1,'p_oprex','oprex.py',177),
+  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','oprex.py',178),
+  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','oprex.py',179),
+  ('expression -> VARNAME NEWLINE','expression',2,'p_expression','oprex.py',189),
+  ('expression -> VARNAME NEWLINE INDENT definitions DEDENT','expression',5,'p_expression','oprex.py',190),
+  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','oprex.py',191),
+  ('expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT','expression',7,'p_expression','oprex.py',192),
+  ('cell -> VARNAME SLASH','cell',2,'p_cell','oprex.py',204),
+  ('cell -> VARNAME QUESTMARK SLASH','cell',3,'p_cell','oprex.py',205),
+  ('moreCells -> <empty>','moreCells',0,'p_moreCells','oprex.py',213),
+  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','oprex.py',214),
+  ('definitions -> <empty>','definitions',0,'p_definitions','oprex.py',222),
+  ('definitions -> definition definitions','definitions',2,'p_definitions','oprex.py',223),
+  ('definition -> assignment definition','definition',2,'p_definition','oprex.py',227),
+  ('definition -> assignment expression','definition',2,'p_definition','oprex.py',228),
+  ('definition -> assignment CHARCLASS NEWLINE','definition',3,'p_definition','oprex.py',229),
+  ('definition -> assignment LITERAL NEWLINE','definition',3,'p_definition','oprex.py',230),
+  ('assignment -> VARNAME EQUALSIGN','assignment',2,'p_assignment','oprex.py',238),
+  ('assignment -> VARNAME COLON','assignment',2,'p_assignment','oprex.py',239),
 ]

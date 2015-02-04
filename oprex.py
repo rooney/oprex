@@ -32,11 +32,12 @@ def check_input(source_code):
 
 
 Token = namedtuple('Token', 'type value lineno lexpos')
-TypeToken = lambda type: Token(type, None, 0, 0)
-INDENT = TypeToken('INDENT')
-DEDENT = TypeToken('DEDENT')
+INDENT = Token('INDENT', None, 0, 0)
+DEDENT = Token('DEDENT', None, 0, 0)
 
 tokens = (
+    'CHARCLASS',
+    'COLON',
     'DEDENT',
     'EQUALSIGN',
     'INDENT',
@@ -44,11 +45,30 @@ tokens = (
     'NEWLINE',
     'QUESTMARK',
     'SLASH',
-    'VARIABLE',
+    'VARNAME',
     'WHITESPACE',
 )
 
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
+
+
+def t_COLON(t):
+    ''':.*'''
+    chars = t.value.split(' ')
+    if chars[0] != ':':
+        raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
+    if len(chars) == 1:
+        raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
+
+    charclass = ''
+    for char in chars[1:]:
+        if len(char) > 1:
+            raise OprexSyntaxError(t.lineno, 'Invalid character in character class definition (must be len==1): ' + char)
+        if char:
+            charclass += char
+    charclass = '[' + charclass + ']'
+    t.extra_tokens = [Token('CHARCLASS', charclass, t.lineno, t.lexpos)]
+    return t
 
 
 def t_LITERAL(t):
@@ -64,7 +84,9 @@ def t_LITERAL(t):
     return t
 
 
-def t_VARIABLE(t):
+Variable = namedtuple('Variable', 'name type')
+
+def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
 
     name = t.value
@@ -142,7 +164,7 @@ def t_WHITESPACE(t):
 
 
 t_QUESTMARK = r'\?'
-t_SLASH = r'/'
+t_SLASH     = r'/'
 
 
 def t_error(t):
@@ -153,7 +175,7 @@ def p_oprex(t):
     '''oprex : 
              | WHITESPACE
              | NEWLINE
-             | NEWLINE expression
+             | NEWLINE        expression
              | NEWLINE INDENT expression DEDENT'''
     if len(t) == 3:
         t[0] = t[2]
@@ -164,8 +186,8 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : VARIABLE             NEWLINE
-                  | VARIABLE             NEWLINE INDENT definitions DEDENT
+    '''expression : VARNAME              NEWLINE
+                  | VARNAME              NEWLINE INDENT definitions DEDENT
                   | SLASH cell moreCells NEWLINE
                   | SLASH cell moreCells NEWLINE INDENT definitions DEDENT'''
     try:
@@ -179,8 +201,8 @@ def p_expression(t):
 
 
 def p_cell(t):
-    '''cell : VARIABLE SLASH
-            | VARIABLE QUESTMARK SLASH'''
+    '''cell : VARNAME SLASH
+            | VARNAME QUESTMARK SLASH'''
     t[0] = '%(' + t[1] + ')s'
     optional = t[2] == '?'
     if optional:
@@ -202,16 +224,21 @@ def p_definitions(t):
 
 
 def p_definition(t):
-    '''definition : VARIABLE assignment definition
-                  | VARIABLE assignment expression
-                  | VARIABLE assignment LITERAL NEWLINE'''
-    t.lexer.vars[t[1]] = t[3]
-    t[0] = t[3]
+    '''definition : assignment definition
+                  | assignment expression
+                  | assignment CHARCLASS NEWLINE
+                  | assignment LITERAL   NEWLINE'''
+    var = t[1]
+    value = t[2]
+    t.lexer.vars[var.name] = value
+    t[0] = value
 
 
 def p_assignment(t):
-    '''assignment : EQUALSIGN'''
-    varname = t[-1]
+    '''assignment : VARNAME EQUALSIGN
+                  | VARNAME COLON'''
+    varname = t[1]
+    vartype = 'CHARCLASS' if t[2] == ':' else 'SUBEXPR'
     defined_vars = t.lexer.vars
     try:
         defined_vars[varname]
@@ -219,6 +246,7 @@ def p_assignment(t):
         pass
     else:
         raise OprexSyntaxError(t.lineno(-1), "Variable '%s' is already defined (names must be unique within a scope)" % varname)
+    t[0] = Variable(varname, vartype)
 
 
 def p_error(t):
@@ -242,7 +270,7 @@ class CustomLexer:
         self.real_lexer = real_lexer
         self.extras_queue = deque([])
 
-    def token(self):
+    def get_next_token(self):
         try:
             return self.extras_queue.popleft()
         except IndexError:
@@ -256,6 +284,11 @@ class CustomLexer:
                 self.extras_queue.extend([DEDENT] * num_undedented)
                 self.extras_queue.append(None)
                 return self.extras_queue.popleft()
+
+    def token(self):
+        token = self.get_next_token()
+        # print token
+        return token
 
 
 lexer0 = lex.lex()
