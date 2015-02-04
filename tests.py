@@ -204,6 +204,16 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\*\*\*')
 
 
+    def test_character_class(self):
+        self.given('''
+            papersize
+                papersize = /series/size/
+                    series: A B C
+                    size: 0 1 2 3 4 5 6 7 8
+        ''',
+        expect_regex='[ABC][012345678]')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -303,6 +313,18 @@ class TestMatches(unittest.TestCase):
             ''',
             expect_full_match=['O RLY?'],
             no_match=['O RLY', 'O RL'],
+        )
+
+
+    def test_character_class(self):
+        self.given('''
+            papersize
+                papersize = /series/size/
+                    series: A B C
+                    size: 0 1 2 3 4 5 6 7 8
+            ''',
+            expect_full_match=['A3', 'A4'],
+            no_match=['Legal', 'Folio'],
         )
 
 
