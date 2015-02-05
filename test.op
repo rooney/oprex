@@ -1,3 +1,4 @@
 
-/A/a/
-    A = a: A a
+/defcon/(level)/
+    defcon = 'DEFCON'
+    level: 1 2 3 4 5

@@ -37,12 +37,14 @@ DEDENT = Token('DEDENT', None, 0, 0)
 
 tokens = (
     'CHARCLASS',
+    'CLOSEPAREN',
     'COLON',
     'DEDENT',
     'EQUALSIGN',
     'INDENT',
     'LITERAL',
     'NEWLINE',
+    'OPENPAREN',
     'QUESTMARK',
     'SLASH',
     'VARNAME',
@@ -87,7 +89,7 @@ def t_LITERAL(t):
     return t
 
 
-Variable = namedtuple('Variable', 'name type')
+Variable = namedtuple('Variable', 'name type capture')
 
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
@@ -165,9 +167,10 @@ def t_WHITESPACE(t):
             raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
         return t 
 
-
-t_QUESTMARK = r'\?'
-t_SLASH     = r'/'
+t_CLOSEPAREN = r'\)'
+t_OPENPAREN  = r'\('
+t_QUESTMARK  = r'\?'
+t_SLASH      = r'/'
 
 
 def t_error(t):
@@ -205,11 +208,31 @@ def p_expression(t):
 
 def p_cell(t):
     '''cell : VARNAME SLASH
-            | VARNAME QUESTMARK SLASH'''
-    t[0] = '%(' + t[1] + ')s'
-    optional = t[2] == '?'
-    if optional:
-        t[0] = '(?:%s)?+' % t[0]
+            | VARNAME QUESTMARK SLASH
+            | OPENPAREN VARNAME CLOSEPAREN SLASH
+            | OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
+            | OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH'''
+    varname, optional, capture = {
+        3 : (t[1], False, False),
+        4 : (t[1], True,  False),
+        5 : (t[2], False, True),
+        6 : (t[2], True,  True),
+    }[len(t)]
+
+    if optional and capture:
+        if t[3] == '?':
+            raise OprexSyntaxError(
+                t.lineno(3),
+                "'/(...?)/' is not supported. To 'capture optional', put the optional part in a subexpression variable, then capture the subexpression."
+            )
+    result = '%(' + varname + ')s'
+    if capture:
+        result = '(?<%s>%s)' % (varname, result)
+        if optional:
+            result += '?+'
+    elif optional:
+        result = '(?:%s)?+' % result
+    t[0] = result
 
 
 def p_moreCells(t):
@@ -231,9 +254,9 @@ def p_definition(t):
                   | assignment expression
                   | assignment CHARCLASS NEWLINE
                   | assignment LITERAL   NEWLINE'''
-    var = t[1]
+    varname = t[1]
     value = t[2]
-    t.lexer.vars[var.name] = value
+    t.lexer.vars[varname] = value
     t[0] = value
 
 
@@ -241,7 +264,6 @@ def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN
                   | VARNAME COLON'''
     varname = t[1]
-    vartype = 'CHARCLASS' if t[2] == ':' else 'SUBEXPR'
     defined_vars = t.lexer.vars
     try:
         defined_vars[varname]
@@ -249,7 +271,7 @@ def p_assignment(t):
         pass
     else:
         raise OprexSyntaxError(t.lineno(-1), "Variable '%s' is already defined (names must be unique within a scope)" % varname)
-    t[0] = Variable(varname, vartype)
+    t[0] = varname
 
 
 def p_error(t):

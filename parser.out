@@ -14,40 +14,45 @@ Rule 8     expression -> SLASH cell moreCells NEWLINE
 Rule 9     expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT
 Rule 10    cell -> VARNAME SLASH
 Rule 11    cell -> VARNAME QUESTMARK SLASH
-Rule 12    moreCells -> <empty>
-Rule 13    moreCells -> cell moreCells
-Rule 14    definitions -> <empty>
-Rule 15    definitions -> definition definitions
-Rule 16    definition -> assignment definition
-Rule 17    definition -> assignment expression
-Rule 18    definition -> assignment CHARCLASS NEWLINE
-Rule 19    definition -> assignment LITERAL NEWLINE
-Rule 20    assignment -> VARNAME EQUALSIGN
-Rule 21    assignment -> VARNAME COLON
+Rule 12    cell -> OPENPAREN VARNAME CLOSEPAREN SLASH
+Rule 13    cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
+Rule 14    cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH
+Rule 15    moreCells -> <empty>
+Rule 16    moreCells -> cell moreCells
+Rule 17    definitions -> <empty>
+Rule 18    definitions -> definition definitions
+Rule 19    definition -> assignment definition
+Rule 20    definition -> assignment expression
+Rule 21    definition -> assignment CHARCLASS NEWLINE
+Rule 22    definition -> assignment LITERAL NEWLINE
+Rule 23    assignment -> VARNAME EQUALSIGN
+Rule 24    assignment -> VARNAME COLON
 
 Terminals, with rules where they appear
 
-CHARCLASS            : 18
-COLON                : 21
+CHARCLASS            : 21
+CLOSEPAREN           : 12 13 14
+COLON                : 24
 DEDENT               : 5 7 9
-EQUALSIGN            : 20
+EQUALSIGN            : 23
 INDENT               : 5 7 9
-LITERAL              : 19
-NEWLINE              : 3 4 5 6 7 8 9 18 19
-QUESTMARK            : 11
-SLASH                : 8 9 10 11
-VARNAME              : 6 7 10 11 20 21
+LITERAL              : 22
+NEWLINE              : 3 4 5 6 7 8 9 21 22
+OPENPAREN            : 12 13 14
+QUESTMARK            : 11 13 14
+SLASH                : 8 9 10 11 12 13 14
+VARNAME              : 6 7 10 11 12 13 14 23 24
 WHITESPACE           : 2
 error                : 
 
 Nonterminals, with rules where they appear
 
-assignment           : 16 17 18 19
-cell                 : 8 9 13
-definition           : 15 16
-definitions          : 7 9 15
-expression           : 4 5 17
-moreCells            : 8 9 13
+assignment           : 19 20 21 22
+cell                 : 8 9 16
+definition           : 18 19
+definitions          : 7 9 18
+expression           : 4 5 20
+moreCells            : 8 9 16
 oprex                : 0
 
 Parsing method: LALR
@@ -124,8 +129,12 @@ state 6
     (9) expression -> SLASH . cell moreCells NEWLINE INDENT definitions DEDENT
     (10) cell -> . VARNAME SLASH
     (11) cell -> . VARNAME QUESTMARK SLASH
+    (12) cell -> . OPENPAREN VARNAME CLOSEPAREN SLASH
+    (13) cell -> . OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
+    (14) cell -> . OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH
 
     VARNAME         shift and go to state 10
+    OPENPAREN       shift and go to state 12
 
     cell                           shift and go to state 11
 
@@ -140,7 +149,7 @@ state 8
 
     (5) oprex -> NEWLINE INDENT expression . DEDENT
 
-    DEDENT          shift and go to state 12
+    DEDENT          shift and go to state 13
 
 
 state 9
@@ -149,9 +158,9 @@ state 9
     (7) expression -> VARNAME NEWLINE . INDENT definitions DEDENT
 
     DEDENT          reduce using rule 6 (expression -> VARNAME NEWLINE .)
-    VARNAME         reduce using rule 6 (expression -> VARNAME NEWLINE .)
     $end            reduce using rule 6 (expression -> VARNAME NEWLINE .)
-    INDENT          shift and go to state 13
+    VARNAME         reduce using rule 6 (expression -> VARNAME NEWLINE .)
+    INDENT          shift and go to state 14
 
 
 state 10
@@ -159,300 +168,386 @@ state 10
     (10) cell -> VARNAME . SLASH
     (11) cell -> VARNAME . QUESTMARK SLASH
 
-    SLASH           shift and go to state 15
-    QUESTMARK       shift and go to state 14
+    SLASH           shift and go to state 16
+    QUESTMARK       shift and go to state 15
 
 
 state 11
 
     (8) expression -> SLASH cell . moreCells NEWLINE
     (9) expression -> SLASH cell . moreCells NEWLINE INDENT definitions DEDENT
-    (12) moreCells -> .
-    (13) moreCells -> . cell moreCells
+    (15) moreCells -> .
+    (16) moreCells -> . cell moreCells
     (10) cell -> . VARNAME SLASH
     (11) cell -> . VARNAME QUESTMARK SLASH
+    (12) cell -> . OPENPAREN VARNAME CLOSEPAREN SLASH
+    (13) cell -> . OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
+    (14) cell -> . OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH
 
-    NEWLINE         reduce using rule 12 (moreCells -> .)
+    NEWLINE         reduce using rule 15 (moreCells -> .)
     VARNAME         shift and go to state 10
+    OPENPAREN       shift and go to state 12
 
-    cell                           shift and go to state 17
-    moreCells                      shift and go to state 16
+    cell                           shift and go to state 18
+    moreCells                      shift and go to state 17
 
 state 12
+
+    (12) cell -> OPENPAREN . VARNAME CLOSEPAREN SLASH
+    (13) cell -> OPENPAREN . VARNAME CLOSEPAREN QUESTMARK SLASH
+    (14) cell -> OPENPAREN . VARNAME QUESTMARK CLOSEPAREN SLASH
+
+    VARNAME         shift and go to state 19
+
+
+state 13
 
     (5) oprex -> NEWLINE INDENT expression DEDENT .
 
     $end            reduce using rule 5 (oprex -> NEWLINE INDENT expression DEDENT .)
 
 
-state 13
-
-    (7) expression -> VARNAME NEWLINE INDENT . definitions DEDENT
-    (14) definitions -> .
-    (15) definitions -> . definition definitions
-    (16) definition -> . assignment definition
-    (17) definition -> . assignment expression
-    (18) definition -> . assignment CHARCLASS NEWLINE
-    (19) definition -> . assignment LITERAL NEWLINE
-    (20) assignment -> . VARNAME EQUALSIGN
-    (21) assignment -> . VARNAME COLON
-
-    DEDENT          reduce using rule 14 (definitions -> .)
-    VARNAME         shift and go to state 19
-
-    definitions                    shift and go to state 21
-    assignment                     shift and go to state 20
-    definition                     shift and go to state 18
-
 state 14
 
-    (11) cell -> VARNAME QUESTMARK . SLASH
+    (7) expression -> VARNAME NEWLINE INDENT . definitions DEDENT
+    (17) definitions -> .
+    (18) definitions -> . definition definitions
+    (19) definition -> . assignment definition
+    (20) definition -> . assignment expression
+    (21) definition -> . assignment CHARCLASS NEWLINE
+    (22) definition -> . assignment LITERAL NEWLINE
+    (23) assignment -> . VARNAME EQUALSIGN
+    (24) assignment -> . VARNAME COLON
 
-    SLASH           shift and go to state 22
+    DEDENT          reduce using rule 17 (definitions -> .)
+    VARNAME         shift and go to state 21
 
+    definitions                    shift and go to state 23
+    assignment                     shift and go to state 22
+    definition                     shift and go to state 20
 
 state 15
 
-    (10) cell -> VARNAME SLASH .
+    (11) cell -> VARNAME QUESTMARK . SLASH
 
-    VARNAME         reduce using rule 10 (cell -> VARNAME SLASH .)
-    NEWLINE         reduce using rule 10 (cell -> VARNAME SLASH .)
+    SLASH           shift and go to state 24
 
 
 state 16
 
-    (8) expression -> SLASH cell moreCells . NEWLINE
-    (9) expression -> SLASH cell moreCells . NEWLINE INDENT definitions DEDENT
+    (10) cell -> VARNAME SLASH .
 
-    NEWLINE         shift and go to state 23
+    VARNAME         reduce using rule 10 (cell -> VARNAME SLASH .)
+    OPENPAREN       reduce using rule 10 (cell -> VARNAME SLASH .)
+    NEWLINE         reduce using rule 10 (cell -> VARNAME SLASH .)
 
 
 state 17
 
-    (13) moreCells -> cell . moreCells
-    (12) moreCells -> .
-    (13) moreCells -> . cell moreCells
-    (10) cell -> . VARNAME SLASH
-    (11) cell -> . VARNAME QUESTMARK SLASH
+    (8) expression -> SLASH cell moreCells . NEWLINE
+    (9) expression -> SLASH cell moreCells . NEWLINE INDENT definitions DEDENT
 
-    NEWLINE         reduce using rule 12 (moreCells -> .)
-    VARNAME         shift and go to state 10
+    NEWLINE         shift and go to state 25
 
-    cell                           shift and go to state 17
-    moreCells                      shift and go to state 24
 
 state 18
 
-    (15) definitions -> definition . definitions
-    (14) definitions -> .
-    (15) definitions -> . definition definitions
-    (16) definition -> . assignment definition
-    (17) definition -> . assignment expression
-    (18) definition -> . assignment CHARCLASS NEWLINE
-    (19) definition -> . assignment LITERAL NEWLINE
-    (20) assignment -> . VARNAME EQUALSIGN
-    (21) assignment -> . VARNAME COLON
+    (16) moreCells -> cell . moreCells
+    (15) moreCells -> .
+    (16) moreCells -> . cell moreCells
+    (10) cell -> . VARNAME SLASH
+    (11) cell -> . VARNAME QUESTMARK SLASH
+    (12) cell -> . OPENPAREN VARNAME CLOSEPAREN SLASH
+    (13) cell -> . OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
+    (14) cell -> . OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH
 
-    DEDENT          reduce using rule 14 (definitions -> .)
-    VARNAME         shift and go to state 19
+    NEWLINE         reduce using rule 15 (moreCells -> .)
+    VARNAME         shift and go to state 10
+    OPENPAREN       shift and go to state 12
 
-    definition                     shift and go to state 18
-    assignment                     shift and go to state 20
-    definitions                    shift and go to state 25
+    cell                           shift and go to state 18
+    moreCells                      shift and go to state 26
 
 state 19
 
-    (20) assignment -> VARNAME . EQUALSIGN
-    (21) assignment -> VARNAME . COLON
+    (12) cell -> OPENPAREN VARNAME . CLOSEPAREN SLASH
+    (13) cell -> OPENPAREN VARNAME . CLOSEPAREN QUESTMARK SLASH
+    (14) cell -> OPENPAREN VARNAME . QUESTMARK CLOSEPAREN SLASH
 
-    EQUALSIGN       shift and go to state 26
-    COLON           shift and go to state 27
+    CLOSEPAREN      shift and go to state 28
+    QUESTMARK       shift and go to state 27
 
 
 state 20
 
-    (16) definition -> assignment . definition
-    (17) definition -> assignment . expression
-    (18) definition -> assignment . CHARCLASS NEWLINE
-    (19) definition -> assignment . LITERAL NEWLINE
-    (16) definition -> . assignment definition
-    (17) definition -> . assignment expression
-    (18) definition -> . assignment CHARCLASS NEWLINE
-    (19) definition -> . assignment LITERAL NEWLINE
-    (6) expression -> . VARNAME NEWLINE
-    (7) expression -> . VARNAME NEWLINE INDENT definitions DEDENT
-    (8) expression -> . SLASH cell moreCells NEWLINE
-    (9) expression -> . SLASH cell moreCells NEWLINE INDENT definitions DEDENT
-    (20) assignment -> . VARNAME EQUALSIGN
-    (21) assignment -> . VARNAME COLON
+    (18) definitions -> definition . definitions
+    (17) definitions -> .
+    (18) definitions -> . definition definitions
+    (19) definition -> . assignment definition
+    (20) definition -> . assignment expression
+    (21) definition -> . assignment CHARCLASS NEWLINE
+    (22) definition -> . assignment LITERAL NEWLINE
+    (23) assignment -> . VARNAME EQUALSIGN
+    (24) assignment -> . VARNAME COLON
 
-    CHARCLASS       shift and go to state 30
-    LITERAL         shift and go to state 29
-    VARNAME         shift and go to state 31
-    SLASH           shift and go to state 6
+    DEDENT          reduce using rule 17 (definitions -> .)
+    VARNAME         shift and go to state 21
 
-    definition                     shift and go to state 28
-    assignment                     shift and go to state 20
-    expression                     shift and go to state 32
+    definition                     shift and go to state 20
+    assignment                     shift and go to state 22
+    definitions                    shift and go to state 29
 
 state 21
 
-    (7) expression -> VARNAME NEWLINE INDENT definitions . DEDENT
+    (23) assignment -> VARNAME . EQUALSIGN
+    (24) assignment -> VARNAME . COLON
 
-    DEDENT          shift and go to state 33
+    EQUALSIGN       shift and go to state 30
+    COLON           shift and go to state 31
 
 
 state 22
 
+    (19) definition -> assignment . definition
+    (20) definition -> assignment . expression
+    (21) definition -> assignment . CHARCLASS NEWLINE
+    (22) definition -> assignment . LITERAL NEWLINE
+    (19) definition -> . assignment definition
+    (20) definition -> . assignment expression
+    (21) definition -> . assignment CHARCLASS NEWLINE
+    (22) definition -> . assignment LITERAL NEWLINE
+    (6) expression -> . VARNAME NEWLINE
+    (7) expression -> . VARNAME NEWLINE INDENT definitions DEDENT
+    (8) expression -> . SLASH cell moreCells NEWLINE
+    (9) expression -> . SLASH cell moreCells NEWLINE INDENT definitions DEDENT
+    (23) assignment -> . VARNAME EQUALSIGN
+    (24) assignment -> . VARNAME COLON
+
+    CHARCLASS       shift and go to state 34
+    LITERAL         shift and go to state 33
+    VARNAME         shift and go to state 35
+    SLASH           shift and go to state 6
+
+    definition                     shift and go to state 32
+    assignment                     shift and go to state 22
+    expression                     shift and go to state 36
+
+state 23
+
+    (7) expression -> VARNAME NEWLINE INDENT definitions . DEDENT
+
+    DEDENT          shift and go to state 37
+
+
+state 24
+
     (11) cell -> VARNAME QUESTMARK SLASH .
 
     VARNAME         reduce using rule 11 (cell -> VARNAME QUESTMARK SLASH .)
+    OPENPAREN       reduce using rule 11 (cell -> VARNAME QUESTMARK SLASH .)
     NEWLINE         reduce using rule 11 (cell -> VARNAME QUESTMARK SLASH .)
 
 
-state 23
+state 25
 
     (8) expression -> SLASH cell moreCells NEWLINE .
     (9) expression -> SLASH cell moreCells NEWLINE . INDENT definitions DEDENT
 
     DEDENT          reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
-    VARNAME         reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
     $end            reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
-    INDENT          shift and go to state 34
-
-
-state 24
-
-    (13) moreCells -> cell moreCells .
-
-    NEWLINE         reduce using rule 13 (moreCells -> cell moreCells .)
-
-
-state 25
-
-    (15) definitions -> definition definitions .
-
-    DEDENT          reduce using rule 15 (definitions -> definition definitions .)
+    VARNAME         reduce using rule 8 (expression -> SLASH cell moreCells NEWLINE .)
+    INDENT          shift and go to state 38
 
 
 state 26
 
-    (20) assignment -> VARNAME EQUALSIGN .
+    (16) moreCells -> cell moreCells .
 
-    CHARCLASS       reduce using rule 20 (assignment -> VARNAME EQUALSIGN .)
-    LITERAL         reduce using rule 20 (assignment -> VARNAME EQUALSIGN .)
-    VARNAME         reduce using rule 20 (assignment -> VARNAME EQUALSIGN .)
-    SLASH           reduce using rule 20 (assignment -> VARNAME EQUALSIGN .)
+    NEWLINE         reduce using rule 16 (moreCells -> cell moreCells .)
 
 
 state 27
 
-    (21) assignment -> VARNAME COLON .
+    (14) cell -> OPENPAREN VARNAME QUESTMARK . CLOSEPAREN SLASH
 
-    CHARCLASS       reduce using rule 21 (assignment -> VARNAME COLON .)
-    LITERAL         reduce using rule 21 (assignment -> VARNAME COLON .)
-    VARNAME         reduce using rule 21 (assignment -> VARNAME COLON .)
-    SLASH           reduce using rule 21 (assignment -> VARNAME COLON .)
+    CLOSEPAREN      shift and go to state 39
 
 
 state 28
 
-    (16) definition -> assignment definition .
+    (12) cell -> OPENPAREN VARNAME CLOSEPAREN . SLASH
+    (13) cell -> OPENPAREN VARNAME CLOSEPAREN . QUESTMARK SLASH
 
-    VARNAME         reduce using rule 16 (definition -> assignment definition .)
-    DEDENT          reduce using rule 16 (definition -> assignment definition .)
+    SLASH           shift and go to state 41
+    QUESTMARK       shift and go to state 40
 
 
 state 29
 
-    (19) definition -> assignment LITERAL . NEWLINE
+    (18) definitions -> definition definitions .
 
-    NEWLINE         shift and go to state 35
+    DEDENT          reduce using rule 18 (definitions -> definition definitions .)
 
 
 state 30
 
-    (18) definition -> assignment CHARCLASS . NEWLINE
+    (23) assignment -> VARNAME EQUALSIGN .
 
-    NEWLINE         shift and go to state 36
+    CHARCLASS       reduce using rule 23 (assignment -> VARNAME EQUALSIGN .)
+    LITERAL         reduce using rule 23 (assignment -> VARNAME EQUALSIGN .)
+    VARNAME         reduce using rule 23 (assignment -> VARNAME EQUALSIGN .)
+    SLASH           reduce using rule 23 (assignment -> VARNAME EQUALSIGN .)
 
 
 state 31
 
-    (6) expression -> VARNAME . NEWLINE
-    (7) expression -> VARNAME . NEWLINE INDENT definitions DEDENT
-    (20) assignment -> VARNAME . EQUALSIGN
-    (21) assignment -> VARNAME . COLON
+    (24) assignment -> VARNAME COLON .
 
-    NEWLINE         shift and go to state 9
-    EQUALSIGN       shift and go to state 26
-    COLON           shift and go to state 27
+    CHARCLASS       reduce using rule 24 (assignment -> VARNAME COLON .)
+    LITERAL         reduce using rule 24 (assignment -> VARNAME COLON .)
+    VARNAME         reduce using rule 24 (assignment -> VARNAME COLON .)
+    SLASH           reduce using rule 24 (assignment -> VARNAME COLON .)
 
 
 state 32
 
-    (17) definition -> assignment expression .
+    (19) definition -> assignment definition .
 
-    VARNAME         reduce using rule 17 (definition -> assignment expression .)
-    DEDENT          reduce using rule 17 (definition -> assignment expression .)
+    VARNAME         reduce using rule 19 (definition -> assignment definition .)
+    DEDENT          reduce using rule 19 (definition -> assignment definition .)
 
 
 state 33
 
-    (7) expression -> VARNAME NEWLINE INDENT definitions DEDENT .
+    (22) definition -> assignment LITERAL . NEWLINE
 
-    DEDENT          reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
-    VARNAME         reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
-    $end            reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
+    NEWLINE         shift and go to state 42
 
 
 state 34
 
-    (9) expression -> SLASH cell moreCells NEWLINE INDENT . definitions DEDENT
-    (14) definitions -> .
-    (15) definitions -> . definition definitions
-    (16) definition -> . assignment definition
-    (17) definition -> . assignment expression
-    (18) definition -> . assignment CHARCLASS NEWLINE
-    (19) definition -> . assignment LITERAL NEWLINE
-    (20) assignment -> . VARNAME EQUALSIGN
-    (21) assignment -> . VARNAME COLON
+    (21) definition -> assignment CHARCLASS . NEWLINE
 
-    DEDENT          reduce using rule 14 (definitions -> .)
-    VARNAME         shift and go to state 19
+    NEWLINE         shift and go to state 43
 
-    definition                     shift and go to state 18
-    assignment                     shift and go to state 20
-    definitions                    shift and go to state 37
 
 state 35
 
-    (19) definition -> assignment LITERAL NEWLINE .
+    (6) expression -> VARNAME . NEWLINE
+    (7) expression -> VARNAME . NEWLINE INDENT definitions DEDENT
+    (23) assignment -> VARNAME . EQUALSIGN
+    (24) assignment -> VARNAME . COLON
 
-    VARNAME         reduce using rule 19 (definition -> assignment LITERAL NEWLINE .)
-    DEDENT          reduce using rule 19 (definition -> assignment LITERAL NEWLINE .)
+    NEWLINE         shift and go to state 9
+    EQUALSIGN       shift and go to state 30
+    COLON           shift and go to state 31
 
 
 state 36
 
-    (18) definition -> assignment CHARCLASS NEWLINE .
+    (20) definition -> assignment expression .
 
-    VARNAME         reduce using rule 18 (definition -> assignment CHARCLASS NEWLINE .)
-    DEDENT          reduce using rule 18 (definition -> assignment CHARCLASS NEWLINE .)
+    VARNAME         reduce using rule 20 (definition -> assignment expression .)
+    DEDENT          reduce using rule 20 (definition -> assignment expression .)
 
 
 state 37
 
-    (9) expression -> SLASH cell moreCells NEWLINE INDENT definitions . DEDENT
+    (7) expression -> VARNAME NEWLINE INDENT definitions DEDENT .
 
-    DEDENT          shift and go to state 38
+    DEDENT          reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
+    $end            reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
+    VARNAME         reduce using rule 7 (expression -> VARNAME NEWLINE INDENT definitions DEDENT .)
 
 
 state 38
 
+    (9) expression -> SLASH cell moreCells NEWLINE INDENT . definitions DEDENT
+    (17) definitions -> .
+    (18) definitions -> . definition definitions
+    (19) definition -> . assignment definition
+    (20) definition -> . assignment expression
+    (21) definition -> . assignment CHARCLASS NEWLINE
+    (22) definition -> . assignment LITERAL NEWLINE
+    (23) assignment -> . VARNAME EQUALSIGN
+    (24) assignment -> . VARNAME COLON
+
+    DEDENT          reduce using rule 17 (definitions -> .)
+    VARNAME         shift and go to state 21
+
+    definition                     shift and go to state 20
+    assignment                     shift and go to state 22
+    definitions                    shift and go to state 44
+
+state 39
+
+    (14) cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN . SLASH
+
+    SLASH           shift and go to state 45
+
+
+state 40
+
+    (13) cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK . SLASH
+
+    SLASH           shift and go to state 46
+
+
+state 41
+
+    (12) cell -> OPENPAREN VARNAME CLOSEPAREN SLASH .
+
+    VARNAME         reduce using rule 12 (cell -> OPENPAREN VARNAME CLOSEPAREN SLASH .)
+    OPENPAREN       reduce using rule 12 (cell -> OPENPAREN VARNAME CLOSEPAREN SLASH .)
+    NEWLINE         reduce using rule 12 (cell -> OPENPAREN VARNAME CLOSEPAREN SLASH .)
+
+
+state 42
+
+    (22) definition -> assignment LITERAL NEWLINE .
+
+    VARNAME         reduce using rule 22 (definition -> assignment LITERAL NEWLINE .)
+    DEDENT          reduce using rule 22 (definition -> assignment LITERAL NEWLINE .)
+
+
+state 43
+
+    (21) definition -> assignment CHARCLASS NEWLINE .
+
+    VARNAME         reduce using rule 21 (definition -> assignment CHARCLASS NEWLINE .)
+    DEDENT          reduce using rule 21 (definition -> assignment CHARCLASS NEWLINE .)
+
+
+state 44
+
+    (9) expression -> SLASH cell moreCells NEWLINE INDENT definitions . DEDENT
+
+    DEDENT          shift and go to state 47
+
+
+state 45
+
+    (14) cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH .
+
+    VARNAME         reduce using rule 14 (cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH .)
+    OPENPAREN       reduce using rule 14 (cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH .)
+    NEWLINE         reduce using rule 14 (cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH .)
+
+
+state 46
+
+    (13) cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH .
+
+    VARNAME         reduce using rule 13 (cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH .)
+    OPENPAREN       reduce using rule 13 (cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH .)
+    NEWLINE         reduce using rule 13 (cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH .)
+
+
+state 47
+
     (9) expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .
 
     DEDENT          reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
-    VARNAME         reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
     $end            reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
+    VARNAME         reduce using rule 9 (expression -> SLASH cell moreCells NEWLINE INDENT definitions DEDENT .)
 
