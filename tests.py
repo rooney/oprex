@@ -331,6 +331,13 @@ class TestOutput(unittest.TestCase):
         expect_regex='%(?<pXs>%(?<X>X)s)s')
 
         self.given('''
+            greeting
+                greeting = 'Hello %(name)s'
+        ''',
+        expect_regex='Hello %\(name\)s')
+
+
+        self.given('''
             message
                 message = /greeting/name/
                     greeting = 'Hello%'
