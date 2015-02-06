@@ -330,6 +330,17 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='%(?<pXs>%(?<X>X)s)s')
 
+        self.given('''
+            message
+                message = /greeting/name/
+                    greeting = 'Hello%'
+                    name = /(salutation)/first/last/
+                        salutation = 'Sir/Madam'
+                        first = 's%(first)s'
+                        last  = '%(last)s'
+        ''',
+        expect_regex='Hello%(?<salutation>Sir/Madam)s%\(first\)s%\(last\)s')
+
 
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):

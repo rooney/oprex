@@ -1,4 +1,8 @@
 
-/defcon/(level)/
-    defcon = 'DEFCON'
-    level: 1 2 3 4 5
+message
+    message = /greeting/name/
+        greeting = 'Hello%'
+        name = /(salutation)/first/last/
+            salutation = 'Sir/Madam'
+            first = 's%(first)s'
+            last  = '%(last)s'
