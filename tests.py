@@ -300,6 +300,14 @@ class TestOutput(unittest.TestCase):
         expect_regex='[Aa][Aa]')
 
 
+    def test_capturing(self):
+        self.given('''
+            /defcon/(level)/
+                defcon = 'DEFCON'
+                level: 1 2 3 4 5
+        ''',
+        expect_regex=r'DEFCON(?<level>[12345])')
+
 
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
