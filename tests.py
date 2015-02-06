@@ -309,6 +309,28 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'DEFCON(?<level>[12345])')
 
 
+    def test_string_interpolation(self):
+        # the implementation of chain-of-cells parsing uses string interpolation to translate variable names into values
+        # these tests prove that it won't cause troubles with "%(something)s" strings since it'll be on the value part
+        self.given('''
+            /p/pXs/s/
+                p = '%'
+                s = 's'
+                pXs = /p/(X)/s/
+                    X = 'X'
+        ''',
+        expect_regex='%%(?<X>X)ss')
+
+        self.given('''
+            /p/(pXs)/s/
+                p = '%'
+                s = 's'
+                pXs = /p/(X)/s/
+                    X = 'X'
+        ''',
+        expect_regex='%(?<pXs>%(?<X>X)s)s')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
