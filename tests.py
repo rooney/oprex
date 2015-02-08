@@ -368,6 +368,21 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='thequickbrownfoxjumpsoverthelazydog')
 
+        self.given('''
+            /subject/predicate/object/
+                subject = /article/adjective/noun/
+*                   article = 'the'
+*                   adjective = /speed/color/
+                        speed = 'quick'
+                        color = 'brown'
+*                   noun = 'fox'
+                predicate = /verb/adverb/
+                    verb = 'jumps'
+                    adverb = 'over'
+                object = /article/adjective/noun/
+        ''',
+        expect_regex='thequickbrownfoxjumpsoverthequickbrownfox')
+
 
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
