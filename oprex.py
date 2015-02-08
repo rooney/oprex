@@ -101,12 +101,17 @@ class Variable:
 
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
-
     name = t.value
     if regex.match('[0-9_]', name):
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must start with a letter): ' + name)
     if name[-1] == '_':
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must not end with underscore): ' + name)
+
+    # does the line start with asterisk?
+    if hasattr(t.lexer, 'make_next_variable_global'):
+        t.value = '*' + name
+        delattr(t.lexer, 'make_next_variable_global')
+
     return t
 
 
@@ -119,7 +124,7 @@ def t_EQUALSIGN(t):
 
 
 def t_WHITESPACE(t):
-    r'[ \t\n]+'
+    r'[ \t\n]+[* \t]*'
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if not num_newlines: # plain regular whitespace
@@ -137,13 +142,28 @@ def t_WHITESPACE(t):
     # the whitespace after the last newline is indentation
     indentation = lines[-1]
     if indentation:
-        if ' ' in indentation and '\t' in indentation:
+        indent_using_space = ' ' in indentation
+        indent_using_tab = '\t' in indentation
+        if indent_using_space and indent_using_tab:
             raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
 
-        indentchar = indentation[0]
+        # if any, process the "make global variable" marker (an asterisk leading the indent)
+        stars = indentation.count('*')
+        if stars:
+            if stars != 1:
+                raise OprexSyntaxError(t.lexer.lineno, 'Syntax error: ' + indentation)
+            if indentation[0] != '*':
+                raise OprexSyntaxError(t.lexer.lineno, '''The "make global" asterisk must be the line's first character''')
+            if len(indentation) == 1:
+                raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
+            indentation = indentation.replace('*', ' ' if indent_using_space else '')
+            t.lexer.make_next_variable_global = True
+
+        # all indentations must use the same character
+        indentchar = ' ' if indent_using_space else '\t'
         try:
             if indentchar != t.lexer.indentchar:
-                raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
+                raise OprexSyntaxError(t.lexer.lineno, 'Inconsistent indentation character')
         except AttributeError:
             # this is the first indent encountered, record whether it uses space or tab,
             # further indents must use the same character
@@ -155,18 +175,18 @@ def t_WHITESPACE(t):
 
     # compare with previous indentation
     prev = t.lexer.indent_stack[-1]
-    if indentlen == prev: # indentation of same depth, no special token needed
+    if indentlen == prev: # indentation of same depth
         return t
 
     # indentation depth change, either start of a new block (INDENT) or end of block (DEDENT)
+    t.extra_tokens = []
 
     if indentlen > prev: # deeper indentation, start of a new block
-        t.extra_tokens = [INDENT]
+        t.extra_tokens.append(INDENT)
         t.lexer.indent_stack.append(indentlen)
         return t
 
     if indentlen < prev: # end of one or more blocks
-        t.extra_tokens = []
         while indentlen < prev: # close all blocks with deeper indentation
             t.extra_tokens.append(DEDENT)
             t.lexer.indent_stack.pop()
@@ -200,20 +220,29 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : VARNAME              NEWLINE
-                  | VARNAME              NEWLINE indent definitions DEDENT
-                  | SLASH cell moreCells NEWLINE
-                  | SLASH cell moreCells NEWLINE indent definitions DEDENT'''
+    '''expression : VARNAME NEWLINE
+                  | VARNAME NEWLINE                   indent definitions DEDENT
+                  | SLASH   cell    moreCells NEWLINE
+                  | SLASH   cell    moreCells NEWLINE indent definitions DEDENT'''
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
         if t[1] == '/':
-            t[0] = (t[2] + t[3]) % vars_in_scope
+            cell = t[2]
+            moreCells = t[3]
+            has_subblock = len(t) > 5
+            result = (cell + moreCells) % vars_in_scope
         else:
-            t[0] = vars_in_scope[t[1]].value
+            varname = t[1]
+            has_subblock = len(t) > 3
+            result = vars_in_scope[varname].value
 
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
-    t.lexer.vars_stack.pop()
+
+    if has_subblock:
+        t.lexer.vars_stack.pop()
+        
+    t[0] = result
 
 
 def p_indent(t):
@@ -270,11 +299,15 @@ def p_definition(t):
                   | assignment expression
                   | assignment CHARCLASS NEWLINE
                   | assignment LITERAL   NEWLINE'''
-    varname = t[1]
+    varname, is_global = t[1]
     value = t[2]
     lineno = t.lineno(1)
-    vars_in_scope = t.lexer.vars_stack[-1]
-    vars_in_scope[varname] = Variable(varname, value, lineno)
+    if is_global:
+        for scope in t.lexer.vars_stack:
+            scope[varname] = Variable(varname, value, lineno)
+    else:
+        vars_in_scope = t.lexer.vars_stack[-1]
+        vars_in_scope[varname] = Variable(varname, value, lineno)
     t[0] = value
 
 
@@ -282,6 +315,10 @@ def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN
                   | VARNAME COLON'''
     varname = t[1]
+    is_global = varname.startswith('*')
+    if is_global:
+        varname = varname[1:] # remove the leading asterisk from varname
+
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
         already_defined = vars_in_scope[varname]
@@ -289,7 +326,7 @@ def p_assignment(t):
         pass
     else:
         raise OprexSyntaxError(t.lineno(-1), "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (varname, already_defined.lineno))
-    t[0] = varname
+    t[0] = varname, is_global
 
 
 def p_error(t):

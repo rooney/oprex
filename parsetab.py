@@ -5,7 +5,7 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = '\x1a(x\t=\xfb\x15\x9bJ",\x16\xfe\x08/*'
+_lr_signature = 'N\x94a\xfa\xa3\xda{{\xe9%|\xc3C\xb7\xef\x8d'
     
 _lr_action_items = {'DEDENT':([8,9,14,15,21,24,26,30,33,37,38,39,43,44,45,48,],[13,-6,-10,-18,-18,38,-8,-19,-20,-21,-7,-18,-23,-22,48,-9,]),'QUESTMARK':([10,20,29,],[16,28,41,]),'INDENT':([3,9,26,],[4,14,14,]),'WHITESPACE':([0,],[2,]),'VARNAME':([3,4,6,9,11,12,14,15,17,19,21,23,25,26,31,32,33,37,38,39,42,43,44,46,47,48,],[5,5,10,-6,10,20,-10,22,-11,10,22,36,-12,-8,-24,-25,-20,-21,-7,22,-13,-23,-22,-15,-14,-9,]),'CLOSEPAREN':([20,28,],[29,40,]),'NEWLINE':([0,5,11,17,18,19,25,27,34,35,36,42,46,47,],[3,9,-16,-11,26,-16,-12,-17,43,44,9,-13,-15,-14,]),'LITERAL':([23,31,32,],[34,-24,-25,]),'COLON':([22,36,],[32,32,]),'CHARCLASS':([23,31,32,],[35,-24,-25,]),'SLASH':([3,4,10,16,23,29,31,32,40,41,],[6,6,17,25,6,42,-24,-25,46,47,]),'EQUALSIGN':([22,36,],[31,31,]),'OPENPAREN':([6,11,17,19,25,42,46,47,],[12,12,-11,12,-12,-13,-15,-14,]),'$end':([0,1,2,3,7,9,13,26,38,48,],[-1,0,-2,-3,-4,-6,-5,-8,-7,-9,]),}
 
@@ -26,29 +26,29 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> oprex","S'",1,None,None,None),
-  ('oprex -> <empty>','oprex',0,'p_oprex','/home/ron/oprex/oprex.py',181),
-  ('oprex -> WHITESPACE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',182),
-  ('oprex -> NEWLINE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',183),
-  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','/home/ron/oprex/oprex.py',184),
-  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','/home/ron/oprex/oprex.py',185),
-  ('expression -> VARNAME NEWLINE','expression',2,'p_expression','/home/ron/oprex/oprex.py',195),
-  ('expression -> VARNAME NEWLINE indent definitions DEDENT','expression',5,'p_expression','/home/ron/oprex/oprex.py',196),
-  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','/home/ron/oprex/oprex.py',197),
-  ('expression -> SLASH cell moreCells NEWLINE indent definitions DEDENT','expression',7,'p_expression','/home/ron/oprex/oprex.py',198),
-  ('indent -> INDENT','indent',1,'p_indent','/home/ron/oprex/oprex.py',210),
-  ('cell -> VARNAME SLASH','cell',2,'p_cell','/home/ron/oprex/oprex.py',215),
-  ('cell -> VARNAME QUESTMARK SLASH','cell',3,'p_cell','/home/ron/oprex/oprex.py',216),
-  ('cell -> OPENPAREN VARNAME CLOSEPAREN SLASH','cell',4,'p_cell','/home/ron/oprex/oprex.py',217),
-  ('cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',218),
-  ('cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',219),
-  ('moreCells -> <empty>','moreCells',0,'p_moreCells','/home/ron/oprex/oprex.py',244),
-  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','/home/ron/oprex/oprex.py',245),
-  ('definitions -> <empty>','definitions',0,'p_definitions','/home/ron/oprex/oprex.py',253),
-  ('definitions -> definition definitions','definitions',2,'p_definitions','/home/ron/oprex/oprex.py',254),
-  ('definition -> assignment definition','definition',2,'p_definition','/home/ron/oprex/oprex.py',258),
-  ('definition -> assignment expression','definition',2,'p_definition','/home/ron/oprex/oprex.py',259),
-  ('definition -> assignment CHARCLASS NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',260),
-  ('definition -> assignment LITERAL NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',261),
-  ('assignment -> VARNAME EQUALSIGN','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',269),
-  ('assignment -> VARNAME COLON','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',270),
+  ('oprex -> <empty>','oprex',0,'p_oprex','/home/ron/oprex/oprex.py',209),
+  ('oprex -> WHITESPACE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',210),
+  ('oprex -> NEWLINE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',211),
+  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','/home/ron/oprex/oprex.py',212),
+  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','/home/ron/oprex/oprex.py',213),
+  ('expression -> VARNAME NEWLINE','expression',2,'p_expression','/home/ron/oprex/oprex.py',223),
+  ('expression -> VARNAME NEWLINE indent definitions DEDENT','expression',5,'p_expression','/home/ron/oprex/oprex.py',224),
+  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','/home/ron/oprex/oprex.py',225),
+  ('expression -> SLASH cell moreCells NEWLINE indent definitions DEDENT','expression',7,'p_expression','/home/ron/oprex/oprex.py',226),
+  ('indent -> INDENT','indent',1,'p_indent','/home/ron/oprex/oprex.py',249),
+  ('cell -> VARNAME SLASH','cell',2,'p_cell','/home/ron/oprex/oprex.py',255),
+  ('cell -> VARNAME QUESTMARK SLASH','cell',3,'p_cell','/home/ron/oprex/oprex.py',256),
+  ('cell -> OPENPAREN VARNAME CLOSEPAREN SLASH','cell',4,'p_cell','/home/ron/oprex/oprex.py',257),
+  ('cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',258),
+  ('cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',259),
+  ('moreCells -> <empty>','moreCells',0,'p_moreCells','/home/ron/oprex/oprex.py',284),
+  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','/home/ron/oprex/oprex.py',285),
+  ('definitions -> <empty>','definitions',0,'p_definitions','/home/ron/oprex/oprex.py',293),
+  ('definitions -> definition definitions','definitions',2,'p_definitions','/home/ron/oprex/oprex.py',294),
+  ('definition -> assignment definition','definition',2,'p_definition','/home/ron/oprex/oprex.py',298),
+  ('definition -> assignment expression','definition',2,'p_definition','/home/ron/oprex/oprex.py',299),
+  ('definition -> assignment CHARCLASS NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',300),
+  ('definition -> assignment LITERAL NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',301),
+  ('assignment -> VARNAME EQUALSIGN','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',315),
+  ('assignment -> VARNAME COLON','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',316),
 ]

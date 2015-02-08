@@ -101,7 +101,7 @@ class TestErrorHandling(unittest.TestCase):
 \t\ttabs = 'this line is tabs-indented'
                 spaces = 'this line is spaces-indented'
         ''',
-        expect_error='Line 3: Cannot mix space and tab for indentation')
+        expect_error='Line 3: Inconsistent indentation character')
 
 
     def test_undefined_variable(self):
