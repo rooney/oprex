@@ -193,17 +193,25 @@ def p_oprex(t):
 
 def p_expression(t):
     '''expression : VARNAME              NEWLINE
-                  | VARNAME              NEWLINE INDENT definitions DEDENT
+                  | VARNAME              NEWLINE indent definitions DEDENT
                   | SLASH cell moreCells NEWLINE
-                  | SLASH cell moreCells NEWLINE INDENT definitions DEDENT'''
+                  | SLASH cell moreCells NEWLINE indent definitions DEDENT'''
+    vars_in_scope = t.lexer.vars_stack[-1]
     try:
         if t[1] == '/':
-            t[0] = (t[2] + t[3]) % t.lexer.vars
+            t[0] = (t[2] + t[3]) % vars_in_scope
         else:
-            t[0] = t.lexer.vars[t[1]]
+            t[0] = vars_in_scope[t[1]]
 
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
+    t.lexer.vars_stack.pop()
+
+
+def p_indent(t):
+    '''indent : INDENT'''
+    vars_in_scope = t.lexer.vars_stack[-1]
+    t.lexer.vars_stack.append(vars_in_scope.copy())
 
 
 def p_cell(t):
@@ -256,7 +264,7 @@ def p_definition(t):
                   | assignment LITERAL   NEWLINE'''
     varname = t[1]
     value = t[2]
-    t.lexer.vars[varname] = value
+    t.lexer.vars_stack[-1][varname] = value
     t[0] = value
 
 
@@ -264,7 +272,7 @@ def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN
                   | VARNAME COLON'''
     varname = t[1]
-    defined_vars = t.lexer.vars
+    defined_vars = t.lexer.vars_stack[-1]
     try:
         defined_vars[varname]
     except KeyError:
@@ -321,7 +329,7 @@ def build_lexer(source_code):
     lexer = lexer0.clone()
     lexer.indent_stack = [0]
     lexer.input(source_code)
-    lexer.vars = {}
+    lexer.vars_stack = [{}]
     return CustomLexer(lexer)
 
 
