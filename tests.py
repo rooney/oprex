@@ -148,7 +148,7 @@ class TestErrorHandling(unittest.TestCase):
                 dejavu = 'Déjà vu'
                 dejavu = 'Déjà vu'
         ''',
-        expect_error="Line 4: Variable 'dejavu' is already defined (names must be unique within a scope)")
+        expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
 
     def test_unclosed_literal(self):

@@ -89,7 +89,15 @@ def t_LITERAL(t):
     return t
 
 
-Variable = namedtuple('Variable', 'name type capture')
+class Variable:
+    def __init__(self, name, value, lineno):
+        self.name = name
+        self.value = value
+        self.lineno = lineno
+
+    def __str__(self):
+        return self.value
+
 
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
@@ -201,7 +209,7 @@ def p_expression(t):
         if t[1] == '/':
             t[0] = (t[2] + t[3]) % vars_in_scope
         else:
-            t[0] = vars_in_scope[t[1]]
+            t[0] = vars_in_scope[t[1]].value
 
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
@@ -264,7 +272,9 @@ def p_definition(t):
                   | assignment LITERAL   NEWLINE'''
     varname = t[1]
     value = t[2]
-    t.lexer.vars_stack[-1][varname] = value
+    lineno = t.lineno(1)
+    vars_in_scope = t.lexer.vars_stack[-1]
+    vars_in_scope[varname] = Variable(varname, value, lineno)
     t[0] = value
 
 
@@ -272,13 +282,13 @@ def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN
                   | VARNAME COLON'''
     varname = t[1]
-    defined_vars = t.lexer.vars_stack[-1]
+    vars_in_scope = t.lexer.vars_stack[-1]
     try:
-        defined_vars[varname]
+        already_defined = vars_in_scope[varname]
     except KeyError:
         pass
     else:
-        raise OprexSyntaxError(t.lineno(-1), "Variable '%s' is already defined (names must be unique within a scope)" % varname)
+        raise OprexSyntaxError(t.lineno(-1), "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (varname, already_defined.lineno))
     t[0] = varname
 
 
