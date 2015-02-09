@@ -67,8 +67,8 @@ def t_COLON(t):
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
         charclass.append(char)
-    charclass = '[' + ''.join(charclass) + ']'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', charclass)]
+    value = '[' + ''.join(charclass) + ']'
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     return t
 
 
@@ -85,12 +85,8 @@ def t_LITERAL(t):
     return t
 
 
-class Variable:
-    def __init__(self, name, value, lineno):
-        self.name = name
-        self.value = value
-        self.lineno = lineno
-
+class Variable(namedtuple('Variable', 'name value lineno')):
+    __slots__ = ()
     def __str__(self):
         return self.value
 
@@ -347,19 +343,19 @@ class CustomLexer:
         self.extras_queue = deque([])
 
     def get_next_token(self):
+        lexer = self.real_lexer
         try:
             return self.extras_queue.popleft()
         except IndexError:
-            token = self.real_lexer.token()
+            token = lexer.token()
             if token:
                 if hasattr(token, 'extra_tokens'):
                     self.extras_queue.extend(token.extra_tokens)
                 return token
             else:
-                lexer = self.real_lexer
-                dedent_token = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
-                num_undedented = len(self.real_lexer.indent_stack) - 1
-                self.extras_queue.extend([dedent_token] * num_undedented)
+                extra_dedent = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
+                num_undedented = len(lexer.indent_stack) - 1
+                self.extras_queue.extend([extra_dedent] * num_undedented)
                 self.extras_queue.append(None)
                 return self.extras_queue.popleft()
 
