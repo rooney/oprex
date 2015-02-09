@@ -39,6 +39,7 @@ tokens = (
     'COLON',
     'ENDSCOPE',
     'EQUALSIGN',
+    'GLOBALMARK',
     'LITERAL',
     'NEWLINE',
     'OPENPAREN',
@@ -98,12 +99,6 @@ def t_VARNAME(t):
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must start with a letter): ' + name)
     if name[-1] == '_':
         raise OprexSyntaxError(t.lineno, 'Illegal variable name (must not end with underscore): ' + name)
-
-    # does the line start with asterisk?
-    if hasattr(t.lexer, 'make_next_variable_global'):
-        t.value = '*' + name
-        delattr(t.lexer, 'make_next_variable_global')
-
     return t
 
 
@@ -133,6 +128,12 @@ def t_WHITESPACE(t):
 
     # the whitespace after the last newline is indentation
     indentation = lines[-1]
+
+    # indentation may contain "make this variable global" marker (an asterisk at the beginning of line)
+    # indentation depth may change compared to previous line
+    # these may generate one or more extra tokens of GLOBALMARK, BEGINSCOPE, and ENDSCOPE
+    t.extra_tokens = deque()
+
     if indentation:
         indent_using_space = ' ' in indentation
         indent_using_tab = '\t' in indentation
@@ -149,7 +150,7 @@ def t_WHITESPACE(t):
             if len(indentation) == 1:
                 raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
             indentation = indentation.replace('*', ' ' if indent_using_space else '')
-            t.lexer.make_next_variable_global = True
+            t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', '*'))
 
         # all indentations must use the same character
         indentchar = ' ' if indent_using_space else '\t'
@@ -167,20 +168,19 @@ def t_WHITESPACE(t):
 
     # compare with previous indentation
     prev = t.lexer.indent_stack[-1]
-    if indentlen == prev: # indentation of same depth
+    if indentlen == prev: # no change in indentation depth
         return t
 
-    # indentation depth change, either start of a new block (INDENT) or end of block (DEDENT)
-    t.extra_tokens = []
+    # at this point, there's indentation depth change
 
-    if indentlen > prev: # deeper indentation, start of a new block
-        t.extra_tokens.append(ExtraToken(t, 'BEGINSCOPE'))
+    if indentlen > prev: # deeper indentation, start of a new scope
+        t.extra_tokens.appendleft(ExtraToken(t, 'BEGINSCOPE'))
         t.lexer.indent_stack.append(indentlen)
         return t
 
-    if indentlen < prev: # end of one or more blocks
-        while indentlen < prev: # close all blocks with deeper indentation
-            t.extra_tokens.append(ExtraToken(t, 'ENDSCOPE'))
+    if indentlen < prev: # end of one or more scopes
+        while indentlen < prev: # close all scopes having deeper indentation
+            t.extra_tokens.appendleft(ExtraToken(t, 'ENDSCOPE'))
             t.lexer.indent_stack.pop()
             prev = t.lexer.indent_stack[-1]
         if indentlen != prev: # the indentation tries to return to a nonexistent level
@@ -305,11 +305,15 @@ def p_definition(t):
 
 def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN
-                  | VARNAME COLON'''
-    varname = t[1]
-    is_global = varname.startswith('*')
-    if is_global:
-        varname = varname[1:] # remove the leading asterisk from varname
+                  | VARNAME COLON
+                  | GLOBALMARK VARNAME EQUALSIGN
+                  | GLOBALMARK VARNAME COLON'''
+    if t[1] == '*':
+        varname = t[2]
+        is_global = True
+    else:
+        varname = t[1]
+        is_global = False
 
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
@@ -344,13 +348,13 @@ class CustomLexer:
     def __init__(self, real_lexer):
         self.__dict__ = real_lexer.__dict__
         self.real_lexer = real_lexer
-        self.extras_queue = deque([])
+        self.extras_queue = deque()
 
     def get_next_token(self):
-        lexer = self.real_lexer
         try:
             return self.extras_queue.popleft()
         except IndexError:
+            lexer = self.real_lexer
             token = lexer.token()
             if token:
                 if hasattr(token, 'extra_tokens'):

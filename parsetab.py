@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = 't?\x8e\xcd\x90_9\r,\xbc%P\xa4J;\xfe'
+_lr_signature = '\xf9\x8el\x9c\xdc\xe3\xeaE\x06\xd7\x99\xd3\xf1\xbb_/'
     
-_lr_action_items = {'QUESTMARK':([10,20,29,],[16,28,41,]),'ENDSCOPE':([8,9,14,15,21,24,26,30,33,37,38,39,43,44,45,48,],[13,-6,-10,-18,-18,38,-8,-19,-20,-21,-7,-18,-23,-22,48,-9,]),'BEGINSCOPE':([2,9,26,],[4,14,14,]),'WHITESPACE':([0,],[1,]),'VARNAME':([2,4,6,9,11,12,14,15,17,19,21,23,25,26,31,32,33,37,38,39,42,43,44,46,47,48,],[5,5,10,-6,10,20,-10,22,-11,10,22,36,-12,-8,-24,-25,-20,-21,-7,22,-13,-23,-22,-15,-14,-9,]),'CLOSEPAREN':([20,28,],[29,40,]),'NEWLINE':([0,5,11,17,18,19,25,27,34,35,36,42,46,47,],[2,9,-16,-11,26,-16,-12,-17,43,44,9,-13,-15,-14,]),'LITERAL':([23,31,32,],[34,-24,-25,]),'COLON':([22,36,],[32,32,]),'CHARCLASS':([23,31,32,],[35,-24,-25,]),'SLASH':([2,4,10,16,23,29,31,32,40,41,],[6,6,17,25,6,42,-24,-25,46,47,]),'EQUALSIGN':([22,36,],[31,31,]),'OPENPAREN':([6,11,17,19,25,42,46,47,],[12,12,-11,12,-12,-13,-15,-14,]),'$end':([0,1,2,3,7,9,13,26,38,48,],[-1,-2,-3,0,-4,-6,-5,-8,-7,-9,]),}
+_lr_action_items = {'QUESTMARK':([10,20,30,],[16,29,43,]),'ENDSCOPE':([8,9,14,15,21,25,27,31,35,39,40,41,47,48,49,52,],[13,-6,-10,-18,-18,40,-8,-19,-20,-21,-7,-18,-23,-22,52,-9,]),'BEGINSCOPE':([2,9,27,],[4,14,14,]),'WHITESPACE':([0,],[1,]),'VARNAME':([2,4,6,9,11,12,14,15,17,19,21,23,24,26,27,32,33,35,39,40,41,44,45,46,47,48,50,51,52,],[5,5,10,-6,10,20,-10,22,-11,10,22,34,38,-12,-8,-24,-25,-20,-21,-7,22,-13,-26,-27,-23,-22,-15,-14,-9,]),'CLOSEPAREN':([20,29,],[30,42,]),'NEWLINE':([0,5,11,17,18,19,26,28,36,37,38,44,50,51,],[2,9,-16,-11,27,-16,-12,-17,47,48,9,-13,-15,-14,]),'GLOBALMARK':([9,14,15,21,24,27,32,33,35,39,40,41,45,46,47,48,52,],[-6,-10,23,23,23,-8,-24,-25,-20,-21,-7,23,-26,-27,-23,-22,-9,]),'LITERAL':([24,32,33,45,46,],[36,-24,-25,-26,-27,]),'COLON':([22,34,38,],[33,46,33,]),'CHARCLASS':([24,32,33,45,46,],[37,-24,-25,-26,-27,]),'SLASH':([2,4,10,16,24,30,32,33,42,43,45,46,],[6,6,17,26,6,44,-24,-25,50,51,-26,-27,]),'EQUALSIGN':([22,34,38,],[32,45,32,]),'OPENPAREN':([6,11,17,19,26,44,50,51,],[12,12,-11,12,-12,-13,-15,-14,]),'$end':([0,1,2,3,7,9,13,27,40,52,],[-1,-2,-3,0,-4,-6,-5,-8,-7,-9,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'definition':([15,21,23,39,],[21,21,33,21,]),'oprex':([0,],[3,]),'moreCells':([11,19,],[18,27,]),'assignment':([15,21,23,39,],[23,23,23,23,]),'cell':([6,11,19,],[11,19,19,]),'beginscope':([9,26,],[15,39,]),'definitions':([15,21,39,],[24,30,45,]),'expression':([2,4,23,],[7,8,37,]),}
+_lr_goto_items = {'definition':([15,21,24,41,],[21,21,35,21,]),'oprex':([0,],[3,]),'moreCells':([11,19,],[18,28,]),'assignment':([15,21,24,41,],[24,24,24,24,]),'cell':([6,11,19,],[11,19,19,]),'beginscope':([9,27,],[15,41,]),'definitions':([15,21,41,],[25,31,49,]),'expression':([2,4,24,],[7,8,39,]),}
 
 _lr_goto = { }
 for _k, _v in _lr_goto_items.items():
@@ -26,29 +26,31 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> oprex","S'",1,None,None,None),
-  ('oprex -> <empty>','oprex',0,'p_oprex','oprex.py',201),
-  ('oprex -> WHITESPACE','oprex',1,'p_oprex','oprex.py',202),
-  ('oprex -> NEWLINE','oprex',1,'p_oprex','oprex.py',203),
-  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','oprex.py',204),
-  ('oprex -> NEWLINE BEGINSCOPE expression ENDSCOPE','oprex',4,'p_oprex','oprex.py',205),
-  ('expression -> VARNAME NEWLINE','expression',2,'p_expression','oprex.py',215),
-  ('expression -> VARNAME NEWLINE beginscope definitions ENDSCOPE','expression',5,'p_expression','oprex.py',216),
-  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','oprex.py',217),
-  ('expression -> SLASH cell moreCells NEWLINE beginscope definitions ENDSCOPE','expression',7,'p_expression','oprex.py',218),
-  ('beginscope -> BEGINSCOPE','beginscope',1,'p_beginscope','oprex.py',241),
-  ('cell -> VARNAME SLASH','cell',2,'p_cell','oprex.py',247),
-  ('cell -> VARNAME QUESTMARK SLASH','cell',3,'p_cell','oprex.py',248),
-  ('cell -> OPENPAREN VARNAME CLOSEPAREN SLASH','cell',4,'p_cell','oprex.py',249),
-  ('cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH','cell',5,'p_cell','oprex.py',250),
-  ('cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH','cell',5,'p_cell','oprex.py',251),
-  ('moreCells -> <empty>','moreCells',0,'p_moreCells','oprex.py',276),
-  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','oprex.py',277),
-  ('definitions -> <empty>','definitions',0,'p_definitions','oprex.py',285),
-  ('definitions -> definition definitions','definitions',2,'p_definitions','oprex.py',286),
-  ('definition -> assignment definition','definition',2,'p_definition','oprex.py',290),
-  ('definition -> assignment expression','definition',2,'p_definition','oprex.py',291),
-  ('definition -> assignment CHARCLASS NEWLINE','definition',3,'p_definition','oprex.py',292),
-  ('definition -> assignment LITERAL NEWLINE','definition',3,'p_definition','oprex.py',293),
-  ('assignment -> VARNAME EQUALSIGN','assignment',2,'p_assignment','oprex.py',307),
-  ('assignment -> VARNAME COLON','assignment',2,'p_assignment','oprex.py',308),
+  ('oprex -> <empty>','oprex',0,'p_oprex','/home/ron/oprex/oprex.py',201),
+  ('oprex -> WHITESPACE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',202),
+  ('oprex -> NEWLINE','oprex',1,'p_oprex','/home/ron/oprex/oprex.py',203),
+  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','/home/ron/oprex/oprex.py',204),
+  ('oprex -> NEWLINE BEGINSCOPE expression ENDSCOPE','oprex',4,'p_oprex','/home/ron/oprex/oprex.py',205),
+  ('expression -> VARNAME NEWLINE','expression',2,'p_expression','/home/ron/oprex/oprex.py',215),
+  ('expression -> VARNAME NEWLINE beginscope definitions ENDSCOPE','expression',5,'p_expression','/home/ron/oprex/oprex.py',216),
+  ('expression -> SLASH cell moreCells NEWLINE','expression',4,'p_expression','/home/ron/oprex/oprex.py',217),
+  ('expression -> SLASH cell moreCells NEWLINE beginscope definitions ENDSCOPE','expression',7,'p_expression','/home/ron/oprex/oprex.py',218),
+  ('beginscope -> BEGINSCOPE','beginscope',1,'p_beginscope','/home/ron/oprex/oprex.py',241),
+  ('cell -> VARNAME SLASH','cell',2,'p_cell','/home/ron/oprex/oprex.py',247),
+  ('cell -> VARNAME QUESTMARK SLASH','cell',3,'p_cell','/home/ron/oprex/oprex.py',248),
+  ('cell -> OPENPAREN VARNAME CLOSEPAREN SLASH','cell',4,'p_cell','/home/ron/oprex/oprex.py',249),
+  ('cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',250),
+  ('cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH','cell',5,'p_cell','/home/ron/oprex/oprex.py',251),
+  ('moreCells -> <empty>','moreCells',0,'p_moreCells','/home/ron/oprex/oprex.py',276),
+  ('moreCells -> cell moreCells','moreCells',2,'p_moreCells','/home/ron/oprex/oprex.py',277),
+  ('definitions -> <empty>','definitions',0,'p_definitions','/home/ron/oprex/oprex.py',285),
+  ('definitions -> definition definitions','definitions',2,'p_definitions','/home/ron/oprex/oprex.py',286),
+  ('definition -> assignment definition','definition',2,'p_definition','/home/ron/oprex/oprex.py',290),
+  ('definition -> assignment expression','definition',2,'p_definition','/home/ron/oprex/oprex.py',291),
+  ('definition -> assignment CHARCLASS NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',292),
+  ('definition -> assignment LITERAL NEWLINE','definition',3,'p_definition','/home/ron/oprex/oprex.py',293),
+  ('assignment -> VARNAME EQUALSIGN','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',307),
+  ('assignment -> VARNAME COLON','assignment',2,'p_assignment','/home/ron/oprex/oprex.py',308),
+  ('assignment -> GLOBALMARK VARNAME EQUALSIGN','assignment',3,'p_assignment','/home/ron/oprex/oprex.py',309),
+  ('assignment -> GLOBALMARK VARNAME COLON','assignment',3,'p_assignment','/home/ron/oprex/oprex.py',310),
 ]
