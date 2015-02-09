@@ -80,6 +80,14 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
 
+        self.given('''
+            /greeting/name/
+                greeting = 'hello'
+
+                    name = 'world'
+        ''',
+        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
+
 
     def test_indentation_error(self):
         self.given('''
@@ -88,6 +96,14 @@ class TestErrorHandling(unittest.TestCase):
                  name = 'world'
         ''',
         expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
+
+        self.given('''
+            /greeting/name/
+                greeting = 'hello'
+
+                 name = 'world'
+        ''',
+        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
 
         self.given('''
             root

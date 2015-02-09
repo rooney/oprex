@@ -31,7 +31,7 @@ def sanitize(source_code):
 
 
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
-ExtraToken = lambda t, type, value=None: LexToken(type, value or type, t.lineno, t.lexpos, t.lexer)
+ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
 tokens = (
     'BEGINSCOPE',
     'CHARCLASS',
@@ -330,7 +330,7 @@ def p_error(t):
         raise OprexSyntaxError(None, 'Unexpected end of input')
 
     if t.type == 'BEGINSCOPE':
-        raise OprexSyntaxError(t.lineno + 1, 'Unexpected BEGINSCOPE (indentation error?)')
+        raise OprexSyntaxError(t.lineno, 'Unexpected BEGINSCOPE (indentation error?)')
 
     errline = t.lexer.source_lines[t.lineno - 1]
     pointer = ' ' * (find_column(t)-1) + '^'
