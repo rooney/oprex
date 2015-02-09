@@ -79,36 +79,20 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 2: Unexpected GLOBALMARK\n*           /warming/and/warming/\n^')
 
         self.given('''
-            /greeting/name/
+            /greeting/world/
                 greeting = 'hello'
-                    name = 'world'
+                    world = 'world'
         ''',
         expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
-
-        self.given('''
-            /greeting/name/
-                greeting = 'hello'
-
-                    name = 'world'
-        ''',
-        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
 
 
     def test_indentation_error(self):
         self.given('''
-            /greeting/name/
+            /greeting/world/
                 greeting = 'hello'
-                 name = 'world'
+                 world = 'world'
         ''',
         expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
-
-        self.given('''
-            /greeting/name/
-                greeting = 'hello'
-
-                 name = 'world'
-        ''',
-        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
 
         self.given('''
             root
@@ -123,6 +107,44 @@ class TestErrorHandling(unittest.TestCase):
             hyperroot
         ''',
         expect_error='''Line 4: Indentation error''')
+
+
+    def test_correct_error_line_numbering(self):
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
+
+                    world = 'world'
+        ''',
+        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
+
+        self.given('''
+
+            /greeting/world/
+
+
+                greeting = 'hello'
+
+                 world = 'world'
+        ''',
+        expect_error='''Line 8: Unexpected BEGINSCOPE (indentation error?)''')
+
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
+
+
+               world = 'world'
+        ''',
+        expect_error='Line 6: Indentation error')
+
+        self.given('''
+            warming
+
+
+            *   warming = 'global'
+        ''',
+        expect_error='''Line 5: The "make global" asterisk must be the line's first character''')
 
 
     def test_mixed_indentation(self):
