@@ -290,6 +290,24 @@ class TestOutput(unittest.TestCase):
         expect_regex='')
 
 
+    def test_indentation(self):
+        # indentation using space
+        self.given('''
+            /weather/warming/
+                weather = 'local'
+*               warming = 'global'
+        ''',
+        expect_regex='localglobal')
+
+        # indentation using tab
+        self.given('''
+/weather/warming/
+\tweather = 'local'
+*\twarming = 'global'
+        ''',
+        expect_regex='localglobal')
+
+
     def test_escaping(self):
         self.given('''
             stars
