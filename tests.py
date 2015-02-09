@@ -397,7 +397,7 @@ class TestOutput(unittest.TestCase):
         expect_regex='Hello%(?<salutation>Sir/Madam)s%\(first\)s%\(last\)s')
 
 
-    def test_variable_scoping(self):
+    def test_scoping(self):
         self.given('''
             /subject/predicate/object/
                 subject = /article/adjective/noun/
@@ -430,6 +430,35 @@ class TestOutput(unittest.TestCase):
                 object = /article/adjective/noun/
         ''',
         expect_regex='thequickbrownfoxjumpsoverthequickbrownfox')
+
+
+    def test_empty_lines_ok(self):
+        self.given('''
+
+            /subject/predicate/object/
+
+                subject = /article/adjective/noun/
+                    article = 'the'
+                    adjective = /speed/color/
+
+
+                        speed = 'quick'
+                        color = 'brown'
+                    noun = 'fox'
+
+                predicate = /verb/adverb/
+                    verb = 'jumps'
+
+
+                    adverb = 'over'
+                object = /article/adjective/noun/
+                    article = 'the'
+                    adjective = 'lazy'
+
+                    noun = 'dog'
+
+        ''',
+        expect_regex='thequickbrownfoxjumpsoverthelazydog')
 
 
 class TestMatches(unittest.TestCase):
