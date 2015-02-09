@@ -1,7 +1,7 @@
 
 /subject/predicate/object/
     subject = /article/adjective/noun/
-*       article = 'the'
+*      article = 'the'
 *       adjective = /speed/color/
             speed = 'quick'
             color = 'brown'

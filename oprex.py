@@ -4,8 +4,8 @@ from collections import namedtuple, deque
 
 
 def oprex(source_code):
-    source_code = check_input(source_code)
-    lexer = build_lexer(source_code)
+    source_lines = sanitize(source_code)
+    lexer = build_lexer(source_lines)
     result = parse(lexer=lexer)
     return result
 
@@ -18,7 +18,7 @@ class OprexSyntaxError(Exception):
             Exception.__init__(self, '\n' + msg)
 
 
-def check_input(source_code):
+def sanitize(source_code):
     # oprex requires the source code to have leading and trailing blank lines to make
     # "proper look of indentation" when it is a triple-quoted string
     source_lines = regex.split('\r?\n', source_code)
@@ -27,14 +27,11 @@ def check_input(source_code):
     if source_lines[-1].strip():
         numlines = len(source_lines)
         raise OprexSyntaxError(numlines, 'Last line must be blank, not: ' + source_lines[-1])
+    return source_lines
 
-    return '\n'.join(source_lines) # all newlines are now just \n, simplifying the lexer
 
-
-Token = namedtuple('Token', 'type value lineno lexpos')
-INDENT = Token('INDENT', None, 0, 0)
-DEDENT = Token('DEDENT', None, 0, 0)
-
+LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
+ExtraToken = lambda t, type, value=None: LexToken(type, value or type, t.lineno, t.lexpos, t.lexer)
 tokens = (
     'CHARCLASS',
     'CLOSEPAREN',
@@ -52,7 +49,6 @@ tokens = (
 )
 
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
-
 
 def t_COLON(t):
     ''':.*'''
@@ -72,7 +68,7 @@ def t_COLON(t):
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
         charclass.append(char)
     charclass = '[' + ''.join(charclass) + ']'
-    t.extra_tokens = [Token('CHARCLASS', charclass, t.lineno, t.lexpos)]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', charclass)]
     return t
 
 
@@ -182,13 +178,13 @@ def t_WHITESPACE(t):
     t.extra_tokens = []
 
     if indentlen > prev: # deeper indentation, start of a new block
-        t.extra_tokens.append(INDENT)
+        t.extra_tokens.append(ExtraToken(t, 'INDENT'))
         t.lexer.indent_stack.append(indentlen)
         return t
 
     if indentlen < prev: # end of one or more blocks
         while indentlen < prev: # close all blocks with deeper indentation
-            t.extra_tokens.append(DEDENT)
+            t.extra_tokens.append(ExtraToken(t, 'DEDENT'))
             t.lexer.indent_stack.pop()
             prev = t.lexer.indent_stack[-1]
         if indentlen != prev: # the indentation tries to return to a nonexistent level
@@ -241,7 +237,7 @@ def p_expression(t):
 
     if has_subblock:
         t.lexer.vars_stack.pop()
-        
+
     t[0] = result
 
 
@@ -332,7 +328,7 @@ def p_assignment(t):
 def p_error(t):
     if t is None:
         raise OprexSyntaxError(None, 'Unexpected end of input')
-    errline = t.lexer.lexdata.split('\n')[t.lineno - 1]
+    errline = t.lexer.source_lines[t.lineno - 1]
     pointer = ' ' * (find_column(t)-1) + '^'
     raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
 
@@ -360,8 +356,10 @@ class CustomLexer:
                     self.extras_queue.extend(token.extra_tokens)
                 return token
             else:
+                lexer = self.real_lexer
+                dedent_token = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
                 num_undedented = len(self.real_lexer.indent_stack) - 1
-                self.extras_queue.extend([DEDENT] * num_undedented)
+                self.extras_queue.extend([dedent_token] * num_undedented)
                 self.extras_queue.append(None)
                 return self.extras_queue.popleft()
 
@@ -372,10 +370,11 @@ class CustomLexer:
 
 
 lexer0 = lex.lex()
-def build_lexer(source_code):
+def build_lexer(source_lines):
     lexer = lexer0.clone()
     lexer.indent_stack = [0]
-    lexer.input(source_code)
+    lexer.source_lines = source_lines
+    lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
     lexer.vars_stack = [{}]
     return CustomLexer(lexer)
 
