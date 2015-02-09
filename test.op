@@ -1,12 +1,4 @@
 
-/subject/predicate/object/
-    subject = /article/adjective/noun/
-*      article = 'the'
-*       adjective = /speed/color/
-            speed = 'quick'
-            color = 'brown'
-*       noun = 'fox'
-    predicate = /verb/adverb/
-        verb = 'jumps'
-        adverb = 'over'
-    object = /article/adjective/noun/
+/greeting/name/
+    greeting = 'hello'
+     name = 'world'

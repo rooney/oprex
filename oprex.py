@@ -33,12 +33,12 @@ def sanitize(source_code):
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None: LexToken(type, value or type, t.lineno, t.lexpos, t.lexer)
 tokens = (
+    'BEGINSCOPE',
     'CHARCLASS',
     'CLOSEPAREN',
     'COLON',
-    'DEDENT',
+    'ENDSCOPE',
     'EQUALSIGN',
-    'INDENT',
     'LITERAL',
     'NEWLINE',
     'OPENPAREN',
@@ -174,13 +174,13 @@ def t_WHITESPACE(t):
     t.extra_tokens = []
 
     if indentlen > prev: # deeper indentation, start of a new block
-        t.extra_tokens.append(ExtraToken(t, 'INDENT'))
+        t.extra_tokens.append(ExtraToken(t, 'BEGINSCOPE'))
         t.lexer.indent_stack.append(indentlen)
         return t
 
     if indentlen < prev: # end of one or more blocks
         while indentlen < prev: # close all blocks with deeper indentation
-            t.extra_tokens.append(ExtraToken(t, 'DEDENT'))
+            t.extra_tokens.append(ExtraToken(t, 'ENDSCOPE'))
             t.lexer.indent_stack.pop()
             prev = t.lexer.indent_stack[-1]
         if indentlen != prev: # the indentation tries to return to a nonexistent level
@@ -201,8 +201,8 @@ def p_oprex(t):
     '''oprex : 
              | WHITESPACE
              | NEWLINE
-             | NEWLINE        expression
-             | NEWLINE INDENT expression DEDENT'''
+             | NEWLINE            expression
+             | NEWLINE BEGINSCOPE expression ENDSCOPE'''
     if len(t) == 3:
         t[0] = t[2]
     elif len(t) == 5:
@@ -213,9 +213,9 @@ def p_oprex(t):
 
 def p_expression(t):
     '''expression : VARNAME NEWLINE
-                  | VARNAME NEWLINE                   indent definitions DEDENT
+                  | VARNAME NEWLINE                   beginscope definitions ENDSCOPE
                   | SLASH   cell    moreCells NEWLINE
-                  | SLASH   cell    moreCells NEWLINE indent definitions DEDENT'''
+                  | SLASH   cell    moreCells NEWLINE beginscope definitions ENDSCOPE'''
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
         if t[1] == '/':
@@ -237,8 +237,8 @@ def p_expression(t):
     t[0] = result
 
 
-def p_indent(t):
-    '''indent : INDENT'''
+def p_beginscope(t):
+    '''beginscope : BEGINSCOPE'''
     vars_in_scope = t.lexer.vars_stack[-1]
     t.lexer.vars_stack.append(vars_in_scope.copy())
 
@@ -324,6 +324,10 @@ def p_assignment(t):
 def p_error(t):
     if t is None:
         raise OprexSyntaxError(None, 'Unexpected end of input')
+
+    if t.type == 'BEGINSCOPE':
+        raise OprexSyntaxError(t.lineno + 1, 'Unexpected BEGINSCOPE (indentation error?)')
+
     errline = t.lexer.source_lines[t.lineno - 1]
     pointer = ' ' * (find_column(t)-1) + '^'
     raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
@@ -353,7 +357,7 @@ class CustomLexer:
                     self.extras_queue.extend(token.extra_tokens)
                 return token
             else:
-                extra_dedent = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
+                extra_dedent = LexToken('ENDSCOPE', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
                 num_undedented = len(lexer.indent_stack) - 1
                 self.extras_queue.extend([extra_dedent] * num_undedented)
                 self.extras_queue.append(None)
