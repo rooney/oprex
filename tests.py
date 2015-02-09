@@ -73,8 +73,22 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 4: Unexpected VARNAME\nroot2\n^''')
 
+        self.given('''
+            /greeting/name/
+                greeting = 'hello'
+                    name = 'world'
+        ''',
+        expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
+
 
     def test_indentation_error(self):
+        self.given('''
+            /greeting/name/
+                greeting = 'hello'
+                 name = 'world'
+        ''',
+        expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
+
         self.given('''
             root
                 branch
