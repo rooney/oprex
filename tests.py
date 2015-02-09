@@ -11,7 +11,7 @@ class TestErrorHandling(unittest.TestCase):
         except Exception as err:
             got_error = err.message
         else:
-            got_error = '\n'
+            got_error = ''
 
         if got_error != expect_error:
             msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
@@ -72,6 +72,11 @@ class TestErrorHandling(unittest.TestCase):
                 root = '/'\nroot2
         ''',
         expect_error='''Line 4: Unexpected VARNAME\nroot2\n^''')
+
+        self.given('''
+*           /warming/and/warming/
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*           /warming/and/warming/\n^')
 
         self.given('''
             /greeting/name/
@@ -193,6 +198,63 @@ class TestErrorHandling(unittest.TestCase):
                 quotes_mismatch = "'
         ''',
         expect_error="""Line 3: Missing closing quote: "'""")
+
+
+    def test_invalid_global_mark(self):
+        self.given('''
+            *
+        ''',
+        expect_error='''Line 2: The "make global" asterisk must be the line's first character''')
+
+        self.given('''
+*
+        ''',
+        expect_error='Line 2: Indentation error')
+
+        self.given('''
+*\t
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*\t\n^')
+
+        self.given('''
+*warming
+        ''',
+        expect_error='Line 2: Indentation error')
+
+        self.given('''
+*           warming
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*           warming\n^')
+
+        self.given('''
+            warming
+                *warming = 'global'
+        ''',
+        expect_error='''Line 3: The "make global" asterisk must be the line's first character''')
+
+        self.given('''
+            warming
+            *   warming = 'global'
+        ''',
+        expect_error='''Line 3: The "make global" asterisk must be the line's first character''')
+
+        self.given('''
+            warming
+*           *   warming = 'global'
+        ''',
+        expect_error='Line 3: Syntax error: *           *   ')
+
+        self.given('''
+            warming
+*               warming* = 'global'
+        ''',
+        expect_error="Line 3: Unsupported syntax: * = 'global'")
+
+        self.given('''
+            warming
+                warming* = 'global'
+        ''',
+        expect_error="Line 3: Unsupported syntax: * = 'global'")
 
 
     def test_character_class(self):
