@@ -207,6 +207,22 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
+        self.given('''
+            /subject/predicate/object/
+                subject = /article/adjective/noun/
+*                   article = 'the'
+*                   adjective = /speed/color/
+                        speed = 'quick'
+                        color = 'brown'
+*                   noun = 'fox'
+                predicate = /verb/adverb/
+                    verb = 'jumps'
+                    adverb = 'over'
+                object = /article/adjective/noun/
+                    article = 'an'
+        ''',
+        expect_error="Line 13: Names must be unique within a scope, 'article' is already defined (previous definition at line 4)")
+
 
     def test_unclosed_literal(self):
         self.given('''
