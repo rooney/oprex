@@ -214,6 +214,12 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
         self.given('''
+            dejavu
+                dejavu = dejavu = 'Déjà vu'
+        ''',
+        expect_error="Line 3: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
+
+        self.given('''
             /subject/predicate/object/
                 subject = /article/adjective/noun/
 *                   article = 'the'
