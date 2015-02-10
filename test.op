@@ -1,5 +1,5 @@
 
-/alice/bob/
-    alice = 'alice'
-    bob = 'bob'
-    trudy = 'trudy'
+/alicia/alice/robert/bob/trudy/
+*   alice = alicia = 'alice'
+    bob = robert = 'bob'
+*   trudy = alice

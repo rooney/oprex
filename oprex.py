@@ -309,39 +309,11 @@ def p_definitions(t):
 
 
 def p_definition(t):
-    '''definition : assignment definition
-                  | assignment expression
-                  | assignment CHARCLASS NEWLINE
-                  | assignment LITERAL   NEWLINE'''
+    '''definition : vardecl EQUALSIGN definition
+                  | vardecl EQUALSIGN expression
+                  | vardecl EQUALSIGN LITERAL   NEWLINE
+                  | vardecl COLON     CHARCLASS NEWLINE'''
     varname, is_global = t[1]
-    if isinstance(t[2], tuple): # t[2] is another definition
-        value, defs = t[2]
-    else:
-        value, defs = t[2], []
-    defs.append(varname)
-
-    lineno = t.lineno(1)
-    if is_global:
-        for scope in t.lexer.vars_stack:
-            scope[varname] = Variable(varname, value, lineno)
-    else:
-        vars_in_scope = t.lexer.vars_stack[-1]
-        vars_in_scope[varname] = Variable(varname, value, lineno)
-
-    t[0] = value, defs
-
-
-def p_assignment(t):
-    '''assignment : VARNAME EQUALSIGN
-                  | VARNAME COLON
-                  | GLOBALMARK VARNAME EQUALSIGN
-                  | GLOBALMARK VARNAME COLON'''
-    if t[1] == '*':
-        varname = t[2]
-        is_global = True
-    else:
-        varname = t[1]
-        is_global = False
 
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
@@ -350,6 +322,32 @@ def p_assignment(t):
         pass
     else:
         raise OprexSyntaxError(t.lineno(-1), "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (varname, already_defined.lineno))
+
+    if isinstance(t[3], tuple): # t[3] is another definition
+        value, defs = t[3]
+    else:
+        value, defs = t[3], []
+    defs.append(varname)
+
+    lineno = t.lineno(1)
+    if is_global:
+        for scope in t.lexer.vars_stack:
+            scope[varname] = Variable(varname, value, lineno)
+    else:
+        vars_in_scope[varname] = Variable(varname, value, lineno)
+
+    t[0] = value, defs
+
+
+def p_vardecl(t):
+    '''vardecl : VARNAME
+               | GLOBALMARK VARNAME'''
+    if t[1] == '*':
+        varname = t[2]
+        is_global = True
+    else:
+        varname = t[1]
+        is_global = False
     t[0] = varname, is_global
 
 
