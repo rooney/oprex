@@ -96,9 +96,9 @@ def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
     name = t.value
     if regex.match('[0-9_]', name):
-        raise OprexSyntaxError(t.lineno, 'Illegal variable name (must start with a letter): ' + name)
+        raise OprexSyntaxError(t.lineno, 'Illegal name (must start with a letter): ' + name)
     if name[-1] == '_':
-        raise OprexSyntaxError(t.lineno, 'Illegal variable name (must not end with underscore): ' + name)
+        raise OprexSyntaxError(t.lineno, 'Illegal name (must not end with underscore): ' + name)
     return t
 
 
@@ -236,7 +236,7 @@ def p_expression(t):
     try:
         result = format_str % vars_in_scope
     except KeyError as e:
-        raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
+        raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
     if has_subblock:
         for definition in defs:

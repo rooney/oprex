@@ -165,44 +165,44 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             bigfoot
         ''',
-        expect_error="Line 2: Variable 'bigfoot' is not defined")
+        expect_error="Line 2: 'bigfoot' is not defined")
 
         self.given('''
             /horses/and/unicorns/
                 horses = 'Thoroughbreds'
                 and = ' and '
         ''',
-        expect_error="Line 2: Variable 'unicorns' is not defined")
+        expect_error="Line 2: 'unicorns' is not defined")
 
         self.given('''
             /unicorns/and/horses/
                 horses = 'Thoroughbreds'
                 and = ' and '
         ''',
-        expect_error="Line 2: Variable 'unicorns' is not defined")
+        expect_error="Line 2: 'unicorns' is not defined")
 
         self.given('''
             unicorn
                 unicorn = unicorn
         ''',
-        expect_error="Line 3: Variable 'unicorn' is not defined")
+        expect_error="Line 3: 'unicorn' is not defined")
 
 
     def test_illegal_variable_name(self):
         self.given('''
             101dalmatians
         ''',
-        expect_error='Line 2: Illegal variable name (must start with a letter): 101dalmatians')
+        expect_error='Line 2: Illegal name (must start with a letter): 101dalmatians')
 
         self.given('''
             _this_
         ''',
-        expect_error='Line 2: Illegal variable name (must start with a letter): _this_')
+        expect_error='Line 2: Illegal name (must start with a letter): _this_')
 
         self.given('''
             etc_
         ''',
-        expect_error='Line 2: Illegal variable name (must not end with underscore): etc_')
+        expect_error='Line 2: Illegal name (must not end with underscore): etc_')
 
 
     def test_duplicate_variable(self):
@@ -367,7 +367,7 @@ class TestErrorHandling(unittest.TestCase):
             /A/a/
                 A: a = A
         ''',
-        expect_error="Line 2: Variable 'a' is not defined")
+        expect_error="Line 2: 'a' is not defined")
 
         self.given('''
             /shouldBeColon/
