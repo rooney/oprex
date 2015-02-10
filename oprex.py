@@ -216,22 +216,32 @@ def p_expression(t):
                   | VARNAME NEWLINE                   beginscope definitions ENDSCOPE
                   | SLASH   cell    moreCells NEWLINE
                   | SLASH   cell    moreCells NEWLINE beginscope definitions ENDSCOPE'''
+    if t[1] == '/':
+        cell_varname, cell_format_str = t[2]
+        slots, format_str = t[3]
+        format_str = cell_format_str + format_str
+        has_subblock = len(t) > 5
+        if has_subblock:
+            slots.append(cell_varname)
+            defs = t[6]
+    else:
+        varname = t[1]
+        format_str = '%(' + varname + ')s'
+        has_subblock = len(t) > 3
+        if has_subblock:
+            slots = [varname]
+            defs = t[4]
+
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
-        if t[1] == '/':
-            cell = t[2]
-            moreCells = t[3]
-            has_subblock = len(t) > 5
-            result = (cell + moreCells) % vars_in_scope
-        else:
-            varname = t[1]
-            has_subblock = len(t) > 3
-            result = vars_in_scope[varname].value
-
+        result = format_str % vars_in_scope
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Variable '%s' is not defined" % e.message)
 
     if has_subblock:
+        for definition in defs:
+            if definition not in slots:
+                raise OprexSyntaxError(t.lineno(0), "'%s' defined but not used" % definition)
         t.lexer.vars_stack.pop()
 
     t[0] = result
@@ -262,28 +272,40 @@ def p_cell(t):
                 t.lineno(3),
                 "'/(...?)/' is not supported. To 'capture optional', put the optional part in a subexpression variable, then capture the subexpression."
             )
-    result = '%(' + varname + ')s'
+    format_str = '%(' + varname + ')s'
     if capture:
-        result = '(?<%s>%s)' % (varname, result)
+        format_str = '(?<%s>%s)' % (varname, format_str)
         if optional:
-            result += '?+'
+            format_str += '?+'
     elif optional:
-        result = '(?:%s)?+' % result
-    t[0] = result
+        format_str = '(?:%s)?+' % format_str
+    t[0] = varname, format_str
 
 
 def p_moreCells(t):
     '''moreCells : 
                  | cell moreCells'''
     try:
-        t[0] = t[1] + t[2]
+        cell_varname, cell_format_str = t[1]
+        slots, format_str = t[2]
     except IndexError: # empty production
-        t[0] = ''
+        slots, format_str = [], ''
+    else:
+        slots.append(cell_varname)
+        format_str = cell_format_str + format_str
+    t[0] = slots, format_str
 
 
 def p_definitions(t):
     '''definitions : 
                    | definition definitions'''
+    try:
+        val, defs = t[1]
+        defs += t[2]
+    except IndexError: # empty production
+        defs = []
+
+    t[0] = defs
 
 
 def p_definition(t):
@@ -292,7 +314,12 @@ def p_definition(t):
                   | assignment CHARCLASS NEWLINE
                   | assignment LITERAL   NEWLINE'''
     varname, is_global = t[1]
-    value = t[2]
+    if isinstance(t[2], tuple): # t[2] is another definition
+        value, defs = t[2]
+    else:
+        value, defs = t[2], []
+    defs.append(varname)
+
     lineno = t.lineno(1)
     if is_global:
         for scope in t.lexer.vars_stack:
@@ -300,7 +327,8 @@ def p_definition(t):
     else:
         vars_in_scope = t.lexer.vars_stack[-1]
         vars_in_scope[varname] = Variable(varname, value, lineno)
-    t[0] = value
+
+    t[0] = value, defs
 
 
 def p_assignment(t):
