@@ -241,7 +241,7 @@ def p_expression(t):
     if has_subblock:
         for definition in defs:
             if definition not in slots:
-                raise OprexSyntaxError(t.lineno(0), "'%s' defined but not used" % definition)
+                raise OprexSyntaxError(t.lineno(0), "'%s' is defined but not used (by its immediate parent)" % definition)
         t.lexer.vars_stack.pop()
 
     t[0] = result

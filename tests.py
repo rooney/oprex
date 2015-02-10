@@ -181,6 +181,12 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error="Line 2: Variable 'unicorns' is not defined")
 
+        self.given('''
+            unicorn
+                unicorn = unicorn
+        ''',
+        expect_error="Line 3: Variable 'unicorn' is not defined")
+
 
     def test_illegal_variable_name(self):
         self.given('''
@@ -222,6 +228,25 @@ class TestErrorHandling(unittest.TestCase):
                     article = 'an'
         ''',
         expect_error="Line 13: Names must be unique within a scope, 'article' is already defined (previous definition at line 4)")
+
+
+    def test_unused_variable(self):
+        self.given('''
+            /alice/bob/
+                alice = 'alice'
+                bob = 'bob'
+                trudy = 'trudy'
+        ''',
+        expect_error="Line 2: 'trudy' is defined but not used (by its immediate parent)")
+
+        self.given('''
+            /alice/bob/
+                alice = 'alice'
+                bob = robert
+                    robert = 'bob'
+                    doe = 'doe'
+        ''',
+        expect_error="Line 4: 'doe' is defined but not used (by its immediate parent)")
 
 
     def test_unclosed_literal(self):
