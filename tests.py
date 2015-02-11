@@ -678,6 +678,14 @@ class TestOutput(unittest.TestCase):
         expect_regex='thequickbrownfoxjumpsoverthelazydog')
 
 
+    def test_captures(self):
+        self.given('''
+            /extra/(extra)/(extra?)/(extra)?/
+                extra = 'icing'
+        ''',
+        expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)

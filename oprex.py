@@ -273,7 +273,11 @@ def p_cell(t):
             | OPENPAREN VARNAME CLOSEPAREN
             | OPENPAREN VARNAME CLOSEPAREN QUESTMARK
             | OPENPAREN VARNAME QUESTMARK CLOSEPAREN'''
-    varname = t[2] if t[1] == '(' else t[1]
+    if t[1] == '(':
+        varname = t[2]
+    else:
+        varname = t[1]
+
     optional, capture = {
         2 : (False, False),
         3 : (True,  False),
@@ -281,19 +285,20 @@ def p_cell(t):
         5 : (True,  True),
     }[len(t)]
 
-    if optional and capture:
-        if t[3] == '?':
-            raise OprexSyntaxError(
-                t.lineno(3),
-                "'/(...?)/' is not supported. To 'capture optional', put the optional part in a subexpression variable, then capture the subexpression."
-            )
     fmt = '%(' + varname + ')s'
-    if capture:
-        fmt = '(?<%s>%s)' % (varname, fmt)
-        if optional:
-            fmt += '?+'
-    elif optional:
+    if optional and capture:
+        capture_first = t[4] == '?'
+        if capture_first:
+            fmt = '(?<%s>%s)?+' % (varname, fmt)
+        else :
+            fmt = '(?<%s>(?:%s)?+)' % (varname, fmt)
+
+    elif optional and not capture:
         fmt = '(?:%s)?+' % fmt
+
+    elif capture and not optional:
+        fmt = '(?<%s>%s)' % (varname, fmt)
+        
     t[0] = varname, fmt
 
 
