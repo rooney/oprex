@@ -563,6 +563,24 @@ class TestOutput(unittest.TestCase):
         expect_regex='thequickbrownfoxjumpsoverthequickbrownfox')
 
 
+    def test_aliases(self):
+        self.given('''
+            /griffin/griffon/gryphon/alce/keythong/opinicus/
+                griffin = griffon = 'protoceratops'
+                gryphon = griffon
+                alce = keythong = opinicus = griffin
+        ''',
+        expect_regex='protoceratopsprotoceratopsprotoceratopsprotoceratopsprotoceratopsprotoceratops')
+
+        self.given('''
+            /X/deadeye/ten/unknown_thing/wrong_answer/
+                deadeye = X: X
+                ten = X
+                unknown_thing = wrong_answer = X
+        ''',
+        expect_regex='[X][X][X][X][X]')
+
+
     def test_empty_lines_ok(self):
         self.given('''
 
