@@ -406,6 +406,50 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 3: Unexpected COLON\n                mixedAssignment =: x\n                                 ^')
 
 
+    def test_global_aliasing(self):
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*                   uno = ichi = satu
+                oneone = /uno/ichi/
+                one = ichi
+                    ichi: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'ichi' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*                   uno = ichi = satu
+                oneone = /uno/ichi/
+                one = uno
+                    uno: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'uno' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*                   uno = ichi = satu
+                oneone = /uno/ichi/
+                one = satu
+        ''',
+        expect_error="Line 7: 'satu' is not defined")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+*                   satu = '1'
+                    uno = ichi = satu
+                one = satu
+                oneone = /uno/ichi/
+        ''',
+        expect_error="Line 7: 'uno' is not defined")
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         regex_source = oprex(oprex_source)
@@ -561,6 +605,30 @@ class TestOutput(unittest.TestCase):
                 object = /article/adjective/noun/
         ''',
         expect_regex='thequickbrownfoxjumpsoverthequickbrownfox')
+
+        self.given('''
+            /grosir/banana4/papaya4/
+                grosir = /ciek/empat/sekawan/
+                    ciek: 1
+*                   empat = sekawan: 4
+                banana4 = /gedang/sekawan/
+                    gedang = 'banana'
+                papaya4 = /gedang/opat/
+                    gedang = 'papaya'
+                    opat = empat
+        ''',
+        expect_regex='[1][4][4]banana[4]papaya[4]')
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*                   uno = ichi = satu
+                oneone = /uno/ichi/
+                one = satu
+                    satu: 1
+        ''',
+        expect_regex='11111[1]')
 
 
     def test_aliases(self):
