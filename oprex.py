@@ -239,9 +239,9 @@ def p_expression(t):
         raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
     if has_subblock:
-        for definition in defs:
-            if definition not in slots:
-                raise OprexSyntaxError(t.lineno(0), "'%s' is defined but not used (by its immediate parent)" % definition)
+        for variable in defs:
+            if variable.name not in slots:
+                raise OprexSyntaxError(t.lineno(0), "'%s' is defined but not used (by its immediate parent)" % variable.name)
         t.lexer.vars_stack.pop()
 
     t[0] = result
@@ -300,8 +300,7 @@ def p_definitions(t):
     '''definitions : 
                    | definition definitions'''
     try:
-        val, defs = t[1]
-        defs += t[2]
+        defs = t[1] + t[2]
     except IndexError: # empty production
         defs = []
 
@@ -309,11 +308,11 @@ def p_definitions(t):
 
 
 def p_definition(t):
-    '''definition : vardecl EQUALSIGN definition
-                  | vardecl EQUALSIGN expression
-                  | vardecl EQUALSIGN LITERAL   NEWLINE
-                  | vardecl COLON     CHARCLASS NEWLINE'''
-    varname, is_global = t[1]
+    '''definition : variable EQUALSIGN definition
+                  | variable EQUALSIGN expression
+                  | variable EQUALSIGN LITERAL   NEWLINE
+                  | variable COLON     CHARCLASS NEWLINE'''
+    varname, has_mark = t[1]
 
     vars_in_scope = t.lexer.vars_stack[-1]
     try:
@@ -323,32 +322,41 @@ def p_definition(t):
     else:
         raise OprexSyntaxError(t.lineno(-1), "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (varname, already_defined.lineno))
 
-    if isinstance(t[3], tuple): # t[3] is another definition
-        value, defs = t[3]
+    value = t[3]
+    if isinstance(value, list): # t[3] is another definition
+        defs = t[3]
+        value = defs[-1].value # the value of the last assignment
     else:
-        value, defs = t[3], []
-    defs.append(varname)
+        defs = []
 
     lineno = t.lineno(1)
-    if is_global:
+    variable = Variable(varname, value, lineno)
+    defs.append(variable)
+
+    if t.lexer.global_mode:
         for scope in t.lexer.vars_stack:
-            scope[varname] = Variable(varname, value, lineno)
+            scope[varname] = variable
+        print 'GLOBAL', varname
     else:
-        vars_in_scope[varname] = Variable(varname, value, lineno)
+        vars_in_scope[varname] = variable
+        print varname
 
-    t[0] = value, defs
+    if has_mark:
+        t.lexer.global_mode = False
+
+    t[0] = defs
 
 
-def p_vardecl(t):
-    '''vardecl : VARNAME
-               | GLOBALMARK VARNAME'''
+def p_variable(t):
+    '''variable : VARNAME
+                | GLOBALMARK VARNAME'''
     if t[1] == '*':
         varname = t[2]
-        is_global = True
+        has_mark = t.lexer.global_mode = True
     else:
         varname = t[1]
-        is_global = False
-    t[0] = varname, is_global
+        has_mark = False
+    t[0] = varname, has_mark
 
 
 def p_error(t):
@@ -402,10 +410,11 @@ class CustomLexer:
 lexer0 = lex.lex()
 def build_lexer(source_lines):
     lexer = lexer0.clone()
-    lexer.indent_stack = [0]
+    lexer.indent_stack = [0]  # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.vars_stack = [{}]
+    lexer.global_mode = False # will be True for lines having GLOBALMARK
+    lexer.vars_stack = [{}]   # for variables scoping
     return CustomLexer(lexer)
 
 
