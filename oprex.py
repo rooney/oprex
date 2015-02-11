@@ -92,6 +92,15 @@ class Variable(namedtuple('Variable', 'name value lineno')):
         return self.value
 
 
+class VariableLookup:
+    names = []
+    fmt = ''
+    def add(self, name, fmt):
+        self.names.append(name)
+        self.fmt = fmt + self.fmt
+        return self
+
+
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
     name = t.value
@@ -204,66 +213,72 @@ def p_oprex(t):
              | NEWLINE            expression
              | NEWLINE BEGINSCOPE expression ENDSCOPE'''
     if len(t) == 3:
-        t[0] = t[2]
+        expression = t[2]
     elif len(t) == 5:
-        t[0] = t[3]
+        expression = t[3]
     else:
-        t[0] = ''
+        expression = ''
+    t[0] = expression
 
 
 def p_expression(t):
-    '''expression : VARNAME NEWLINE
-                  | VARNAME NEWLINE                   beginscope definitions ENDSCOPE
-                  | SLASH   cell    moreCells NEWLINE
-                  | SLASH   cell    moreCells NEWLINE beginscope definitions ENDSCOPE'''
-    if t[1] == '/':
-        cell_varname, cell_format_str = t[2]
-        slots, format_str = t[3]
-        format_str = cell_format_str + format_str
-        has_subblock = len(t) > 5
-        if has_subblock:
-            slots.append(cell_varname)
-            variables = t[6]
-    else:
-        varname = t[1]
-        format_str = '%(' + varname + ')s'
-        has_subblock = len(t) > 3
-        if has_subblock:
-            slots = [varname]
-            variables = t[4]
-
-    vars_in_scope = t.lexer.vars_stack[-1]
+    '''expression : lookup NEWLINE
+                  | lookup NEWLINE beginscope definitions ENDSCOPE'''
+    lookup = t[1]
+    current_scope = t.lexer.scopes[-1]
     try:
-        result = format_str % vars_in_scope
+        result = lookup.fmt % current_scope
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
-    if has_subblock:
-        for var in variables:
-            if var.name not in slots:
+    try:
+        definitions = t[4]
+    except IndexError:
+        pass
+    else:
+        for var in definitions:
+            if var.name not in lookup.names:
                 raise OprexSyntaxError(t.lineno(0), "'%s' is defined but not used (by its immediate parent)" % var.name)
-        t.lexer.vars_stack.pop()
+        t.lexer.scopes.pop()
 
     t[0] = result
 
 
-def p_beginscope(t):
-    '''beginscope : BEGINSCOPE'''
-    vars_in_scope = t.lexer.vars_stack[-1]
-    t.lexer.vars_stack.append(vars_in_scope.copy())
+def p_lookup(t):
+    '''lookup : VARNAME
+              | SLASH cells'''
+    if t[1] == '/':
+        lookup = t[2]
+    else:
+        varname = t[1]
+        lookup = VariableLookup()
+        lookup.add(varname, '%(' + varname + ')s')
+    t[0] = lookup
+
+
+def p_cells(t):
+    '''cells : cell SLASH
+             | cell SLASH cells'''
+    varname, fmt = t[1]
+    try:
+        lookup = t[3]
+    except IndexError:
+        lookup = VariableLookup()
+    t[0] = lookup.add(varname, fmt)
 
 
 def p_cell(t):
-    '''cell : VARNAME SLASH
-            | VARNAME QUESTMARK SLASH
-            | OPENPAREN VARNAME CLOSEPAREN SLASH
-            | OPENPAREN VARNAME CLOSEPAREN QUESTMARK SLASH
-            | OPENPAREN VARNAME QUESTMARK CLOSEPAREN SLASH'''
-    varname, optional, capture = {
-        3 : (t[1], False, False),
-        4 : (t[1], True,  False),
-        5 : (t[2], False, True),
-        6 : (t[2], True,  True),
+    '''cell : VARNAME
+            | VARNAME QUESTMARK
+            | OPENPAREN VARNAME CLOSEPAREN
+            | OPENPAREN VARNAME CLOSEPAREN QUESTMARK
+            | OPENPAREN VARNAME QUESTMARK CLOSEPAREN'''
+    varname = t[2] if t[1] == '(' else t[1]
+    optional, capture = {
+        2 : (False, False),
+        3 : (True,  False),
+        4 : (False, True),
+        5 : (True,  True),
     }[len(t)]
 
     if optional and capture:
@@ -272,28 +287,20 @@ def p_cell(t):
                 t.lineno(3),
                 "'/(...?)/' is not supported. To 'capture optional', put the optional part in a subexpression variable, then capture the subexpression."
             )
-    format_str = '%(' + varname + ')s'
+    fmt = '%(' + varname + ')s'
     if capture:
-        format_str = '(?<%s>%s)' % (varname, format_str)
+        fmt = '(?<%s>%s)' % (varname, fmt)
         if optional:
-            format_str += '?+'
+            fmt += '?+'
     elif optional:
-        format_str = '(?:%s)?+' % format_str
-    t[0] = varname, format_str
+        fmt = '(?:%s)?+' % fmt
+    t[0] = varname, fmt
 
 
-def p_moreCells(t):
-    '''moreCells : 
-                 | cell moreCells'''
-    try:
-        cell_varname, cell_format_str = t[1]
-        slots, format_str = t[2]
-    except IndexError: # empty production
-        slots, format_str = [], ''
-    else:
-        slots.append(cell_varname)
-        format_str = cell_format_str + format_str
-    t[0] = slots, format_str
+def p_beginscope(t):
+    '''beginscope : BEGINSCOPE'''
+    current_scope = t.lexer.scopes[-1]
+    t.lexer.scopes.append(current_scope.copy())
 
 
 def p_definitions(t):
@@ -325,12 +332,12 @@ def p_definition(t):
     has_globalmark = t[1] == '*'
     if has_globalmark:
         variables = t[2]
-        for scope in t.lexer.vars_stack:
-            define(variables, scope)
+        for scope in t.lexer.scopes:
+            define(variables, scope) # global variable, define in all scopes
     else:
         variables = t[1]
-        scope = t.lexer.vars_stack[-1]
-        define(variables, scope)
+        current_scope = t.lexer.scopes[-1] 
+        define(variables, current_scope) # non-global, define in current scope only
     t[0] = variables
 
 
@@ -405,7 +412,7 @@ def build_lexer(source_lines):
     lexer.indent_stack = [0]  # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.vars_stack = [{}]   # for variables scoping
+    lexer.scopes = [{}]
     return CustomLexer(lexer)
 
 
