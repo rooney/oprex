@@ -238,7 +238,7 @@ def p_expression(t):
     else:
         for var in definitions:
             if var.name not in lookup.names:
-                raise OprexSyntaxError(t.lineno(0), "'%s' is defined but not used (by its immediate parent)" % var.name)
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
         t.lexer.scopes.pop()
 
     t[0] = result

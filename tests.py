@@ -243,7 +243,7 @@ class TestErrorHandling(unittest.TestCase):
                 bob = 'bob'
                 trudy = 'trudy'
         ''',
-        expect_error="Line 2: 'trudy' is defined but not used (by its immediate parent)")
+        expect_error="Line 5: 'trudy' is defined but not used (by its parent expression)")
 
         self.given('''
             /alice/bob/
@@ -252,7 +252,7 @@ class TestErrorHandling(unittest.TestCase):
                     robert = 'bob'
                     doe = 'doe'
         ''',
-        expect_error="Line 4: 'doe' is defined but not used (by its immediate parent)")
+        expect_error="Line 6: 'doe' is defined but not used (by its parent expression)")
 
 
     def test_unclosed_literal(self):
