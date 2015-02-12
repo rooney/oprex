@@ -286,19 +286,19 @@ def p_cell(t):
     }[len(t)]
 
     fmt = '%(' + varname + ')s'
-    if optional and capture:
-        capture_first = t[4] == '?'
-        if capture_first:
+    if capture and optional:
+        optional_capture = t[4] == '?'
+        if optional_capture:
             fmt = '(?<%s>%s)?+' % (varname, fmt)
-        else :
+        else: # capture optional
             fmt = '(?<%s>(?:%s)?+)' % (varname, fmt)
-
-    elif optional and not capture:
-        fmt = '(?:%s)?+' % fmt
 
     elif capture and not optional:
         fmt = '(?<%s>%s)' % (varname, fmt)
         
+    elif optional and not capture:
+        fmt = '(?:%s)?+' % fmt
+
     t[0] = varname, fmt
 
 
