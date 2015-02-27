@@ -16,9 +16,9 @@ Rule 10    cells -> cell SLASH
 Rule 11    cells -> cell SLASH cells
 Rule 12    cell -> VARNAME
 Rule 13    cell -> VARNAME QUESTMARK
-Rule 14    cell -> OPENPAREN VARNAME CLOSEPAREN
-Rule 15    cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK
-Rule 16    cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN
+Rule 14    cell -> LPAREN VARNAME RPAREN
+Rule 15    cell -> LPAREN VARNAME RPAREN QUESTMARK
+Rule 16    cell -> LPAREN VARNAME QUESTMARK RPAREN
 Rule 17    beginscope -> BEGINSCOPE
 Rule 18    definitions -> definition
 Rule 19    definitions -> definition definitions
@@ -33,15 +33,15 @@ Terminals, with rules where they appear
 
 BEGINSCOPE           : 5 17
 CHARCLASS            : 25
-CLOSEPAREN           : 14 15 16
 COLON                : 25
 ENDSCOPE             : 5 7
 EQUALSIGN            : 22 23 24
 GLOBALMARK           : 21
 LITERAL              : 24
+LPAREN               : 14 15 16
 NEWLINE              : 3 4 5 6 7 24 25
-OPENPAREN            : 14 15 16
 QUESTMARK            : 13 15 16
+RPAREN               : 14 15 16
 SLASH                : 9 10 11
 VARNAME              : 8 12 13 14 15 16 22 23 24 25
 WHITESPACE           : 2
@@ -143,12 +143,12 @@ state 7
     (11) cells -> . cell SLASH cells
     (12) cell -> . VARNAME
     (13) cell -> . VARNAME QUESTMARK
-    (14) cell -> . OPENPAREN VARNAME CLOSEPAREN
-    (15) cell -> . OPENPAREN VARNAME CLOSEPAREN QUESTMARK
-    (16) cell -> . OPENPAREN VARNAME QUESTMARK CLOSEPAREN
+    (14) cell -> . LPAREN VARNAME RPAREN
+    (15) cell -> . LPAREN VARNAME RPAREN QUESTMARK
+    (16) cell -> . LPAREN VARNAME QUESTMARK RPAREN
 
     VARNAME         shift and go to state 11
-    OPENPAREN       shift and go to state 14
+    LPAREN          shift and go to state 14
 
     cell                           shift and go to state 13
     cells                          shift and go to state 12
@@ -207,9 +207,9 @@ state 13
 
 state 14
 
-    (14) cell -> OPENPAREN . VARNAME CLOSEPAREN
-    (15) cell -> OPENPAREN . VARNAME CLOSEPAREN QUESTMARK
-    (16) cell -> OPENPAREN . VARNAME QUESTMARK CLOSEPAREN
+    (14) cell -> LPAREN . VARNAME RPAREN
+    (15) cell -> LPAREN . VARNAME RPAREN QUESTMARK
+    (16) cell -> LPAREN . VARNAME QUESTMARK RPAREN
 
     VARNAME         shift and go to state 20
 
@@ -263,24 +263,24 @@ state 19
     (11) cells -> . cell SLASH cells
     (12) cell -> . VARNAME
     (13) cell -> . VARNAME QUESTMARK
-    (14) cell -> . OPENPAREN VARNAME CLOSEPAREN
-    (15) cell -> . OPENPAREN VARNAME CLOSEPAREN QUESTMARK
-    (16) cell -> . OPENPAREN VARNAME QUESTMARK CLOSEPAREN
+    (14) cell -> . LPAREN VARNAME RPAREN
+    (15) cell -> . LPAREN VARNAME RPAREN QUESTMARK
+    (16) cell -> . LPAREN VARNAME QUESTMARK RPAREN
 
     NEWLINE         reduce using rule 10 (cells -> cell SLASH .)
     VARNAME         shift and go to state 11
-    OPENPAREN       shift and go to state 14
+    LPAREN          shift and go to state 14
 
     cell                           shift and go to state 13
     cells                          shift and go to state 26
 
 state 20
 
-    (14) cell -> OPENPAREN VARNAME . CLOSEPAREN
-    (15) cell -> OPENPAREN VARNAME . CLOSEPAREN QUESTMARK
-    (16) cell -> OPENPAREN VARNAME . QUESTMARK CLOSEPAREN
+    (14) cell -> LPAREN VARNAME . RPAREN
+    (15) cell -> LPAREN VARNAME . RPAREN QUESTMARK
+    (16) cell -> LPAREN VARNAME . QUESTMARK RPAREN
 
-    CLOSEPAREN      shift and go to state 28
+    RPAREN          shift and go to state 28
     QUESTMARK       shift and go to state 27
 
 
@@ -353,17 +353,17 @@ state 26
 
 state 27
 
-    (16) cell -> OPENPAREN VARNAME QUESTMARK . CLOSEPAREN
+    (16) cell -> LPAREN VARNAME QUESTMARK . RPAREN
 
-    CLOSEPAREN      shift and go to state 34
+    RPAREN          shift and go to state 34
 
 
 state 28
 
-    (14) cell -> OPENPAREN VARNAME CLOSEPAREN .
-    (15) cell -> OPENPAREN VARNAME CLOSEPAREN . QUESTMARK
+    (14) cell -> LPAREN VARNAME RPAREN .
+    (15) cell -> LPAREN VARNAME RPAREN . QUESTMARK
 
-    SLASH           reduce using rule 14 (cell -> OPENPAREN VARNAME CLOSEPAREN .)
+    SLASH           reduce using rule 14 (cell -> LPAREN VARNAME RPAREN .)
     QUESTMARK       shift and go to state 35
 
 
@@ -424,16 +424,16 @@ state 33
 
 state 34
 
-    (16) cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN .
+    (16) cell -> LPAREN VARNAME QUESTMARK RPAREN .
 
-    SLASH           reduce using rule 16 (cell -> OPENPAREN VARNAME QUESTMARK CLOSEPAREN .)
+    SLASH           reduce using rule 16 (cell -> LPAREN VARNAME QUESTMARK RPAREN .)
 
 
 state 35
 
-    (15) cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK .
+    (15) cell -> LPAREN VARNAME RPAREN QUESTMARK .
 
-    SLASH           reduce using rule 15 (cell -> OPENPAREN VARNAME CLOSEPAREN QUESTMARK .)
+    SLASH           reduce using rule 15 (cell -> LPAREN VARNAME RPAREN QUESTMARK .)
 
 
 state 36

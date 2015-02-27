@@ -35,14 +35,14 @@ ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexe
 tokens = (
     'BEGINSCOPE',
     'CHARCLASS',
-    'CLOSEPAREN',
+    'RPAREN',
     'COLON',
     'ENDSCOPE',
     'EQUALSIGN',
     'GLOBALMARK',
     'LITERAL',
     'NEWLINE',
-    'OPENPAREN',
+    'LPAREN',
     'QUESTMARK',
     'SLASH',
     'VARNAME',
@@ -196,8 +196,8 @@ def t_WHITESPACE(t):
             raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
         return t 
 
-t_CLOSEPAREN = r'\)'
-t_OPENPAREN  = r'\('
+t_RPAREN = r'\)'
+t_LPAREN  = r'\('
 t_QUESTMARK  = r'\?'
 t_SLASH      = r'/'
 
@@ -270,9 +270,9 @@ def p_cells(t):
 def p_cell(t):
     '''cell : VARNAME
             | VARNAME QUESTMARK
-            | OPENPAREN VARNAME CLOSEPAREN
-            | OPENPAREN VARNAME CLOSEPAREN QUESTMARK
-            | OPENPAREN VARNAME QUESTMARK CLOSEPAREN'''
+            | LPAREN VARNAME RPAREN
+            | LPAREN VARNAME RPAREN QUESTMARK
+            | LPAREN VARNAME QUESTMARK RPAREN'''
     if t[1] == '(':
         varname = t[2]
     else:
