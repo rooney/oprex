@@ -24,7 +24,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_white_guards(self):
         self.given('one-liner input',
-        expect_error='''Line 1: First line must be blank, not: one-liner input''')
+        expect_error='Line 1: First line must be blank, not: one-liner input')
 
         self.given('''something in the first line
         ''',
@@ -71,7 +71,7 @@ class TestErrorHandling(unittest.TestCase):
             root
                 root = '/'\nroot2
         ''',
-        expect_error='''Line 4: Unexpected VARNAME\nroot2\n^''')
+        expect_error='Line 4: Unexpected VARNAME\nroot2\n^')
 
         self.given('''
 *           /warming/and/warming/
@@ -83,7 +83,7 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                     world = 'world'
         ''',
-        expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
+        expect_error='Line 4: Unexpected INDENT')
 
 
     def test_indentation_error(self):
@@ -92,21 +92,21 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                  world = 'world'
         ''',
-        expect_error='''Line 4: Unexpected BEGINSCOPE (indentation error?)''')
+        expect_error='Line 4: Unexpected INDENT')
 
         self.given('''
             root
                 branch
                misaligned
         ''',
-        expect_error='''Line 4: Indentation error''')
+        expect_error='Line 4: Indentation error')
 
         self.given('''
                 root
                     branch
             hyperroot
         ''',
-        expect_error='''Line 4: Indentation error''')
+        expect_error='Line 4: Indentation error')
 
 
     def test_correct_error_line_numbering(self):
@@ -116,7 +116,7 @@ class TestErrorHandling(unittest.TestCase):
 
                     world = 'world'
         ''',
-        expect_error='''Line 5: Unexpected BEGINSCOPE (indentation error?)''')
+        expect_error='Line 5: Unexpected INDENT')
 
         self.given('''
 
@@ -127,7 +127,7 @@ class TestErrorHandling(unittest.TestCase):
 
                  world = 'world'
         ''',
-        expect_error='''Line 8: Unexpected BEGINSCOPE (indentation error?)''')
+        expect_error='Line 8: Unexpected INDENT')
 
         self.given('''
             /greeting/world/
@@ -260,7 +260,7 @@ class TestErrorHandling(unittest.TestCase):
             mcd
                 mcd = 'McDonald's
         ''',
-        expect_error='''Line 3: Missing closing quote: 'McDonald's''')
+        expect_error="Line 3: Missing closing quote: 'McDonald's")
 
         self.given('''
             quotes_mismatch
