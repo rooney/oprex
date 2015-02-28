@@ -51,7 +51,7 @@ tokens = (
 
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
 
-def t_COLON(t):
+def t_character_class(t):
     ''':.*'''
     chars = t.value.split(' ')
     if chars[0] != ':':
@@ -70,6 +70,7 @@ def t_COLON(t):
         charclass.append(char)
     value = '[' + ''.join(charclass) + ']'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
+    t.type, t.value = 'COLON', ':'
     return t
 
 
@@ -112,18 +113,20 @@ def t_VARNAME(t):
 
 
 # Rules that contain space/tab should be written in function form and be put 
-# before the t_WHITESPACE rule to make PLY tries them first
+# before the t_linemark rule to make PLY calls them first.
+# Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
 
 def t_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'
     return t
 
 
-def t_WHITESPACE(t):
+def t_linemark(t):
     r'[ \t\n]+[* \t]*'
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if not num_newlines: # plain regular whitespace
+        t.type = 'WHITESPACE'
         return t
 
     # newline-containing whitespace
