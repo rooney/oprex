@@ -33,17 +33,17 @@ def sanitize(source_code):
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
 tokens = (
-    'BEGINSCOPE',
     'CHARCLASS',
-    'RPAREN',
     'COLON',
-    'ENDSCOPE',
+    'DEDENT',
     'EQUALSIGN',
     'GLOBALMARK',
+    'INDENT',
     'LITERAL',
-    'NEWLINE',
     'LPAREN',
+    'NEWLINE',
     'QUESTMARK',
+    'RPAREN',
     'SLASH',
     'VARNAME',
     'WHITESPACE',
@@ -112,7 +112,7 @@ def t_VARNAME(t):
 
 
 # Rules that contain space/tab should be written in function form and be put 
-# before the t_WHITESPACE rule to make them get inspected first
+# before the t_WHITESPACE rule to make PLY tries them first
 
 def t_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'
@@ -140,7 +140,7 @@ def t_WHITESPACE(t):
 
     # indentation may contain "make this variable global" marker (an asterisk at the beginning of line)
     # indentation depth may change compared to previous line
-    # these may generate one or more extra tokens of GLOBALMARK, BEGINSCOPE, and ENDSCOPE
+    # these may generate one or more extra tokens of GLOBALMARK, INDENT, and DEDENT
     t.extra_tokens = deque()
 
     if indentation:
@@ -183,21 +183,21 @@ def t_WHITESPACE(t):
     # at this point, there's indentation depth change
 
     if indentlen > prev: # deeper indentation, start of a new scope
-        t.extra_tokens.appendleft(ExtraToken(t, 'BEGINSCOPE'))
+        t.extra_tokens.appendleft(ExtraToken(t, 'INDENT'))
         t.lexer.indent_stack.append(indentlen)
         return t
 
     if indentlen < prev: # end of one or more scopes
         while indentlen < prev: # close all scopes having deeper indentation
-            t.extra_tokens.appendleft(ExtraToken(t, 'ENDSCOPE'))
+            t.extra_tokens.appendleft(ExtraToken(t, 'DEDENT'))
             t.lexer.indent_stack.pop()
             prev = t.lexer.indent_stack[-1]
         if indentlen != prev: # the indentation tries to return to a nonexistent level
             raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
         return t 
 
-t_RPAREN = r'\)'
-t_LPAREN  = r'\('
+t_LPAREN     = r'\('
+t_RPAREN     = r'\)'
 t_QUESTMARK  = r'\?'
 t_SLASH      = r'/'
 
@@ -210,8 +210,8 @@ def p_oprex(t):
     '''oprex : 
              | WHITESPACE
              | NEWLINE
-             | NEWLINE            expression
-             | NEWLINE BEGINSCOPE expression ENDSCOPE'''
+             | NEWLINE        expression
+             | NEWLINE INDENT expression DEDENT'''
     if len(t) == 3:
         expression = t[2]
     elif len(t) == 5:
@@ -223,7 +223,7 @@ def p_oprex(t):
 
 def p_expression(t):
     '''expression : lookup NEWLINE
-                  | lookup NEWLINE beginscope definitions ENDSCOPE'''
+                  | lookup NEWLINE beginscope definitions DEDENT'''
     lookup = t[1]
     current_scope = t.lexer.scopes[-1]
     try:
@@ -303,7 +303,7 @@ def p_cell(t):
 
 
 def p_beginscope(t):
-    '''beginscope : BEGINSCOPE'''
+    '''beginscope : INDENT'''
     current_scope = t.lexer.scopes[-1]
     t.lexer.scopes.append(current_scope.copy())
 
@@ -367,8 +367,8 @@ def p_error(t):
     if t is None:
         raise OprexSyntaxError(None, 'Unexpected end of input')
 
-    if t.type == 'BEGINSCOPE':
-        raise OprexSyntaxError(t.lineno, 'Unexpected BEGINSCOPE (indentation error?)')
+    if t.type == 'INDENT':
+        raise OprexSyntaxError(t.lineno, 'Unexpected INDENT')
 
     errline = t.lexer.source_lines[t.lineno - 1]
     pointer = ' ' * (find_column(t)-1) + '^'
@@ -399,7 +399,7 @@ class CustomLexer:
                     self.extras_queue.extend(token.extra_tokens)
                 return token
             else:
-                extra_dedent = LexToken('ENDSCOPE', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
+                extra_dedent = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
                 num_undedented = len(lexer.indent_stack) - 1
                 self.extras_queue.extend([extra_dedent] * num_undedented)
                 self.extras_queue.append(None)
