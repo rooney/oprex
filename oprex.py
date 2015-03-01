@@ -49,7 +49,12 @@ tokens = (
     'WHITESPACE',
 )
 
-t_ignore = '' # oprex is whitespace-significant, no ignored characters
+GLOBALMARK   = '*)'
+t_LPAREN     = r'\('
+t_RPAREN     = r'\)'
+t_QUESTMARK  = r'\?'
+t_SLASH      = r'/'
+t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
 def t_character_class(t):
     ''':.*'''
@@ -68,9 +73,11 @@ def t_character_class(t):
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
         charclass.append(char)
+
     value = '[' + ''.join(charclass) + ']'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     t.type, t.value = 'COLON', ':'
+    
     return t
 
 
@@ -122,28 +129,30 @@ def t_EQUALSIGN(t):
 
 
 def t_linemark(t):
-    r'[ \t\n]+[* \t]*'
+    r'[ \t\n]+(\*\)[ \t]*)*'
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
-    if not num_newlines: # plain regular whitespace
+    if num_newlines == 0:
+        if GLOBALMARK in t.value: # globalmark must be put at the beginning of a line, i.e. requires newline
+            raise OprexSyntaxError(t.lexer.lineno, 'Syntax error: ' + t.lexer.source_lines[t.lexer.lineno-1])
         t.type = 'WHITESPACE'
         return t
-
-    # newline-containing whitespace
-
-    t.type = 'NEWLINE'
-    t.lexer.lineno += num_newlines
-    if t.lexpos + len(t.value) == len(t.lexer.lexdata):
-        # this whitespace is just before the end of input
-        # no further processing needed
-        return t
+    else:
+        t.type = 'NEWLINE'
+        t.lexer.lineno += num_newlines
 
     # the whitespace after the last newline is indentation
     indentation = lines[-1]
 
-    # indentation may contain "make this variable global" marker (an asterisk at the beginning of line)
-    # indentation depth may change compared to previous line
-    # these may generate one or more extra tokens of GLOBALMARK, INDENT, and DEDENT
+    num_globalmarks = indentation.count(GLOBALMARK)
+    if endpos(t) == len(t.lexer.lexdata) and not num_globalmarks:
+        # this is a just-before-the-end-of-input whitespace
+        # no further processing needed
+        return t
+
+    # indentation may generate extra tokens:
+    # + GLOBALMARK if it contains globalmark
+    # + INDENT if its depth is more than previous line's, DEDENT(s) if less
     t.extra_tokens = deque()
 
     if indentation:
@@ -152,17 +161,15 @@ def t_linemark(t):
         if indent_using_space and indent_using_tab:
             raise OprexSyntaxError(t.lexer.lineno, 'Cannot mix space and tab for indentation')
 
-        # if any, process the "make global variable" marker (an asterisk leading the indent)
-        stars = indentation.count('*')
-        if stars:
-            if stars != 1:
+        if num_globalmarks:
+            if num_globalmarks != 1:
                 raise OprexSyntaxError(t.lexer.lineno, 'Syntax error: ' + indentation)
-            if indentation[0] != '*':
-                raise OprexSyntaxError(t.lexer.lineno, '''The "make global" asterisk must be the line's first character''')
-            if len(indentation) == 1:
-                raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
-            indentation = indentation.replace('*', ' ' if indent_using_space else '')
-            t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', '*'))
+            if not indentation.startswith(GLOBALMARK):
+                raise OprexSyntaxError(t.lexer.lineno, "The GLOBALMARK %s must be put at the line's beginning" % GLOBALMARK)
+            if len(indentation) == len(GLOBALMARK):
+                raise OprexSyntaxError(t.lexer.lineno, 'Indentation required after GLOBALMARK ' + GLOBALMARK)
+            indentation = indentation.replace(GLOBALMARK, (' ' * len(GLOBALMARK)) if indent_using_space else '')
+            t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', GLOBALMARK))
 
         # all indentations must use the same character
         indentchar = ' ' if indent_using_space else '\t'
@@ -174,7 +181,6 @@ def t_linemark(t):
             # further indents must use the same character
             t.lexer.indentchar = indentchar
         indentlen = len(indentation)
-
     else:
         indentlen = 0
 
@@ -183,8 +189,7 @@ def t_linemark(t):
     if indentlen == prev: # no change in indentation depth
         return t
 
-    # at this point, there's indentation depth change
-
+    # else, there's indentation depth change
     if indentlen > prev: # deeper indentation, start of a new scope
         t.extra_tokens.appendleft(ExtraToken(t, 'INDENT'))
         t.lexer.indent_stack.append(indentlen)
@@ -199,15 +204,14 @@ def t_linemark(t):
             raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
         return t 
 
-t_LPAREN     = r'\('
-t_RPAREN     = r'\)'
-t_QUESTMARK  = r'\?'
-t_SLASH      = r'/'
-
 
 def t_error(t):
     raise OprexSyntaxError(t.lineno, 'Unsupported syntax: ' + t.value.split('\n')[0])
 
+
+def endpos(t):
+    return t.lexpos + len(t.value)
+    
 
 def p_oprex(t):
     '''oprex : 
@@ -337,7 +341,7 @@ def p_definition(t):
                         var.name, already_defined.lineno
                     ))
 
-    has_globalmark = t[1] == '*'
+    has_globalmark = t[1] == GLOBALMARK
     if has_globalmark:
         variables = t[2]
         for scope in t.lexer.scopes:

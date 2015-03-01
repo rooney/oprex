@@ -74,9 +74,9 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 4: Unexpected VARNAME\nroot2\n^')
 
         self.given('''
-*           /warming/and/warming/
+*)          /warming/and/warming/
         ''',
-        expect_error='Line 2: Unexpected GLOBALMARK\n*           /warming/and/warming/\n^')
+        expect_error='Line 2: Unexpected GLOBALMARK\n*)          /warming/and/warming/\n^')
 
         self.given('''
             /greeting/world/
@@ -142,9 +142,9 @@ class TestErrorHandling(unittest.TestCase):
             warming
 
 
-            *   warming = 'global'
+            *)  warming = 'global'
         ''',
-        expect_error='''Line 5: The "make global" asterisk must be the line's first character''')
+        expect_error="Line 5: The GLOBALMARK *) must be put at the line's beginning")
 
 
     def test_mixed_indentation(self):
@@ -222,11 +222,11 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             /subject/predicate/object/
                 subject = /article/adjective/noun/
-*                   article = 'the'
-*                   adjective = /speed/color/
+*)                  article = 'the'
+*)                  adjective = /speed/color/
                         speed = 'quick'
                         color = 'brown'
-*                   noun = 'fox'
+*)                  noun = 'fox'
                 predicate = /verb/adverb/
                     verb = 'jumps'
                     adverb = 'over'
@@ -271,59 +271,59 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_invalid_global_mark(self):
         self.given('''
-            *
+            *)
         ''',
-        expect_error='''Line 2: The "make global" asterisk must be the line's first character''')
+        expect_error="Line 2: The GLOBALMARK *) must be put at the line's beginning")
 
         self.given('''
-*
+*)
         ''',
-        expect_error='Line 2: Indentation error')
+        expect_error='Line 2: Indentation required after GLOBALMARK *)')
 
         self.given('''
-*\t
+*)\t
         ''',
-        expect_error='Line 2: Unexpected GLOBALMARK\n*\t\n^')
+        expect_error='Line 2: Unexpected GLOBALMARK\n*)\t\n^')
 
         self.given('''
-*warming
+*)warming
         ''',
-        expect_error='Line 2: Indentation error')
+        expect_error='Line 2: Indentation required after GLOBALMARK *)')
 
         self.given('''
-*           warming
+*)          warming
         ''',
-        expect_error='Line 2: Unexpected GLOBALMARK\n*           warming\n^')
-
-        self.given('''
-            warming
-                *warming = 'global'
-        ''',
-        expect_error='''Line 3: The "make global" asterisk must be the line's first character''')
+        expect_error='Line 2: Unexpected GLOBALMARK\n*)          warming\n^')
 
         self.given('''
             warming
-            *   warming = 'global'
+                *)warming = 'global'
         ''',
-        expect_error='''Line 3: The "make global" asterisk must be the line's first character''')
+        expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
 
         self.given('''
             warming
-*           *   warming = 'global'
+            *)  warming = 'global'
         ''',
-        expect_error='Line 3: Syntax error: *           *   ')
+        expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
 
         self.given('''
             warming
-*               warming* = 'global'
+*)          *)  warming = 'global'
         ''',
-        expect_error="Line 3: Unsupported syntax: * = 'global'")
+        expect_error='Line 3: Syntax error: *)          *)  ')
 
         self.given('''
             warming
-                warming* = 'global'
+*)              warming*) = 'global'
         ''',
-        expect_error="Line 3: Unsupported syntax: * = 'global'")
+        expect_error="Line 3: Unsupported syntax: *) = 'global'")
+
+        self.given('''
+            warming
+                warming*) = 'global'
+        ''',
+        expect_error="Line 3: Unsupported syntax: *) = 'global'")
 
 
     def test_character_class(self):
@@ -411,7 +411,7 @@ class TestErrorHandling(unittest.TestCase):
             /oneoneone/oneone/one/
                 oneoneone = /satu/uno/ichi/
                     satu = '1'
-*                   uno = ichi = satu
+*)                  uno = ichi = satu
                 oneone = /uno/ichi/
                 one = ichi
                     ichi: 1
@@ -422,7 +422,7 @@ class TestErrorHandling(unittest.TestCase):
             /oneoneone/oneone/one/
                 oneoneone = /satu/uno/ichi/
                     satu = '1'
-*                   uno = ichi = satu
+*)                  uno = ichi = satu
                 oneone = /uno/ichi/
                 one = uno
                     uno: 1
@@ -433,7 +433,7 @@ class TestErrorHandling(unittest.TestCase):
             /oneoneone/oneone/one/
                 oneoneone = /satu/uno/ichi/
                     satu = '1'
-*                   uno = ichi = satu
+*)                  uno = ichi = satu
                 oneone = /uno/ichi/
                 one = satu
         ''',
@@ -442,7 +442,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             /oneoneone/oneone/one/
                 oneoneone = /satu/uno/ichi/
-*                   satu = '1'
+*)                  satu = '1'
                     uno = ichi = satu
                 one = satu
                 oneone = /uno/ichi/
@@ -486,7 +486,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
             /weather/warming/
                 weather = 'local'
-*               warming = 'global'
+*)              warming = 'global'
         ''',
         expect_regex='localglobal')
 
@@ -494,7 +494,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
 /weather/warming/
 \tweather = 'local'
-*\twarming = 'global'
+*)\twarming = 'global'
         ''',
         expect_regex='localglobal')
 
@@ -594,11 +594,11 @@ class TestOutput(unittest.TestCase):
         self.given('''
             /subject/predicate/object/
                 subject = /article/adjective/noun/
-*                   article = 'the'
-*                   adjective = /speed/color/
+*)                  article = 'the'
+*)                  adjective = /speed/color/
                         speed = 'quick'
                         color = 'brown'
-*                   noun = 'fox'
+*)                  noun = 'fox'
                 predicate = /verb/adverb/
                     verb = 'jumps'
                     adverb = 'over'
@@ -610,7 +610,7 @@ class TestOutput(unittest.TestCase):
             /grosir/banana4/papaya4/
                 grosir = /ciek/empat/sekawan/
                     ciek: 1
-*                   empat = sekawan: 4
+*)                  empat = sekawan: 4
                 banana4 = /gedang/sekawan/
                     gedang = 'banana'
                 papaya4 = /gedang/opat/
@@ -623,7 +623,7 @@ class TestOutput(unittest.TestCase):
             /oneoneone/oneone/one/
                 oneoneone = /satu/uno/ichi/
                     satu = '1'
-*                   uno = ichi = satu
+*)                  uno = ichi = satu
                 oneone = /uno/ichi/
                 one = satu
                     satu: 1
