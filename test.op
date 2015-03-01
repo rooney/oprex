@@ -1,3 +1,4 @@
 
-/shouldBeColon/
-*)     shouldBeColon= A a
+/ultraGlobal/
+*) *) ultraGlobal = 'greed'
+*)

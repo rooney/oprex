@@ -309,6 +309,30 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             warming
+                warming*) = 'global'
+        ''',
+        expect_error="Line 3: Unsupported syntax: *) = 'global'")
+
+        self.given('''
+            warming
+                warming = global *)
+        ''',
+        expect_error="Line 3: Syntax error:                 warming = global *)")
+
+        self.given('''
+            warming
+                warming = *) 'global'
+        ''',
+        expect_error="Line 3: Unsupported syntax: *) 'global'")
+
+        self.given('''
+            warming
+                warming *) = 'global'
+        ''',
+        expect_error="Line 3: Syntax error:                 warming *) = 'global'")
+        
+        self.given('''
+            warming
 *)          *)  warming = 'global'
         ''',
         expect_error='Line 3: Syntax error: *)          *)  ')
@@ -321,9 +345,51 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             warming
-                warming*) = 'global'
+*)              warming = global *)
         ''',
-        expect_error="Line 3: Unsupported syntax: *) = 'global'")
+        expect_error="Line 3: Syntax error: *)              warming = global *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              
+        ''',
+        expect_error="Line 4: Unexpected NEWLINE\n*)              \n                ^")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)
+        ''',
+        expect_error="Line 4: Indentation required after GLOBALMARK *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              junk
+        ''',
+        expect_error="Line 4: Unexpected NEWLINE\n*)              junk\n                    ^")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)            *)junk
+        ''',
+        expect_error="Line 4: Syntax error: *)            *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              *)
+        ''',
+        expect_error="Line 4: Syntax error: *)              *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)            *)
+        ''',
+        expect_error="Line 4: Syntax error: *)            *)")
 
 
     def test_character_class(self):
