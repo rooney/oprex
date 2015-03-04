@@ -330,7 +330,7 @@ class TestErrorHandling(unittest.TestCase):
                 warming *) = 'global'
         ''',
         expect_error="Line 3: Syntax error:                 warming *) = 'global'")
-        
+
         self.given('''
             warming
 *)          *)  warming = 'global'
@@ -409,25 +409,25 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error='Line 3: Invalid character in character class definition: ae (each character must be len==1)')
+        expect_error='Line 3: Unsupported character syntax: ae')
 
         self.given('''
             miscolon
                 miscolon: /colon/should/be/equal/sign/
         ''',
-        expect_error='Line 3: Invalid character in character class definition: /colon/should/be/equal/sign/ (each character must be len==1)')
+        expect_error='Line 3: Unsupported character syntax: /colon/should/be/equal/sign/')
 
         self.given('''
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: Invalid character in character class definition: 'colon (each character must be len==1)")
+        expect_error="Line 3: Unsupported character syntax: 'colon")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error='Line 3: Invalid character in character class definition: a: (each character must be len==1)')
+        expect_error='Line 3: Unsupported character syntax: a:')
 
         self.given('''
             /A/a/
@@ -514,6 +514,44 @@ class TestErrorHandling(unittest.TestCase):
                 oneone = /uno/ichi/
         ''',
         expect_error="Line 7: 'uno' is not defined")
+
+
+    def test_invalid_char_in_charclass_def(self):
+        self.given('''
+            x
+                x: u41
+        ''',
+        expect_error='Line 3: Unsupported character syntax: u41')
+
+        self.given('''
+            x
+                x: u12345
+        ''',
+        expect_error='Line 3: Unsupported character syntax: u12345')
+
+        self.given('''
+            x
+                x: u012g
+        ''',
+        expect_error='Line 3: Unsupported character syntax: u012g')
+
+        self.given('''
+            x
+                x: U1234
+        ''',
+        expect_error='Line 3: Unsupported character syntax: U1234')
+
+        self.given('''
+            x
+                x: U123456789
+        ''',
+        expect_error='Line 3: Unsupported character syntax: U123456789')
+
+        self.given('''
+            x
+                x: U1234567g
+        ''',
+        expect_error='Line 3: Unsupported character syntax: U1234567g')
 
 
 class TestOutput(unittest.TestCase):
@@ -752,6 +790,14 @@ class TestOutput(unittest.TestCase):
         expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
 
 
+    def test_char(self):
+        self.given('''
+            x
+                x: u0123 u00AB u00ab u00aB U00005678 U0000ABCD U0000abcd U0000abCD
+        ''',
+        expect_regex='[\u0123\u00AB\u00ab\u00aB\U00005678\U0000ABCD\U0000abcd\U0000abCD]')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -864,6 +910,15 @@ class TestMatches(unittest.TestCase):
             expect_full_match=['A3', 'A4'],
             no_match=['Legal', 'Folio'],
         )
+
+
+    def test_char(self):
+        self.given('''
+            x
+                x: u0041 U00000042
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
 
 
 if __name__ == '__main__':

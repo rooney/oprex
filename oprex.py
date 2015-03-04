@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
+
 import regex, argparse
+from regex import error as RegexError
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -64,20 +67,48 @@ def t_character_class(t):
     if len(chars) == 1:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
+    def the(char): # example: a 1 , 久 😐
+        if len(char) == 1:
+            return char
+
+    def u1234(char):
+        if char.startswith('u') and len(char) == 5:
+            try:
+                int(char[1:], 16)
+            except ValueError:
+                return
+            else:
+                return r'\u' + char[1:]
+
+    def U12345678(char):
+        if char.startswith('U') and len(char) == 9:
+            try:
+                int(char[1:], 16)
+            except ValueError:
+                return
+            else:
+                return r'\U' + char[1:]
+
     charclass = []
     for char in chars[1:]:
         if not char: # multiple spaces for separator is ok
             continue
-        if len(char) > 1:
-            raise OprexSyntaxError(t.lineno, 'Invalid character in character class definition: ' + char + ' (each character must be len==1)')
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        charclass.append(char)
+        compiled_char = the(char) or u1234(char) or U12345678(char)
+        if not compiled_char:
+            raise OprexSyntaxError(t.lineno, 'Unsupported character syntax: ' + char)
+        try:
+            regex.compile(compiled_char)
+        except (RegexError, ValueError):
+            raise OprexSyntaxError(t.lineno, 'Character rejected by the regex module: %s (compiled to: %s)' % (char, compiled_char))
+        else:
+            charclass.append(compiled_char)
 
     value = '[' + ''.join(charclass) + ']'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     t.type, t.value = 'COLON', ':'
-    
+
     return t
 
 
