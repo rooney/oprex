@@ -409,25 +409,25 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error='Line 3: Unsupported character syntax: ae')
+        expect_error="Line 3: undefined character name 'ae'")
 
         self.given('''
             miscolon
                 miscolon: /colon/should/be/equal/sign/
         ''',
-        expect_error='Line 3: Unsupported character syntax: /colon/should/be/equal/sign/')
+        expect_error="Line 3: undefined character name '/colon/should/be/equal/sign/'")
 
         self.given('''
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: Unsupported character syntax: 'colon")
+        expect_error="Line 3: undefined character name ''colon'")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error='Line 3: Unsupported character syntax: a:')
+        expect_error="Line 3: undefined character name 'a:'")
 
         self.given('''
             /A/a/
@@ -519,39 +519,27 @@ class TestErrorHandling(unittest.TestCase):
     def test_invalid_char_in_charclass_def(self):
         self.given('''
             x
-                x: u41
+                x: u1234
         ''',
-        expect_error='Line 3: Unsupported character syntax: u41')
+        expect_error="Line 3: undefined character name 'u1234'")
 
         self.given('''
             x
-                x: u12345
+                x: u+123z
         ''',
-        expect_error='Line 3: Unsupported character syntax: u12345')
+        expect_error='Line 3: Syntax error u+123z should be U+hexnumber')
 
         self.given('''
             x
-                x: u012g
+                x: U+123456789
         ''',
-        expect_error='Line 3: Unsupported character syntax: u012g')
+        expect_error='Line 3: Syntax error U+123456789 out of range')
 
         self.given('''
             x
-                x: U1234
+                x: U+
         ''',
-        expect_error='Line 3: Unsupported character syntax: U1234')
-
-        self.given('''
-            x
-                x: U123456789
-        ''',
-        expect_error='Line 3: Unsupported character syntax: U123456789')
-
-        self.given('''
-            x
-                x: U1234567g
-        ''',
-        expect_error='Line 3: Unsupported character syntax: U1234567g')
+        expect_error='Line 3: Syntax error U+ should be U+hexnumber')
 
 
 class TestOutput(unittest.TestCase):
@@ -793,9 +781,27 @@ class TestOutput(unittest.TestCase):
     def test_char(self):
         self.given('''
             x
-                x: u0123 u00AB u00ab u00aB U00005678 U0000ABCD U0000abcd U0000abCD
+                x: u+41 U+41 u+041 U+041 u+0041 U+0041 u+00041 U+00041
         ''',
-        expect_regex='[\u0123\u00AB\u00ab\u00aB\U00005678\U0000ABCD\U0000abcd\U0000abCD]')
+        expect_regex='[\u0041\u0041\u0041\u0041\u0041\u0041\U00000041\U00000041]')
+
+        self.given('''
+            x
+                x: u+ab U+ab u+AB U+AB u+00ab u+00aB U+00ab U+00Ab
+        ''',
+        expect_regex='[\u00ab\u00ab\u00AB\u00AB\u00ab\u00aB\u00ab\u00Ab]')
+
+        self.given('''
+            x
+                x: u+12ab u+12AB u+12aB U+12ab U+12AB U+12Ab
+        ''',
+        expect_regex='[\u12ab\u12AB\u12aB\u12ab\u12AB\u12Ab]')
+
+        self.given('''
+            x
+                x: u+1234a u+1234A U+1234a U+1234A u+01234A U+01234a
+        ''',
+        expect_regex='[\U0001234a\U0001234A\U0001234a\U0001234A\U0001234A\U0001234a]')
 
 
 class TestMatches(unittest.TestCase):
@@ -915,10 +921,10 @@ class TestMatches(unittest.TestCase):
     def test_char(self):
         self.given('''
             x
-                x: u0041 U00000042
+                x: u+41 u+042 u+00043 U+44 U+0045
         ''',
-        expect_full_match=['A', 'B'],
-        no_match=['a', 'b'])
+        expect_full_match=['A', 'B', 'C', 'D', 'E'],
+        no_match=['a', 'b', 'c', 'd', 'e'])
 
 
 if __name__ == '__main__':

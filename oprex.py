@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, argparse
+import regex, argparse, unicodedata
 from regex import error as RegexError
 from ply import lex, yacc
 from collections import namedtuple, deque
@@ -71,23 +71,29 @@ def t_character_class(t):
         if len(char) == 1:
             return char
 
-    def u1234(char):
-        if char.startswith('u') and len(char) == 5:
+    def uXXXX(char):
+        if char.upper().startswith('U+'):
+            hexnum = char[2:]
             try:
-                int(char[1:], 16)
+                int(hexnum, 16)
             except ValueError:
-                return
+                raise OprexSyntaxError(t.lineno, "Syntax error %s should be U+hexnumber" % char)
+            hexlen = len(hexnum)
+            if hexlen > 8:
+                raise OprexSyntaxError(t.lineno, "Syntax error %s out of range" % char)
+            if hexlen <= 4:
+                return unicode(r'\u' + ('0' * (4-hexlen) + hexnum))
             else:
-                return r'\u' + char[1:]
+                return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
-    def U12345678(char):
-        if char.startswith('U') and len(char) == 9:
-            try:
-                int(char[1:], 16)
-            except ValueError:
-                return
-            else:
-                return r'\U' + char[1:]
+    def by_name(char):
+        char = char.replace('_', ' ')
+        try:
+            unicodedata.lookup(char)
+        except KeyError, e:
+            raise OprexSyntaxError(t.lineno, e.message)
+        else:
+            return r'\N{%s}' % char
 
     charclass = []
     for char in chars[1:]:
@@ -95,13 +101,15 @@ def t_character_class(t):
             continue
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled_char = the(char) or u1234(char) or U12345678(char)
+        compiled_char = the(char) or uXXXX(char) or by_name(char)
         if not compiled_char:
-            raise OprexSyntaxError(t.lineno, 'Unsupported character syntax: ' + char)
+            raise OprexSyntaxError(t.lineno, 'Unsupported character-class definition syntax: ' + char)
         try:
             regex.compile(compiled_char)
-        except (RegexError, ValueError):
-            raise OprexSyntaxError(t.lineno, 'Character rejected by the regex module: %s (compiled to: %s)' % (char, compiled_char))
+        except Exception, e:
+            msg = e.msg if hasattr(e, 'msg') else e.message
+            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (char, compiled_char, msg)
+            raise OprexSyntaxError(t.lineno, msg)
         else:
             charclass.append(compiled_char)
 
