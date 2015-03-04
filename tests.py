@@ -541,6 +541,12 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 3: Syntax error U+ should be U+hexnumber')
 
+        self.given('''
+            x
+                x: YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
+        ''',
+        expect_error="Line 3: undefined character name 'YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE'")
+
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
@@ -803,6 +809,12 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[\U0001234a\U0001234A\U0001234a\U0001234A\U0001234A\U0001234a]')
 
+        self.given('''
+            x
+                x: SKULL_AND_CROSSBONES BIOHAZARD_SIGN CANCER
+        ''',
+        expect_regex='[\N{SKULL AND CROSSBONES}\N{BIOHAZARD SIGN}\N{CANCER}]')
+
 
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
@@ -925,6 +937,14 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['A', 'B', 'C', 'D', 'E'],
         no_match=['a', 'b', 'c', 'd', 'e'])
+
+
+    def test_char(self):
+        self.given('''
+            x
+                x: SKULL_AND_CROSSBONES BIOHAZARD_SIGN CANCER
+        ''',
+        expect_full_match=[u'☠', u'☣', u'♋'])
 
 
 if __name__ == '__main__':
