@@ -392,7 +392,51 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 4: Syntax error: *)            *)")
 
 
-    def test_character_class(self):
+    def test_global_aliasing(self):
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = ichi
+                    ichi: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'ichi' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = uno
+                    uno: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'uno' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = satu
+        ''',
+        expect_error="Line 7: 'satu' is not defined")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+*)                  satu = '1'
+                    uno = ichi = satu
+                one = satu
+                oneone = /uno/ichi/
+        ''',
+        expect_error="Line 7: 'uno' is not defined")
+
+
+    def test_invalid_charclass(self):
         self.given('''
             empty_charclass
                 empty_charclass:
@@ -471,52 +515,14 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 3: Unexpected COLON\n                mixedAssignment =: x\n                                 ^')
 
-
-    def test_global_aliasing(self):
         self.given('''
-            /oneoneone/oneone/one/
-                oneoneone = /satu/uno/ichi/
-                    satu = '1'
-*)                  uno = ichi = satu
-                oneone = /uno/ichi/
-                one = ichi
-                    ichi: 1
+            x
+                x: /IsAwesome
         ''',
-        expect_error="Line 8: Names must be unique within a scope, 'ichi' is already defined (previous definition at line 5)")
-
-        self.given('''
-            /oneoneone/oneone/one/
-                oneoneone = /satu/uno/ichi/
-                    satu = '1'
-*)                  uno = ichi = satu
-                oneone = /uno/ichi/
-                one = uno
-                    uno: 1
-        ''',
-        expect_error="Line 8: Names must be unique within a scope, 'uno' is already defined (previous definition at line 5)")
-
-        self.given('''
-            /oneoneone/oneone/one/
-                oneoneone = /satu/uno/ichi/
-                    satu = '1'
-*)                  uno = ichi = satu
-                oneone = /uno/ichi/
-                one = satu
-        ''',
-        expect_error="Line 7: 'satu' is not defined")
-
-        self.given('''
-            /oneoneone/oneone/one/
-                oneoneone = /satu/uno/ichi/
-*)                  satu = '1'
-                    uno = ichi = satu
-                one = satu
-                oneone = /uno/ichi/
-        ''',
-        expect_error="Line 7: 'uno' is not defined")
+        expect_error='Line 3: /IsAwesome compiles to \p{IsAwesome} which is rejected by the regex module with error message: unknown property')
 
 
-    def test_invalid_char_in_charclass_def(self):
+    def test_invalid_char(self):
         self.given('''
             x
                 x: u1234
@@ -547,12 +553,12 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 3: YET-ANOTHER-CHARACTER-THAT-SHOULD-NOT-BE-IN-UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex module with error message: undefined character name')
 
-        # unicode character name should be in uppercase, to prevent potential conflict with operators (e.g. thatalso, not)
+        # unicode character name should be in uppercase
         self.given('''
             x
-                x: check_mark
+                x: check-mark
         ''',
-        expect_error="Line 3: Syntax error on character class definition at 'check_mark'")
+        expect_error="Line 3: Syntax error on character class definition at 'check-mark'")
 
 
 class TestOutput(unittest.TestCase):
@@ -626,6 +632,44 @@ class TestOutput(unittest.TestCase):
                 A = a: A a
         ''',
         expect_regex='[Aa][Aa]')
+
+        self.given('''
+            /A/a/
+                A = a: A a
+        ''',
+        expect_regex='[Aa][Aa]')
+
+
+    def test_char(self):
+        self.given('''
+            x
+                x: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
+        ''',
+        expect_regex='[\p{Alphabetic}\p{Script=Latin}\p{InBasicLatin}\P{IsCyrillic}\P{Script=Cyrillic}\P{Script=Cyrillic}]')
+
+        self.given('''
+            x
+                x: u+ab U+ab u+AB U+AB u+00ab u+00aB U+00ab U+00Ab
+        ''',
+        expect_regex='[\u00ab\u00ab\u00AB\u00AB\u00ab\u00aB\u00ab\u00Ab]')
+
+        self.given('''
+            x
+                x: u+12ab u+12AB u+12aB U+12ab U+12AB U+12Ab
+        ''',
+        expect_regex='[\u12ab\u12AB\u12aB\u12ab\u12AB\u12Ab]')
+
+        self.given('''
+            x
+                x: u+1234a u+1234A U+1234a U+1234A u+01234A U+01234a
+        ''',
+        expect_regex='[\U0001234a\U0001234A\U0001234a\U0001234A\U0001234A\U0001234a]')
+
+        self.given('''
+            x
+                x: SKULL-AND-CROSSBONES BIOHAZARD-SIGN CANCER
+        ''',
+        expect_regex='[\N{SKULL AND CROSSBONES}\N{BIOHAZARD SIGN}\N{CANCER}]')
 
 
     def test_capturing(self):
@@ -791,38 +835,6 @@ class TestOutput(unittest.TestCase):
         expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
 
 
-    def test_char(self):
-        self.given('''
-            x
-                x: u+41 U+41 u+041 U+041 u+0041 U+0041 u+00041 U+00041
-        ''',
-        expect_regex='[\u0041\u0041\u0041\u0041\u0041\u0041\U00000041\U00000041]')
-
-        self.given('''
-            x
-                x: u+ab U+ab u+AB U+AB u+00ab u+00aB U+00ab U+00Ab
-        ''',
-        expect_regex='[\u00ab\u00ab\u00AB\u00AB\u00ab\u00aB\u00ab\u00Ab]')
-
-        self.given('''
-            x
-                x: u+12ab u+12AB u+12aB U+12ab U+12AB U+12Ab
-        ''',
-        expect_regex='[\u12ab\u12AB\u12aB\u12ab\u12AB\u12Ab]')
-
-        self.given('''
-            x
-                x: u+1234a u+1234A U+1234a U+1234A u+01234A U+01234a
-        ''',
-        expect_regex='[\U0001234a\U0001234A\U0001234a\U0001234A\U0001234A\U0001234a]')
-
-        self.given('''
-            x
-                x: SKULL-AND-CROSSBONES BIOHAZARD-SIGN CANCER
-        ''',
-        expect_regex='[\N{SKULL AND CROSSBONES}\N{BIOHAZARD SIGN}\N{CANCER}]')
-
-
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -936,8 +948,6 @@ class TestMatches(unittest.TestCase):
             no_match=['Legal', 'Folio'],
         )
 
-
-    def test_char(self):
         self.given('''
             x
                 x: u+41 u+042 u+00043 U+44 U+0045
@@ -945,13 +955,25 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['A', 'B', 'C', 'D', 'E'],
         no_match=['a', 'b', 'c', 'd', 'e'])
 
-
-    def test_char(self):
         self.given('''
             x
                 x: SKULL-AND-CROSSBONES BIOHAZARD-SIGN CANCER
         ''',
         expect_full_match=[u'☠', u'☣', u'♋'])
+
+        self.given('''
+            x
+                x: /Letter /Number
+        ''',
+        expect_full_match=[u'A', u'1'],
+        no_match=['?', '$'])
+
+        self.given('''
+            x
+                x: /!Symbol
+        ''',
+        expect_full_match=[u'A', u'1'],
+        no_match=['$'])
 
 
 if __name__ == '__main__':
