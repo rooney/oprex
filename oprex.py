@@ -70,7 +70,7 @@ def t_character_class(t):
         if len(char) == 1:
             return char
 
-    def uxxx(char):
+    def uhex(char): # example: U+65 u+1F4A9
         if char[:2].upper() == 'U+':
             hexnum = char[2:]
             try:
@@ -85,10 +85,9 @@ def t_character_class(t):
             else:
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
-    def by_name(char):
-        if char.isupper(): # require unicode character names to be in uppercase to prevent potential conflict with operators
-                           # eg. thatalso is an operator while THATALSO is a character name
-            return r'\N{%s}' % char.replace('_', ' ')
+    def by_name(char):     # example: TRUE CHECK-MARK BALLOT-BOX-WITH-CHECK
+        if char.isupper(): # (must be in uppercase, using dashes rather than spaces)
+            return r'\N{%s}' % char.replace('-', ' ')
 
     charclass = []
     for char in chars[1:]:
@@ -96,9 +95,9 @@ def t_character_class(t):
             continue
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled_char = single(char) or uxxx(char) or by_name(char)
+        compiled_char = single(char) or uhex(char) or by_name(char)
         if not compiled_char:
-            raise OprexSyntaxError(t.lineno, "Unknown character class operator: " + char)
+            raise OprexSyntaxError(t.lineno, "Syntax error on character class definition at '%s'" % char)
         try:
             regex.compile(compiled_char)
         except Exception, e:
