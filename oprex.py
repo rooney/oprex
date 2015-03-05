@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, argparse, unicodedata
-from regex import error as RegexError
+import regex, argparse
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -67,12 +66,12 @@ def t_character_class(t):
     if len(chars) == 1:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    def the(char): # example: a 1 , 久 😐
+    def single(char): # example: a 1 $ 久 😐
         if len(char) == 1:
             return char
 
-    def uXXXX(char):
-        if char.upper().startswith('U+'):
+    def uxxx(char):
+        if char[:2].upper() == 'U+':
             hexnum = char[2:]
             try:
                 int(hexnum, 16)
@@ -87,13 +86,9 @@ def t_character_class(t):
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
     def by_name(char):
-        char = char.replace('_', ' ')
-        try:
-            unicodedata.lookup(char)
-        except KeyError, e:
-            raise OprexSyntaxError(t.lineno, e.message)
-        else:
-            return r'\N{%s}' % char
+        if char.isupper(): # require unicode character names to be in uppercase to prevent potential conflict with operators
+                           # eg. thatalso is an operator while THATALSO is a character name
+            return r'\N{%s}' % char.replace('_', ' ')
 
     charclass = []
     for char in chars[1:]:
@@ -101,9 +96,9 @@ def t_character_class(t):
             continue
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled_char = the(char) or uXXXX(char) or by_name(char)
+        compiled_char = single(char) or uxxx(char) or by_name(char)
         if not compiled_char:
-            raise OprexSyntaxError(t.lineno, 'Unsupported character-class definition syntax: ' + char)
+            raise OprexSyntaxError(t.lineno, "Unknown character class operator: " + char)
         try:
             regex.compile(compiled_char)
         except Exception, e:

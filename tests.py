@@ -409,25 +409,25 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error="Line 3: undefined character name 'ae'")
+        expect_error='Line 3: Unknown character class operator: ae')
 
         self.given('''
             miscolon
                 miscolon: /colon/should/be/equal/sign/
         ''',
-        expect_error="Line 3: undefined character name '/colon/should/be/equal/sign/'")
+        expect_error='Line 3: Unknown character class operator: /colon/should/be/equal/sign/')
 
         self.given('''
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: undefined character name ''colon'")
+        expect_error="Line 3: Unknown character class operator: 'colon")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error="Line 3: undefined character name 'a:'")
+        expect_error='Line 3: Unknown character class operator: a:')
 
         self.given('''
             /A/a/
@@ -521,7 +521,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: u1234
         ''',
-        expect_error="Line 3: undefined character name 'u1234'")
+        expect_error='Line 3: Unknown character class operator: u1234')
 
         self.given('''
             x
@@ -545,7 +545,14 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
         ''',
-        expect_error="Line 3: undefined character name 'YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE'")
+        expect_error='Line 3: YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex module with error message: undefined character name')
+
+        # unicode character name should be in uppercase, to prevent potential conflict with operators (e.g. thatalso, not)
+        self.given('''
+            x
+                x: check_mark
+        ''',
+        expect_error='Line 3: Unknown character class operator: check_mark')
 
 
 class TestOutput(unittest.TestCase):
