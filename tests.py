@@ -563,7 +563,9 @@ class TestErrorHandling(unittest.TestCase):
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
+        alwayson_flags = '(?umV1)'
         regex_source = oprex(oprex_source)
+        regex_source = regex_source.replace(alwayson_flags, '', 1)
         if regex_source != expect_regex:
             msg = 'For input: %s\n---------------------------- Got Output: -----------------------------\n%s\n\n------------------------- Expected Output: ---------------------------\n%s'
             raise AssertionError(msg % (
@@ -965,15 +967,31 @@ class TestMatches(unittest.TestCase):
             x
                 x: /Letter /Number
         ''',
-        expect_full_match=[u'A', u'1'],
+        expect_full_match=['A', '1'],
         no_match=['?', '$'])
 
         self.given('''
             x
                 x: /!Symbol
         ''',
-        expect_full_match=[u'A', u'1'],
+        expect_full_match=['A', '1'],
         no_match=['$'])
+
+        # uppercase or greek
+        self.given('''
+            x
+                x: /Lu /Greek
+        ''',
+        expect_full_match=['A', u'γ', u'Γ'],
+        no_match=['a'])
+
+        # not uppercase or not greek == not(uppercase and greek)
+        self.given('''
+            x
+                x: /!Uppercase_Letter /!IsGreek
+        ''',
+        expect_full_match=['a', 'A', u'γ'],
+        no_match=[u'Γ'])
 
 
 if __name__ == '__main__':

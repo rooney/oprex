@@ -467,7 +467,8 @@ def build_lexer(source_lines):
 
 parser = yacc.yacc()
 def parse(lexer):
-    return parser.parse(lexer=lexer, tracking=True)
+    # always use V1, UNICODE, and MULTILINE
+    return '(?umV1)' + parser.parse(lexer=lexer, tracking=True)
 
 
 if __name__ == "__main__":
