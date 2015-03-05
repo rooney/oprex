@@ -85,6 +85,10 @@ def t_character_class(t):
             else:
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
+    def by_prop(char): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
+        if char.startswith('/'):
+            return r'\%s{%s}' % ('P' if '!' in char else 'p', char[1:].replace('!', '', 1))
+
     def by_name(char):     # example: TRUE CHECK-MARK BALLOT-BOX-WITH-CHECK
         if char.isupper(): # (must be in uppercase, using dashes rather than spaces)
             return r'\N{%s}' % char.replace('-', ' ')
@@ -95,7 +99,7 @@ def t_character_class(t):
             continue
         if char in charclass:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled_char = single(char) or uhex(char) or by_name(char)
+        compiled_char = single(char) or uhex(char) or by_prop(char) or by_name(char)
         if not compiled_char:
             raise OprexSyntaxError(t.lineno, "Syntax error on character class definition at '%s'" % char)
         try:

@@ -415,7 +415,7 @@ class TestErrorHandling(unittest.TestCase):
             miscolon
                 miscolon: /colon/should/be/equal/sign/
         ''',
-        expect_error="Line 3: Syntax error on character class definition at '/colon/should/be/equal/sign/'")
+        expect_error='Line 3: /colon/should/be/equal/sign/ compiles to \p{colon/should/be/equal/sign/} which is rejected by the regex module with error message: bad fuzzy constraint')
 
         self.given('''
             miscolon
