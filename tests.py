@@ -453,7 +453,7 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error="Line 3: Syntax error on character class definition at 'ae'")
+        expect_error='Line 3: Character class syntax error: ae')
 
         self.given('''
             miscolon
@@ -465,13 +465,13 @@ class TestErrorHandling(unittest.TestCase):
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: Syntax error on character class definition at ''colon'")
+        expect_error="Line 3: Character class syntax error: 'colon")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error="Line 3: Syntax error on character class definition at 'a:'")
+        expect_error='Line 3: Character class syntax error: a:')
 
         self.given('''
             /A/a/
@@ -527,7 +527,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: u1234
         ''',
-        expect_error="Line 3: Syntax error on character class definition at 'u1234'")
+        expect_error='Line 3: Character class syntax error: u1234')
 
         self.given('''
             x
@@ -558,7 +558,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: check-mark
         ''',
-        expect_error="Line 3: Syntax error on character class definition at 'check-mark'")
+        expect_error='Line 3: Character class syntax error: check-mark')
 
 
 class TestOutput(unittest.TestCase):

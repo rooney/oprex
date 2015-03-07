@@ -60,67 +60,80 @@ t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
 def t_character_class(t):
     ''':.*'''
-    chars = t.value.split(' ')
-    if chars[0] != ':':
+    chardefs = t.value.split(' ')
+    if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
-    if len(chars) == 1:
+    if len(chardefs) == 1: # only colon not followed by anything
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    def single(char): # example: a 1 $ 久 😐
-        if len(char) == 1:
-            if char in ['[', ']', '^', '\\']: # need escape
-                char = '\\' + char
-            return char
+    def try_parse(chardef, *methods):
+        for method in methods:
+            result = method(chardef)
+            if result:
+                return result
+        raise OprexSyntaxError(t.lineno, 'Character class syntax error: ' + chardef)
 
-    def uhex(char): # example: U+65 u+1F4A9
-        if char[:2].upper() == 'U+':
-            hexnum = char[2:]
+    def single(chardef): # example: a 1 $ 久 😐
+        if len(chardef) == 1:
+            if chardef in ['[', ']', '^', '\\']: # need escape
+                chardef = '\\' + chardef
+            return chardef
+
+    def uhex(chardef): # example: U+65 u+1F4A9
+        if chardef[:2].upper() == 'U+':
+            hexnum = chardef[2:]
             try:
                 int(hexnum, 16)
             except ValueError:
-                raise OprexSyntaxError(t.lineno, "Syntax error %s should be U+hexnumber" % char)
+                raise OprexSyntaxError(t.lineno, 'Syntax error %s should be U+hexnumber' % chardef)
             hexlen = len(hexnum)
             if hexlen > 8:
-                raise OprexSyntaxError(t.lineno, "Syntax error %s out of range" % char)
+                raise OprexSyntaxError(t.lineno, 'Syntax error %s out of range' % chardef)
             if hexlen <= 4:
                 return unicode(r'\u' + ('0' * (4-hexlen) + hexnum))
             else:
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
-    def by_prop(char): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
-        if char.startswith('/'):
-            return r'\%s{%s}' % ('P' if '!' in char else 'p', char[1:].replace('!', '', 1))
+    def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
+        if chardef.startswith('/'):
+            return r'\%s{%s}' % ('P' if '!' in chardef else 'p', chardef[1:].replace('!', '', 1))
 
-    def by_name(char): # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
-        if char.startswith(':'): # must be in uppercase, using underscores rather than spaces
-            if not char.isupper(): 
+    def by_name(chardef): # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
+        if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
+            if not chardef.isupper(): 
                 raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
-            return r'\N{%s}' % char[1:].replace('_', ' ')
+            return r'\N{%s}' % chardef[1:].replace('_', ' ')
+
+    def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
+        if '..' in chardef:
+            bounds = chardef.split('..')
+            if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
+                raise OprexSyntaxError(t.lineno, 'Range syntax error ' + chardef)
+            lower_bound = try_parse(bounds[0], single, uhex, by_name)
+            upper_bound = try_parse(bounds[1], single, uhex, by_name)
+            return lower_bound + '-' + upper_bound
 
     result = []
     processed = []
-    for char in chars[1:]:
-        if not char: # multiple spaces for separator is ok
+    for chardef in chardefs[1:]:
+        if not chardef: # multiple spaces for separator is ok
             continue
-        if char in processed:
-            raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled = single(char) or uhex(char) or by_prop(char) or by_name(char)
-        if not compiled:
-            raise OprexSyntaxError(t.lineno, "Syntax error on character class definition at '%s'" % char)
+        if chardef in processed:
+            raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
+        compiled = try_parse(chardef, range, single, uhex, by_prop, by_name)
         try:
             regex.compile(compiled)
         except Exception, e:
             msg = e.msg if hasattr(e, 'msg') else e.message
-            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (char, compiled, msg)
+            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (chardef, compiled, msg)
             raise OprexSyntaxError(t.lineno, msg)
         else:
             result.append(compiled)
-        processed.append(char)
+        processed.append(chardef)
 
     value = '[' + ''.join(result) + ']'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     t.type, t.value = 'COLON', ':'
-
     return t
 
 
