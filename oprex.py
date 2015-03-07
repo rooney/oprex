@@ -68,6 +68,8 @@ def t_character_class(t):
 
     def single(char): # example: a 1 $ 久 😐
         if len(char) == 1:
+            if char in ['[', ']', '^', '\\']: # need escape
+                char = '\\' + char
             return char
 
     def uhex(char): # example: U+65 u+1F4A9

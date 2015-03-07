@@ -641,6 +641,12 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[Aa][Aa]')
 
+        self.given('''
+            x
+                x: [ ^ \\ ]
+        ''',
+        expect_regex='[\\[\\^\\\\\\]]')
+
 
     def test_char(self):
         self.given('''
@@ -992,6 +998,15 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', 'A', u'γ'],
         no_match=[u'Γ'])
+
+        self.given('''
+            /open/bs/caret/close/
+                open: [
+                bs: \\
+                caret: ^
+                close: ]
+        ''',
+        expect_full_match=['[\\^]'])
 
 
 if __name__ == '__main__':
