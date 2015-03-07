@@ -95,25 +95,27 @@ def t_character_class(t):
         if char.isupper(): # (must be in uppercase, using dashes rather than spaces)
             return r'\N{%s}' % char.replace('-', ' ')
 
-    charclass = []
+    result = []
+    processed = []
     for char in chars[1:]:
         if not char: # multiple spaces for separator is ok
             continue
-        if char in charclass:
+        if char in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + char)
-        compiled_char = single(char) or uhex(char) or by_prop(char) or by_name(char)
-        if not compiled_char:
+        compiled = single(char) or uhex(char) or by_prop(char) or by_name(char)
+        if not compiled:
             raise OprexSyntaxError(t.lineno, "Syntax error on character class definition at '%s'" % char)
         try:
-            regex.compile(compiled_char)
+            regex.compile(compiled)
         except Exception, e:
             msg = e.msg if hasattr(e, 'msg') else e.message
-            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (char, compiled_char, msg)
+            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (char, compiled, msg)
             raise OprexSyntaxError(t.lineno, msg)
         else:
-            charclass.append(compiled_char)
+            result.append(compiled)
+        processed.append(char)
 
-    value = '[' + ''.join(charclass) + ']'
+    value = '[' + ''.join(result) + ']'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     t.type, t.value = 'COLON', ':'
 
