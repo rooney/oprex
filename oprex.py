@@ -91,9 +91,11 @@ def t_character_class(t):
         if char.startswith('/'):
             return r'\%s{%s}' % ('P' if '!' in char else 'p', char[1:].replace('!', '', 1))
 
-    def by_name(char):     # example: TRUE CHECK-MARK BALLOT-BOX-WITH-CHECK
-        if char.isupper(): # (must be in uppercase, using dashes rather than spaces)
-            return r'\N{%s}' % char.replace('-', ' ')
+    def by_name(char): # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
+        if char.startswith(':'): # must be in uppercase, using underscores rather than spaces
+            if not char.isupper(): 
+                raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
+            return r'\N{%s}' % char[1:].replace('_', ' ')
 
     result = []
     processed = []

@@ -549,9 +549,9 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             x
-                x: YET-ANOTHER-CHARACTER-THAT-SHOULD-NOT-BE-IN-UNICODE
+                x: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
         ''',
-        expect_error='Line 3: YET-ANOTHER-CHARACTER-THAT-SHOULD-NOT-BE-IN-UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex module with error message: undefined character name')
+        expect_error='Line 3: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex module with error message: undefined character name')
 
         # unicode character name should be in uppercase
         self.given('''
@@ -675,7 +675,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             x
-                x: SKULL-AND-CROSSBONES BIOHAZARD-SIGN CANCER
+                x: :SKULL_AND_CROSSBONES :BIOHAZARD_SIGN :CANCER
         ''',
         expect_regex='[\N{SKULL AND CROSSBONES}\N{BIOHAZARD SIGN}\N{CANCER}]')
 
@@ -965,7 +965,7 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             x
-                x: SKULL-AND-CROSSBONES BIOHAZARD-SIGN CANCER
+                x: :SKULL_AND_CROSSBONES :BIOHAZARD_SIGN :CANCER
         ''',
         expect_full_match=[u'☠', u'☣', u'♋'])
 
