@@ -453,7 +453,7 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error='Line 3: Character class syntax error: ae')
+        expect_error='Line 3: Character class invalid keyword: ae')
 
         self.given('''
             miscolon
@@ -465,13 +465,13 @@ class TestErrorHandling(unittest.TestCase):
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: Character class syntax error: 'colon")
+        expect_error="Line 3: Character class invalid keyword: 'colon")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error='Line 3: Character class syntax error: a:')
+        expect_error='Line 3: Character class invalid keyword: a:')
 
         self.given('''
             /A/a/
@@ -527,7 +527,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: u1234
         ''',
-        expect_error='Line 3: Character class syntax error: u1234')
+        expect_error='Line 3: Character class invalid keyword: u1234')
 
         self.given('''
             x
@@ -558,7 +558,45 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: check-mark
         ''',
-        expect_error='Line 3: Character class syntax error: check-mark')
+        expect_error='Line 3: Character class invalid keyword: check-mark')
+
+        self.given('''
+            x
+                x: @omic
+        ''',
+        expect_error='Line 3: Character class invalid keyword: @omic')
+
+        self.given('''
+            x
+                x: awe$ome
+        ''',
+        expect_error='Line 3: Character class invalid keyword: awe$ome')
+
+
+    def test_invalid_range(self):
+        self.given('''
+            x
+                x: ..
+        ''',
+        expect_error='Line 3: Range syntax error: ..')
+
+        self.given('''
+            x
+                x: infinity..
+        ''',
+        expect_error='Line 3: Range syntax error: infinity..')
+
+        self.given('''
+            x
+                x: ..bigbang
+        ''',
+        expect_error='Line 3: Range syntax error: ..bigbang')
+
+        self.given('''
+            x
+                x: bigcrunch..bigbang
+        ''',
+        expect_error='Line 3: Character class invalid keyword: bigcrunch')
 
 
 class TestOutput(unittest.TestCase):
@@ -678,6 +716,14 @@ class TestOutput(unittest.TestCase):
                 x: :SKULL_AND_CROSSBONES :BIOHAZARD_SIGN :CANCER
         ''',
         expect_regex='[\N{SKULL AND CROSSBONES}\N{BIOHAZARD SIGN}\N{CANCER}]')
+
+
+    def test_character_range_output(self):
+        self.given('''
+            x
+                x: U+41..Z :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
+        ''',
+        expect_regex=r'[\u0041-Z\N{LEFTWARDS ARROW}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
 
 
     def test_capturing(self):
@@ -1007,6 +1053,21 @@ class TestMatches(unittest.TestCase):
                 close: ]
         ''',
         expect_full_match=['[\\^]'])
+
+    def test_character_range(self):
+        self.given('''
+            AZ
+                AZ: U+41..Z
+        ''',
+        expect_full_match=['A', 'B', 'C', 'X', 'Y', 'Z'],
+        no_match=['a', 'x', 'z', '1', '0'])
+
+        self.given('''
+            arrows
+                arrows: :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
+        ''',
+        expect_full_match=[u'←', u'→', u'⇶', u'⇿'],
+        no_match=['>'])
 
 
 if __name__ == '__main__':

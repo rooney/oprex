@@ -71,7 +71,7 @@ def t_character_class(t):
             result = method(chardef)
             if result:
                 return result
-        raise OprexSyntaxError(t.lineno, 'Character class syntax error: ' + chardef)
+        raise OprexSyntaxError(t.lineno, 'Character class invalid keyword: ' + chardef)
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
@@ -108,7 +108,7 @@ def t_character_class(t):
         if '..' in chardef:
             bounds = chardef.split('..')
             if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
-                raise OprexSyntaxError(t.lineno, 'Range syntax error ' + chardef)
+                raise OprexSyntaxError(t.lineno, 'Range syntax error: ' + chardef)
             lower_bound = try_parse(bounds[0], single, uhex, by_name)
             upper_bound = try_parse(bounds[1], single, uhex, by_name)
             return lower_bound + '-' + upper_bound
