@@ -1182,6 +1182,15 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['WOW', 'hi!', '...'],
         no_match=['ACE', '123'])
 
+        self.given(u'''
+            /hex/hex/hex/
+                hex: +!unhex
+                    unhex: +!hexdigit
+                        hexdigit: 0..9 a..f A..F
+        ''',
+        expect_full_match=['AcE', '12e', 'fff'],
+        no_match=['WOW', 'hi!', '...'])
+
 
 if __name__ == '__main__':
     unittest.main()
