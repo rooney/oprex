@@ -634,7 +634,7 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             x
-                x: +awe+some
+                x: +!awe+some
         ''',
         expect_error="Line 3: Cannot include 'awe+some': not defined")
 
@@ -797,6 +797,13 @@ class TestOutput(unittest.TestCase):
                     div: / ÷ :
         ''',
         expect_regex=u'[[+][-][*×][/÷:]]')
+
+        self.given(u'''
+            nonhex
+                nonhex: +!hexdigit
+                    hexdigit: 0..9 a..f A..F
+        ''',
+        expect_regex=u'[[^0-9a-fA-F]]')
 
 
     def test_capturing(self):
@@ -1154,6 +1161,14 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['++++', '+-*/', u'×÷*/'],
         no_match=['×××x', '+++'])
+
+        self.given(u'''
+            /nonhex/nonhex/nonhex/
+                nonhex: +!hexdigit
+                    hexdigit: 0..9 a..f A..F
+        ''',
+        expect_full_match=['WOW', 'hi!', '...'],
+        no_match=['ACE', '123'])
 
 
 if __name__ == '__main__':
