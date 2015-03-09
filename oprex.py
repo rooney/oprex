@@ -113,6 +113,14 @@ def t_character_class(t):
             upper_bound = try_parse(bounds[1], single, uhex, by_name)
             return lower_bound + '-' + upper_bound
 
+    def include(chardef): # example: +upper +digit
+        if chardef.startswith('+'):
+            varname = chardef[1:]
+            if not regex.match('[A-Za-z0-9_]+', varname):
+                raise OprexSyntaxError('Illegal name: ' + varname)
+            check_varname(t.lineno, varname)
+            return '%(' + varname + ')s'
+
     result = []
     processed = []
     for chardef in chardefs[1:]:
@@ -120,20 +128,19 @@ def t_character_class(t):
             continue
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
-        compiled = try_parse(chardef, range, single, uhex, by_prop, by_name)
-        try:
-            regex.compile(compiled)
-        except Exception, e:
-            msg = e.msg if hasattr(e, 'msg') else e.message
-            msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (chardef, compiled, msg)
-            raise OprexSyntaxError(t.lineno, msg)
-        else:
-            result.append(compiled)
+        compiled = try_parse(chardef, range, single, uhex, by_prop, by_name, include)
+        if not compiled.startswith('%('):
+            try:
+                regex.compile(compiled)
+            except Exception, e:
+                msg = e.msg if hasattr(e, 'msg') else e.message
+                msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (chardef, compiled, msg)
+                raise OprexSyntaxError(t.lineno, msg)
+        result.append(compiled)
         processed.append(chardef)
 
-    value = '[' + ''.join(result) + ']'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', value)]
     t.type, t.value = 'COLON', ':'
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', result)]
     return t
 
 
@@ -150,7 +157,7 @@ def t_LITERAL(t):
     return t
 
 
-class Variable(namedtuple('Variable', 'name value lineno')):
+class Variable(namedtuple('Variable', 'name value lineno charclass')):
     __slots__ = ()
     def __str__(self):
         return self.value
@@ -165,13 +172,15 @@ class VariableLookup:
         return self
 
 
+def check_varname(lineno, name):
+    if regex.match('[0-9_]', name):
+        raise OprexSyntaxError(lineno, 'Illegal name (must start with a letter): ' + name)
+    if name[-1] == '_':
+        raise OprexSyntaxError(lineno, 'Illegal name (must not end with underscore): ' + name)
+
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
-    name = t.value
-    if regex.match('[0-9_]', name):
-        raise OprexSyntaxError(t.lineno, 'Illegal name (must start with a letter): ' + name)
-    if name[-1] == '_':
-        raise OprexSyntaxError(t.lineno, 'Illegal name (must not end with underscore): ' + name)
+    check_varname(t.lineno, t.value)
     return t
 
 
@@ -284,6 +293,18 @@ def p_oprex(t):
     t[0] = expression
 
 
+def check_unused_variable(t, lookups):
+    try:
+        definitions = t[4]
+    except IndexError:
+        pass
+    else:
+        for var in definitions:
+            if var.name not in lookups:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+        t.lexer.scopes.pop()
+
+
 def p_expression(t):
     '''expression : lookup NEWLINE
                   | lookup NEWLINE beginscope definitions DEDENT'''
@@ -294,16 +315,7 @@ def p_expression(t):
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
-    try:
-        definitions = t[4]
-    except IndexError:
-        pass
-    else:
-        for var in definitions:
-            if var.name not in lookup.names:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
-
+    check_unused_variable(t, lookup.names)
     t[0] = result
 
 
@@ -413,8 +425,9 @@ def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN assignment
                   | VARNAME EQUALSIGN expression
                   | VARNAME EQUALSIGN LITERAL   NEWLINE
-                  | VARNAME COLON     CHARCLASS NEWLINE'''
+                  | VARNAME COLON     charclass'''
     varname = t[1]
+    charclass = t[2] == ':'
     lineno = t.lineno(1)
     if isinstance(t[3], list): # t[3] is another assignment
         variables = t[3]
@@ -422,8 +435,33 @@ def p_assignment(t):
     else:
         variables = []
         value = t[3]
-    variables.append(Variable(varname, value, lineno))
+    variables.append(Variable(varname, value, lineno, charclass))
     t[0] = variables
+
+
+def p_charclass(t):
+    '''charclass : CHARCLASS NEWLINE
+                 | CHARCLASS NEWLINE INDENT definitions DEDENT'''
+    charclass = t[1]
+    lookups = []
+    current_scope = t.lexer.scopes[-1]
+
+    def interpolate(char):
+        if char.startswith('%(') and char.endswith(')s'): # lookup
+            varname = char[2:-2]
+            lookups.append(varname)
+            try:
+                var = current_scope[varname]
+            except KeyError:
+                raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % varname)
+            if not var.charclass:
+                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
+            char = char % current_scope
+        return char
+
+    charclass = map(interpolate, charclass)
+    check_unused_variable(t, lookups)
+    t[0] = '[' + ''.join(charclass) + ']'
 
 
 def p_error(t):

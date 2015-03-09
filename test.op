@@ -1,3 +1,4 @@
 
 x
-	x: U+41..Z :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
+	x: U+41..Z :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW +abc
+		abc = 'semakin di depan'
