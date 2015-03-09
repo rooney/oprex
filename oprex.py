@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, argparse
+import regex, argparse, codecs
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -115,11 +115,7 @@ def t_character_class(t):
 
     def include(chardef): # example: +upper +digit
         if chardef.startswith('+'):
-            varname = chardef[1:]
-            if not regex.match('[A-Za-z0-9_]+', varname):
-                raise OprexSyntaxError('Illegal name: ' + varname)
-            check_varname(t.lineno, varname)
-            return '%(' + varname + ')s'
+            return '%(' + chardef[1:] + ')s'
 
     result = []
     processed = []
@@ -129,13 +125,15 @@ def t_character_class(t):
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
         compiled = try_parse(chardef, range, single, uhex, by_prop, by_name, include)
-        if not compiled.startswith('%('):
+        if not compiled.startswith('%('): # not include
             try:
-                regex.compile(compiled)
-            except Exception, e:
-                msg = e.msg if hasattr(e, 'msg') else e.message
-                msg = '%s compiles to %s which is rejected by the regex module with error message: %s' % (chardef, compiled, msg)
-                raise OprexSyntaxError(t.lineno, msg)
+                test = compiled
+                if test[:2] not in ['\\p', '\\P']:
+                    test = '[' + test + ']' 
+                regex.compile(test)
+            except Exception as e:
+                msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
+                raise OprexSyntaxError(t.lineno, msg % (chardef, compiled, e.msg if hasattr(e, 'msg') else e.message))
         result.append(compiled)
         processed.append(chardef)
 
@@ -172,15 +170,13 @@ class VariableLookup:
         return self
 
 
-def check_varname(lineno, name):
-    if regex.match('[0-9_]', name):
-        raise OprexSyntaxError(lineno, 'Illegal name (must start with a letter): ' + name)
-    if name[-1] == '_':
-        raise OprexSyntaxError(lineno, 'Illegal name (must not end with underscore): ' + name)
-
 def t_VARNAME(t):
     r'[A-Za-z0-9_]+'
-    check_varname(t.lineno, t.value)
+    name = t.value
+    if regex.match('[0-9_]', name):
+        raise OprexSyntaxError(t.lineno, 'Illegal name (must start with a letter): ' + name)
+    if name[-1] == '_':
+        raise OprexSyntaxError(t.lineno, 'Illegal name (must not end with underscore): ' + name)
     return t
 
 
@@ -453,7 +449,7 @@ def p_charclass(t):
             try:
                 var = current_scope[varname]
             except KeyError:
-                raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % varname)
+                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
             if not var.charclass:
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
             char = char % current_scope
@@ -531,8 +527,14 @@ def parse(lexer):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('path/to/source/file')
+    argparser.add_argument('--encoding', help='encoding of the source file')
     args = argparser.parse_args()
+
     source_file = getattr(args, 'path/to/source/file')
-    with open(source_file, 'r') as f:
-        source_code = f.read() 
+    default_encoding = 'utf-8'
+    encoding = args.encoding or default_encoding
+
+    with codecs.open(source_file, 'r', encoding) as f:
+        source_code = f.read()
+
     print oprex(source_code)

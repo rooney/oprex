@@ -599,6 +599,67 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 3: Character class invalid keyword: bigcrunch')
 
 
+    def test_invalid_charclass_include(self):
+        self.given('''
+            x
+                x: +1
+        ''',
+        expect_error="Line 3: Cannot include '1': not defined")
+
+        self.given('''
+            x
+                x: +7even
+                    7even: 7
+        ''',
+        expect_error='Line 4: Illegal name (must start with a letter): 7even')
+
+        self.given('''
+            x
+                x: +bang!
+        ''',
+        expect_error="Line 3: Cannot include 'bang!': not defined")
+
+        self.given('''
+            x
+                x: ++
+        ''',
+        expect_error="Line 3: Cannot include '+': not defined")
+
+        self.given('''
+            x
+                x: ++
+                    +: p l u s
+        ''',
+        expect_error='Line 4: Unsupported syntax: +: p l u s')
+
+        self.given('''
+            x
+                x: +awe+some
+        ''',
+        expect_error="Line 3: Cannot include 'awe+some': not defined")
+
+        self.given('''
+            x
+                x: +__special__
+                    __special__: x
+        ''',
+        expect_error="Line 4: Illegal name (must start with a letter): __special__")
+
+        self.given('''
+            x
+                x: y
+                    y: m i s n g +
+        ''',
+        expect_error="Line 4: 'y' is defined but not used (by its parent expression)")
+
+        self.given('''
+            x
+                x: +y
+                    y = 'should be a charclass'
+        ''',
+        expect_error="Line 3: Cannot include 'y': not a character class")
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         alwayson_flags = '(?umV1)'
@@ -724,6 +785,18 @@ class TestOutput(unittest.TestCase):
                 x: U+41..Z :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         ''',
         expect_regex=r'[\u0041-Z\N{LEFTWARDS ARROW}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
+
+
+    def test_charclass_include_output(self):
+        self.given(u'''
+            op
+                op: +add +sub +mul +div
+                    add: +
+                    sub: -
+                    mul: * ×
+                    div: / ÷ :
+        ''',
+        expect_regex=u'[[+][-][*×][/÷:]]')
 
 
     def test_capturing(self):
@@ -1068,6 +1141,19 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=[u'←', u'→', u'⇶', u'⇿'],
         no_match=['>'])
+
+
+    def test_charclass_include(self):
+        self.given(u'''
+            /op/op/op/op/
+                op: +add +sub +mul +div
+                    add: +
+                    sub: -
+                    mul: * ×
+                    div: / ÷ :
+        ''',
+        expect_full_match=['++++', '+-*/', u'×÷*/'],
+        no_match=['×××x', '+++'])
 
 
 if __name__ == '__main__':
