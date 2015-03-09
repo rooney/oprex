@@ -113,9 +113,11 @@ def t_character_class(t):
             upper_bound = try_parse(bounds[1], single, uhex, by_name)
             return lower_bound + '-' + upper_bound
 
-    def include(chardef): # example: +upper +digit
+    def include(chardef): # example: +upper +!lower
+        if chardef.startswith('+!'):
+            return chardef[2:], True # varname, negation
         if chardef.startswith('+'):
-            return '%(' + chardef[1:] + ')s'
+            return chardef[1:], False
 
     result = []
     processed = []
@@ -125,7 +127,7 @@ def t_character_class(t):
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
         compiled = try_parse(chardef, range, single, uhex, by_prop, by_name, include)
-        if not compiled.startswith('%('): # not include
+        if isinstance(compiled, basestring):
             try:
                 test = compiled
                 if test[:2] not in ['\\p', '\\P']:
@@ -443,8 +445,8 @@ def p_charclass(t):
     current_scope = t.lexer.scopes[-1]
 
     def interpolate(char):
-        if char.startswith('%(') and char.endswith(')s'): # lookup
-            varname = char[2:-2]
+        if isinstance(char, tuple): # lookup
+            varname, negation = char
             lookups.append(varname)
             try:
                 var = current_scope[varname]
@@ -452,7 +454,9 @@ def p_charclass(t):
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
             if not var.charclass:
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
-            char = char % current_scope
+            char = var.value
+            if negation:
+                char = '[^' + char[1:]
         return char
 
     charclass = map(interpolate, charclass)

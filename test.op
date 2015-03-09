@@ -1,7 +1,4 @@
 
-op
-    op: +add +sub +mul +div
-        add: +
-        sub: -
-        mul: * ×
-        div: / ÷ :
+nonhex
+    nonhex: +!hexdigit
+        hexdigit: 0..9 a..f A..F
