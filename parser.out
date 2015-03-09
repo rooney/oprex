@@ -29,7 +29,7 @@ Rule 23    assignment -> VARNAME EQUALSIGN expression
 Rule 24    assignment -> VARNAME EQUALSIGN LITERAL NEWLINE
 Rule 25    assignment -> VARNAME COLON charclass
 Rule 26    charclass -> CHARCLASS NEWLINE
-Rule 27    charclass -> CHARCLASS NEWLINE INDENT definitions DEDENT
+Rule 27    charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT
 
 Terminals, with rules where they appear
 
@@ -38,7 +38,7 @@ COLON                : 25
 DEDENT               : 5 7 27
 EQUALSIGN            : 22 23 24
 GLOBALMARK           : 21
-INDENT               : 5 17 27
+INDENT               : 5 17
 LITERAL              : 24
 LPAREN               : 14 15 16
 NEWLINE              : 3 4 5 6 7 24 26 27
@@ -52,7 +52,7 @@ error                :
 Nonterminals, with rules where they appear
 
 assignment           : 20 21 22
-beginscope           : 7
+beginscope           : 7 27
 cell                 : 10 11
 cells                : 9 11
 charclass            : 25
@@ -390,7 +390,7 @@ state 31
 
     (25) assignment -> VARNAME COLON . charclass
     (26) charclass -> . CHARCLASS NEWLINE
-    (27) charclass -> . CHARCLASS NEWLINE INDENT definitions DEDENT
+    (27) charclass -> . CHARCLASS NEWLINE beginscope definitions DEDENT
 
     CHARCLASS       shift and go to state 37
 
@@ -454,7 +454,7 @@ state 36
 state 37
 
     (26) charclass -> CHARCLASS . NEWLINE
-    (27) charclass -> CHARCLASS . NEWLINE INDENT definitions DEDENT
+    (27) charclass -> CHARCLASS . NEWLINE beginscope definitions DEDENT
 
     NEWLINE         shift and go to state 42
 
@@ -500,13 +500,15 @@ state 41
 state 42
 
     (26) charclass -> CHARCLASS NEWLINE .
-    (27) charclass -> CHARCLASS NEWLINE . INDENT definitions DEDENT
+    (27) charclass -> CHARCLASS NEWLINE . beginscope definitions DEDENT
+    (17) beginscope -> . INDENT
 
     GLOBALMARK      reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
     VARNAME         reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
     DEDENT          reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
-    INDENT          shift and go to state 44
+    INDENT          shift and go to state 17
 
+    beginscope                     shift and go to state 44
 
 state 43
 
@@ -519,7 +521,7 @@ state 43
 
 state 44
 
-    (27) charclass -> CHARCLASS NEWLINE INDENT . definitions DEDENT
+    (27) charclass -> CHARCLASS NEWLINE beginscope . definitions DEDENT
     (18) definitions -> . definition
     (19) definitions -> . definition definitions
     (20) definition -> . assignment
@@ -532,22 +534,22 @@ state 44
     GLOBALMARK      shift and go to state 23
     VARNAME         shift and go to state 24
 
-    definitions                    shift and go to state 45
-    assignment                     shift and go to state 22
     definition                     shift and go to state 21
+    assignment                     shift and go to state 22
+    definitions                    shift and go to state 45
 
 state 45
 
-    (27) charclass -> CHARCLASS NEWLINE INDENT definitions . DEDENT
+    (27) charclass -> CHARCLASS NEWLINE beginscope definitions . DEDENT
 
     DEDENT          shift and go to state 46
 
 
 state 46
 
-    (27) charclass -> CHARCLASS NEWLINE INDENT definitions DEDENT .
+    (27) charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT .
 
-    GLOBALMARK      reduce using rule 27 (charclass -> CHARCLASS NEWLINE INDENT definitions DEDENT .)
-    VARNAME         reduce using rule 27 (charclass -> CHARCLASS NEWLINE INDENT definitions DEDENT .)
-    DEDENT          reduce using rule 27 (charclass -> CHARCLASS NEWLINE INDENT definitions DEDENT .)
+    GLOBALMARK      reduce using rule 27 (charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT .)
+    VARNAME         reduce using rule 27 (charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT .)
+    DEDENT          reduce using rule 27 (charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT .)
 

@@ -809,6 +809,14 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=u'[[^0-9a-fA-F]]')
 
+        self.given(u'''
+            hex
+                hex: +!unhex
+                    unhex: +!hexdigit
+                        hexdigit: 0..9 a..f A..F
+        ''',
+        expect_regex=u'[[^[^0-9a-fA-F]]]')
+
 
     def test_capturing(self):
         self.given('''

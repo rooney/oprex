@@ -439,7 +439,7 @@ def p_assignment(t):
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
-                 | CHARCLASS NEWLINE INDENT definitions DEDENT'''
+                 | CHARCLASS NEWLINE beginscope definitions DEDENT'''
     charclass = t[1]
     lookups = []
     current_scope = t.lexer.scopes[-1]

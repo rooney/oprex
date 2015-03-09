@@ -1,4 +1,5 @@
 
-nonhex
-    nonhex: +!hexdigit
-        hexdigit: 0..9 a..f A..F
+hex
+    hex: +!unhex
+        unhex: +!hexdigit
+            hexdigit: 0..9 a..f A..F
