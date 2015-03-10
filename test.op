@@ -1,5 +1,3 @@
 
-hex
-    hex: +!unhex
-        unhex: +!hexdigit
-            hexdigit: 0..9 a..f A..F
+invalid_range
+    invalid_range: +alpha../IsAlphabetic

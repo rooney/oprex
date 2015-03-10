@@ -66,12 +66,12 @@ def t_character_class(t):
     if len(chardefs) == 1: # only colon not followed by anything
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    def try_parse(chardef, *methods):
-        for method in methods:
+    def try_parse(chardef, errmsg, *methods): # pass chardef to method(s) until we got something
+        for method in methods:                # otherwise raise errmsg
             result = method(chardef)
             if result:
                 return result
-        raise OprexSyntaxError(t.lineno, 'Character class invalid keyword: ' + chardef)
+        raise OprexSyntaxError(t.lineno, errmsg)
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
@@ -94,6 +94,12 @@ def t_character_class(t):
             else:
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
+    def include(chardef): # example: +upper +!lower
+        if chardef.startswith('+!'):
+            return chardef[2:], True # varname, negation
+        if chardef.startswith('+'):
+            return chardef[1:], False
+
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
         if chardef.startswith('/'):
             return r'\%s{%s}' % ('P' if '!' in chardef else 'p', chardef[1:].replace('!', '', 1))
@@ -106,18 +112,13 @@ def t_character_class(t):
 
     def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         if '..' in chardef:
+            errmsg = 'Invalid range: ' + chardef
             bounds = chardef.split('..')
             if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
-                raise OprexSyntaxError(t.lineno, 'Range syntax error: ' + chardef)
-            lower_bound = try_parse(bounds[0], single, uhex, by_name)
-            upper_bound = try_parse(bounds[1], single, uhex, by_name)
+                raise OprexSyntaxError(t.lineno, errmsg)
+            lower_bound = try_parse(bounds[0], errmsg, single, uhex, by_name)
+            upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
             return lower_bound + '-' + upper_bound
-
-    def include(chardef): # example: +upper +!lower
-        if chardef.startswith('+!'):
-            return chardef[2:], True # varname, negation
-        if chardef.startswith('+'):
-            return chardef[1:], False
 
     result = []
     processed = []
@@ -126,7 +127,8 @@ def t_character_class(t):
             continue
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
-        compiled = try_parse(chardef, range, single, uhex, by_prop, by_name, include)
+        compiled = try_parse(chardef, 'Not a valid character class keyword: ' + chardef, 
+            range, single, uhex, by_prop, by_name, include)
         if isinstance(compiled, basestring):
             try:
                 test = compiled

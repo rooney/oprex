@@ -457,7 +457,7 @@ class TestErrorHandling(unittest.TestCase):
             diphtong
                 diphtong: ae au
         ''',
-        expect_error='Line 3: Character class invalid keyword: ae')
+        expect_error='Line 3: Not a valid character class keyword: ae')
 
         self.given('''
             miscolon
@@ -469,13 +469,13 @@ class TestErrorHandling(unittest.TestCase):
             miscolon
                 miscolon: 'colon should be equal sign'
         ''',
-        expect_error="Line 3: Character class invalid keyword: 'colon")
+        expect_error="Line 3: Not a valid character class keyword: 'colon")
 
         self.given('''
             /A/a/
                 A: a: A a
         ''',
-        expect_error='Line 3: Character class invalid keyword: a:')
+        expect_error='Line 3: Not a valid character class keyword: a:')
 
         self.given('''
             /A/a/
@@ -531,7 +531,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: u1234
         ''',
-        expect_error='Line 3: Character class invalid keyword: u1234')
+        expect_error='Line 3: Not a valid character class keyword: u1234')
 
         self.given('''
             x
@@ -562,19 +562,19 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: check-mark
         ''',
-        expect_error='Line 3: Character class invalid keyword: check-mark')
+        expect_error='Line 3: Not a valid character class keyword: check-mark')
 
         self.given('''
             x
                 x: @omic
         ''',
-        expect_error='Line 3: Character class invalid keyword: @omic')
+        expect_error='Line 3: Not a valid character class keyword: @omic')
 
         self.given('''
             x
                 x: awe$ome
         ''',
-        expect_error='Line 3: Character class invalid keyword: awe$ome')
+        expect_error='Line 3: Not a valid character class keyword: awe$ome')
 
 
     def test_invalid_range(self):
@@ -582,25 +582,49 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: ..
         ''',
-        expect_error='Line 3: Range syntax error: ..')
+        expect_error='Line 3: Invalid range: ..')
 
         self.given('''
             x
                 x: infinity..
         ''',
-        expect_error='Line 3: Range syntax error: infinity..')
+        expect_error='Line 3: Invalid range: infinity..')
 
         self.given('''
             x
                 x: ..bigbang
         ''',
-        expect_error='Line 3: Range syntax error: ..bigbang')
+        expect_error='Line 3: Invalid range: ..bigbang')
 
         self.given('''
             x
                 x: bigcrunch..bigbang
         ''',
-        expect_error='Line 3: Character class invalid keyword: bigcrunch')
+        expect_error='Line 3: Invalid range: bigcrunch..bigbang')
+
+        self.given('''
+            x
+                x: A...Z
+        ''',
+        expect_error='Line 3: Invalid range: A...Z')
+
+        self.given('''
+            x
+                x: 1..2..3
+        ''',
+        expect_error='Line 3: Invalid range: 1..2..3')
+
+        self.given('''
+            x
+                x: /IsAlphabetic..Z
+        ''',
+        expect_error='Line 3: Invalid range: /IsAlphabetic..Z')
+
+        self.given('''
+            x
+                x: +alpha..Z
+        ''',
+        expect_error='Line 3: Invalid range: +alpha..Z')
 
 
     def test_invalid_charclass_include(self):
