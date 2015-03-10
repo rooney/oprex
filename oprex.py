@@ -66,6 +66,8 @@ def t_character_class(t):
     if len(chardefs) == 1: # only colon not followed by anything
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
+    t.brackets_mandatory = False
+
     def try_parse(chardef, errmsg, *methods): # pass chardef to method(s) until we got something
         for method in methods:                # otherwise raise errmsg
             result = method(chardef)
@@ -95,10 +97,12 @@ def t_character_class(t):
                 return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
 
     def include(chardef): # example: +upper +!lower
-        if chardef.startswith('+!'):
-            return chardef[2:], True # varname, negation
         if chardef.startswith('+'):
-            return chardef[1:], False
+            if chardef.startswith('+!'):
+                varname, negation = chardef[2:], True
+            else:
+                varname, negation = chardef[1:], False
+            return varname, negation
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
         if chardef.startswith('/'):
@@ -118,6 +122,7 @@ def t_character_class(t):
                 raise OprexSyntaxError(t.lineno, errmsg)
             lower_bound = try_parse(bounds[0], errmsg, single, uhex, by_name)
             upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
+            t.brackets_mandatory = True
             return lower_bound + '-' + upper_bound
 
     result = []
@@ -142,7 +147,7 @@ def t_character_class(t):
         processed.append(chardef)
 
     t.type, t.value = 'COLON', ':'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', result)]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (result, t.brackets_mandatory))]
     return t
 
 
@@ -442,7 +447,7 @@ def p_assignment(t):
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
                  | CHARCLASS NEWLINE beginscope definitions DEDENT'''
-    charclass = t[1]
+    charclass, brackets_mandatory = t[1]
     lookups = []
     current_scope = t.lexer.scopes[-1]
 
@@ -458,12 +463,21 @@ def p_charclass(t):
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
             char = var.value
             if negation:
-                char = '[^' + char[1:]
+                if char.startswith('[^'):
+                    char = '[' + char[2:]
+                else:
+                    char = '[^' + char[1:]
         return char
 
     charclass = map(interpolate, charclass)
     check_unused_variable(t, lookups)
-    t[0] = '[' + ''.join(charclass) + ']'
+
+    if len(charclass) > 1 or brackets_mandatory:
+        charclass = '[' + ''.join(charclass) + ']'
+    else:
+        charclass = charclass[0]
+
+    t[0] = charclass
 
 
 def p_error(t):

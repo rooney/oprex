@@ -830,14 +830,14 @@ class TestOutput(unittest.TestCase):
                     mul: * ×
                     div: / ÷ :
         ''',
-        expect_regex=ur'[[+][\-][*×][/÷:]]')
+        expect_regex=ur'[+\-[*×][/÷:]]')
 
         self.given(u'''
             nonhex
                 nonhex: +!hexdigit
                     hexdigit: 0..9 a..f A..F
         ''',
-        expect_regex=u'[[^0-9a-fA-F]]')
+        expect_regex=u'[^0-9a-fA-F]')
 
         self.given(u'''
             hex
@@ -845,7 +845,7 @@ class TestOutput(unittest.TestCase):
                     unhex: +!hexdigit
                         hexdigit: 0..9 a..f A..F
         ''',
-        expect_regex=u'[[^[^0-9a-fA-F]]]')
+        expect_regex=u'[0-9a-fA-F]')
 
 
     def test_capturing(self):
@@ -942,7 +942,7 @@ class TestOutput(unittest.TestCase):
                     gedang = 'papaya'
                     opat = empat
         ''',
-        expect_regex='[1][4][4]banana[4]papaya[4]')
+        expect_regex='144banana4papaya4')
 
         self.given('''
             /oneoneone/oneone/one/
@@ -953,7 +953,7 @@ class TestOutput(unittest.TestCase):
                 one = satu
                     satu: 1
         ''',
-        expect_regex='11111[1]')
+        expect_regex='111111')
 
 
     def test_aliases(self):
@@ -971,7 +971,7 @@ class TestOutput(unittest.TestCase):
                 ten = X
                 unknown_thing = wrong_answer = X
         ''',
-        expect_regex='[X][X][X][X][X]')
+        expect_regex='XXXXX')
 
 
     def test_empty_lines_ok(self):
