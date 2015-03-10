@@ -814,6 +814,12 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'[\u0041-Z\N{LEFTWARDS ARROW}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
 
+        self.given('''
+            need_escape
+                need_escape: [ ^ a - z ]
+        ''',
+        expect_regex=r'[\[\^a\-z\]]')
+
 
     def test_charclass_include_output(self):
         self.given(u'''
@@ -824,7 +830,7 @@ class TestOutput(unittest.TestCase):
                     mul: * ×
                     div: / ÷ :
         ''',
-        expect_regex=u'[[+][-][*×][/÷:]]')
+        expect_regex=ur'[[+][\-][*×][/÷:]]')
 
         self.given(u'''
             nonhex
@@ -1184,6 +1190,13 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=[u'←', u'→', u'⇶', u'⇿'],
         no_match=['>'])
+
+        self.given('''
+            need_escape
+                need_escape: [ ^ a - z ]
+        ''',
+        expect_full_match=['[', '^', 'a', '-', 'z', ']'],
+        no_match=['b', 'A'])
 
 
     def test_charclass_include(self):

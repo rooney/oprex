@@ -75,7 +75,7 @@ def t_character_class(t):
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
-            if chardef in ['[', ']', '^', '\\']: # need escape
+            if chardef in ['[', ']', '^', '-', '\\']: # need escape
                 chardef = '\\' + chardef
             return chardef
 
