@@ -833,11 +833,92 @@ class TestOutput(unittest.TestCase):
         expect_regex=ur'[+\-[*×][/÷:]]')
 
         self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: ä
+        ''',
+        expect_regex=u'ä')
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +small_a_umlaut
+                    small_a_umlaut: +a_with_diaeresis
+                        a_with_diaeresis: ä
+        ''',
+        expect_regex=u'ä')
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: U+E4
+        ''',
+        expect_regex=r'\u00E4')
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: :LATIN_SMALL_LETTER_A_WITH_DIAERESIS
+        ''',
+        expect_regex=r'\N{LATIN SMALL LETTER A WITH DIAERESIS}')
+
+        self.given(u'''
+            alphabetic
+                alphabetic: +is_alphabetic
+                    is_alphabetic: /Alphabetic
+        ''',
+        expect_regex=r'\p{Alphabetic}')
+
+        self.given(u'''
+            lowaz
+                lowaz: +lowerAZ
+                    lowerAZ: a..z
+        ''',
+        expect_regex='[a-z]')
+
+
+    def test_negated_charclass_output(self):
+        self.given(u'''
+            notA
+                notA: +!A
+                    A: A
+        ''',
+        expect_regex='[^A]')
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!small_a_umlaut
+                    small_a_umlaut: +a_with_diaeresis
+                        a_with_diaeresis: ä
+        ''',
+        expect_regex=u'[^ä]')
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!AUmlaut
+                    AUmlaut: U+FC
+        ''',
+        expect_regex=r'[^\u00FC]')
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!a_with_diaeresis
+                    a_with_diaeresis: :LATIN_SMALL_LETTER_A_WITH_DIAERESIS
+        ''',
+        expect_regex=r'[^\N{LATIN SMALL LETTER A WITH DIAERESIS}]')
+
+        self.given(u'''
+            alphabetic
+                alphabetic: +!nonAlpha
+                    nonAlpha: /!Alphabetic
+        ''',
+        expect_regex=r'[^\P{Alphabetic}]')
+
+        self.given(u'''
             nonhex
                 nonhex: +!hexdigit
                     hexdigit: 0..9 a..f A..F
         ''',
-        expect_regex=u'[^0-9a-fA-F]')
+        expect_regex='[^0-9a-fA-F]')
 
         self.given(u'''
             hex
@@ -845,7 +926,14 @@ class TestOutput(unittest.TestCase):
                     unhex: +!hexdigit
                         hexdigit: 0..9 a..f A..F
         ''',
-        expect_regex=u'[0-9a-fA-F]')
+        expect_regex='[0-9a-fA-F]')
+
+        self.given(u'''
+            nonaz
+                nonaz: +!lowerAZ
+                    lowerAZ: a..z
+        ''',
+        expect_regex='[^a-z]')
 
 
     def test_nested_charclass_output(self):
@@ -1288,6 +1376,118 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['AcE', '12e', 'fff'],
         no_match=['WOW', 'hi!', '...'])
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: ä
+        ''',
+        expect_full_match=[u'ä'])
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +small_a_umlaut
+                    small_a_umlaut: +a_with_diaeresis
+                        a_with_diaeresis: ä
+        ''',
+        expect_full_match=[u'ä'])
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: U+E4
+        ''',
+        expect_full_match=[u'ä'])
+
+        self.given(u'''
+            aUmlaut
+                aUmlaut: +a_with_diaeresis
+                    a_with_diaeresis: :LATIN_SMALL_LETTER_A_WITH_DIAERESIS
+        ''',
+        expect_full_match=[u'ä'])
+
+        self.given(u'''
+            alphabetic
+                alphabetic: +is_alphabetic
+                    is_alphabetic: /Alphabetic
+        ''',
+        expect_full_match=[u'ä', 'a'])
+
+        self.given(u'''
+            lowaz
+                lowaz: +lowerAZ
+                    lowerAZ: a..z
+        ''',
+        expect_full_match=['a', 'b', 'c', 'z'],
+        no_match=['A', 'Z', u'ä'])
+
+
+    def test_negated_charclass_output(self):
+        self.given(u'''
+            notA
+                notA: +!A
+                    A: A
+        ''',
+        expect_full_match=['a', 'b', 'B', u'ä', u'Ä'],
+        no_match=['A'])
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!small_a_umlaut
+                    small_a_umlaut: +a_with_diaeresis
+                        a_with_diaeresis: ä
+        ''',
+        expect_full_match=['a', u'Ä'],
+        no_match=[u'ä'])
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!AUmlaut
+                    AUmlaut: u+c4
+        ''',
+        expect_full_match=['a', u'ä'],
+        no_match=[u'Ä'])
+
+        self.given(u'''
+            notAUmlaut
+                notAUmlaut: +!a_with_diaeresis
+                    a_with_diaeresis: :LATIN_SMALL_LETTER_A_WITH_DIAERESIS
+        ''',
+        expect_full_match=['a', u'Ä'],
+        no_match=[u'ä]'])
+
+        self.given(u'''
+            alphabetic
+                alphabetic: +!nonAlpha
+                    nonAlpha: /!Alphabetic
+        ''',
+        expect_full_match=['a', u'ä', u'Ä'],
+        no_match=['$'])
+
+        self.given(u'''
+            nonhex
+                nonhex: +!hexdigit
+                    hexdigit: 0..9 a..f A..F
+        ''',
+        expect_full_match=['W', '$', u'Ä'],
+        no_match=['a', 'A', '0', '1', '9'])
+
+        self.given(u'''
+            hex
+                hex: +!unhex
+                    unhex: +!hexdigit
+                        hexdigit: 0..9 a..f A..F
+        ''',
+        expect_full_match=['a', 'A', '0', '1', '9'],
+        no_match=['W', '$', u'Ä'])
+
+        self.given(u'''
+            nonaz
+                nonaz: +!lowerAZ
+                    lowerAZ: a..z
+        ''',
+        expect_full_match=['A', 'Z', u'Ä', u'ä', '1', '$'],
+        no_match=['a', 'b', 'z'])
 
 
 if __name__ == '__main__':

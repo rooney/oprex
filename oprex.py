@@ -65,7 +65,7 @@ class CharclassInclude(namedtuple('CharclassInclude', 'name negated')):
 
 def t_character_class(t):
     ''':.*'''
-    chardefs = t.value.split(' ')
+    chardefs = t.value.strip().split(' ')
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
     if len(chardefs) == 1: # only colon not followed by anything
@@ -478,7 +478,7 @@ def p_charclass(t):
 
         include = var.value
         if negated:
-            if include.startswith('[^'):      # already a negation
+            if include.startswith('[^'): # already a negation
                 include = include.replace('[^', '[', 1) # remove the negation
             elif include.startswith('['):
                 include = include.replace('[', '[^', 1)
