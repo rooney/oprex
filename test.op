@@ -1,6 +1,7 @@
 
-            /alice/bob/
-                alice = 'alice'
-                bob = robert
-                    robert = 'bob'
-                    doe = 'doe'
+/hex/
+    hex: +hexx +hexy +hexz
+        hexx = hexdigit
+            hexdigit: 0..9
+        hexy = hexz: +hexalpha
+            hexalpha: a..f A..F

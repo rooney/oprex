@@ -875,6 +875,16 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[a-z]')
 
+        self.given(u'''
+            /hex/
+                hex: +hexx +hexy +hexz
+                    hexx = hexdigit
+                        hexdigit: 0..9
+                    hexy = hexz = hexalpha
+                        hexalpha: a..f A..F
+        ''',
+        expect_regex='[0-9a-fA-Fa-fA-F]')
+
 
     def test_negated_charclass_output(self):
         self.given(u'''
@@ -1420,6 +1430,17 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', 'b', 'c', 'z'],
         no_match=['A', 'Z', u'ä'])
+
+        self.given(u'''
+            /hex/
+                hex: +hexx +hexy +hexz
+                    hexx = hexdigit
+                        hexdigit: 0..9
+                    hexy = hexz = hexalpha
+                        hexalpha: a..f A..F
+        ''',
+        expect_full_match=['a', 'b', 'f', 'A', 'B', 'F', '0', '1', '9'],
+        no_match=['z', 'Z', u'ä', '$'])
 
 
     def test_negated_charclass(self):

@@ -69,8 +69,13 @@ class Variable(namedtuple('Variable', 'name value lineno')):
         return self.value
 
 
-class VariableLookup(namedtuple('VariableLookup', 'varname fmt')):
+class SimpleLookup(namedtuple('SimpleLookup', 'varname')):
     __slots__ = ()
+
+
+class ChainedLookup:
+    varnames = []
+    fmt = ''
 
 
 class CharClass(unicode):
@@ -323,50 +328,51 @@ def check_unused_variable(t, definitions, referenced_varnames):
 
 
 def p_expression(t):
-    '''expression : lookups NEWLINE
-                  | lookups NEWLINE beginscope definitions DEDENT'''
-    lookups = t[1]
-    referenced_varnames = []
-    fmt = ''
-    for lookup in lookups:
-        referenced_varnames.append(lookup.varname)
-        fmt += lookup.fmt
+    '''expression : lookup NEWLINE
+                  | lookup NEWLINE beginscope definitions DEDENT'''
+    lookup = t[1]
+    def do_lookup(fn):
+        try:
+            return fn()
+        except KeyError as e:
+            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
     current_scope = t.lexer.scopes[-1]
-    try:
-        result = fmt % current_scope
-    except KeyError as e:
-        raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
+    if isinstance(lookup, SimpleLookup):
+        referenced_varnames = [lookup.varname]
+        result = do_lookup(lambda: current_scope[lookup.varname].value)
+    else: # ChainedLookup
+        referenced_varnames = lookup.varnames
+        result = do_lookup(lambda: lookup.fmt % current_scope)
 
     if len(t) > 3:
         check_unused_variable(t, t[4], referenced_varnames)
-
     t[0] = result
 
 
-def p_lookups(t):
-    '''lookups : VARNAME
-               | SLASH cells'''
+def p_lookup(t):
+    '''lookup : VARNAME
+              | SLASH cells'''
     if t[1] == '/':
-        lookups = t[2]
+        lookup = t[2]
     else:
         varname = t[1]
-        lookups = deque()
-        lookups.append(VariableLookup(varname, '%(' + varname + ')s'))
-    t[0] = lookups
+        lookup = SimpleLookup(varname)
+    t[0] = lookup
 
 
 def p_cells(t):
-    '''cells : cell SLASH
-             | cell SLASH cells'''
-    lookup = t[1]
-    try:
-        lookups = t[3]
-    except IndexError:
-        lookups = deque()
-
-    lookups.appendleft(lookup)
-    t[0] = lookups
+    '''cells : cell  SLASH
+             | cells       cell SLASH'''
+    if t[2] == '/':
+        varname, fmt = t[1]
+        lookup = ChainedLookup()
+    else:
+        lookup = t[1]
+        varname, fmt = t[2]
+    lookup.varnames.append(varname)
+    lookup.fmt += fmt
+    t[0] = lookup
 
 
 def p_cell(t):
@@ -401,7 +407,7 @@ def p_cell(t):
     elif optional and not capture:
         fmt = '(?:%s)?+' % fmt
 
-    t[0] = VariableLookup(varname, fmt)
+    t[0] = varname, fmt
 
 
 def p_beginscope(t):
