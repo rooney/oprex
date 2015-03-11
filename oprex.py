@@ -58,6 +58,11 @@ t_QUESTMARK  = r'\?'
 t_SLASH      = r'/'
 t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
+
+class CharclassInclude(namedtuple('CharclassInclude', 'name negated')):
+    __slots__ = ()
+
+
 def t_character_class(t):
     ''':.*'''
     chardefs = t.value.split(' ')
@@ -66,9 +71,7 @@ def t_character_class(t):
     if len(chardefs) == 1: # only colon not followed by anything
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    t.brackets_mandatory = False
-
-    def try_parse(chardef, errmsg, *methods): # pass chardef to method(s) until we got something
+    def try_parse(chardef, errmsg, *methods): # try the methods until we get something
         for method in methods:                # otherwise raise errmsg
             result = method(chardef)
             if result:
@@ -99,55 +102,66 @@ def t_character_class(t):
     def include(chardef): # example: +upper +!lower
         if chardef.startswith('+'):
             if chardef.startswith('+!'):
-                varname, negation = chardef[2:], True
+                varname, negated = chardef[2:], True
             else:
-                varname, negation = chardef[1:], False
-            return varname, negation
+                varname, negated = chardef[1:], False
+            return CharclassInclude(varname, negated)
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
         if chardef.startswith('/'):
-            return r'\%s{%s}' % ('P' if '!' in chardef else 'p', chardef[1:].replace('!', '', 1))
+            negated = '!' in chardef
+            switch = 'P' if negated else 'p'
+            prop = chardef[1:].replace('!', '', 1)
+            return '\\%s{%s}' % (switch, prop)
 
-    def by_name(chardef): # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
+    def by_name(chardef):           # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
         if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
             if not chardef.isupper(): 
                 raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
-            return r'\N{%s}' % chardef[1:].replace('_', ' ')
+            name = chardef[1:].replace('_', ' ')
+            return '\\N{%s}' % name
 
     def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         if '..' in chardef:
-            errmsg = 'Invalid range: ' + chardef
+            errmsg = 'Invalid character range: ' + chardef
             bounds = chardef.split('..')
             if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
                 raise OprexSyntaxError(t.lineno, errmsg)
             lower_bound = try_parse(bounds[0], errmsg, single, uhex, by_name)
             upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
-            t.brackets_mandatory = True
-            return lower_bound + '-' + upper_bound
+            return [lower_bound, '-', upper_bound]
 
-    result = []
     processed = []
+    charclass = []
     for chardef in chardefs[1:]:
         if not chardef: # multiple spaces for separator is ok
             continue
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
-        compiled = try_parse(chardef, 'Not a valid character class keyword: ' + chardef, 
-            range, single, uhex, by_prop, by_name, include)
-        if isinstance(compiled, basestring):
-            try:
+
+        compiled = try_parse(chardef, 'Not a valid character class keyword: ' + chardef, range, single, uhex, by_prop, by_name, include)
+        if not isinstance(compiled, CharclassInclude):
+            if isinstance(compiled, list):
+                test = ''.join(compiled)
+            else:
                 test = compiled
-                if test[:2] not in ['\\p', '\\P']:
-                    test = '[' + test + ']' 
+
+            if test[:2] not in ['\\p', '\\P']:
+                test = '[' + test + ']' 
+            try:
                 regex.compile(test)
             except Exception as e:
                 msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
                 raise OprexSyntaxError(t.lineno, msg % (chardef, compiled, e.msg if hasattr(e, 'msg') else e.message))
-        result.append(compiled)
+
         processed.append(chardef)
+        if isinstance(compiled, list):
+            charclass.extend(compiled)
+        else:
+            charclass.append(compiled)
 
     t.type, t.value = 'COLON', ':'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (result, t.brackets_mandatory))]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', charclass)]
     return t
 
 
@@ -447,37 +461,42 @@ def p_assignment(t):
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
                  | CHARCLASS NEWLINE beginscope definitions DEDENT'''
-    charclass, brackets_mandatory = t[1]
+    charclass = t[1]
     lookups = []
     current_scope = t.lexer.scopes[-1]
+    result = []
 
-    def interpolate(char):
-        if isinstance(char, tuple): # lookup
-            varname, negation = char
-            lookups.append(varname)
-            try:
-                var = current_scope[varname]
-            except KeyError:
-                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
-            if not var.charclass:
-                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
-            char = var.value
-            if negation:
-                if char.startswith('[^'):
-                    char = '[' + char[2:]
-                else:
-                    char = '[^' + char[1:]
-        return char
+    def translate(charclass_include):
+        varname, negated = charclass_include
+        lookups.append(varname)
+        try:
+            var = current_scope[varname]
+        except KeyError:
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
+        if not var.charclass:
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
 
-    charclass = map(interpolate, charclass)
+        include = var.value
+        if negated:
+            if include.startswith('[^'):      # already a negation
+                include = include.replace('[^', '[', 1) # remove the negation
+            elif include.startswith('['):
+                include = include.replace('[', '[^', 1)
+            else:
+                include = '[^' + include + ']'
+        return include
+
+    for chardef in charclass:
+        if isinstance(chardef, CharclassInclude):
+            chardef = translate(chardef)
+        result.append(chardef)
     check_unused_variable(t, lookups)
 
-    if len(charclass) > 1 or brackets_mandatory:
-        charclass = '[' + ''.join(charclass) + ']'
+    if len(result) > 1:
+        result = '[' + ''.join(result) + ']'
     else:
-        charclass = charclass[0]
-
-    t[0] = charclass
+        result = result[0]
+    t[0] = result
 
 
 def p_error(t):

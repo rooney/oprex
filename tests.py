@@ -582,49 +582,49 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: ..
         ''',
-        expect_error='Line 3: Invalid range: ..')
+        expect_error='Line 3: Invalid character range: ..')
 
         self.given('''
             x
                 x: infinity..
         ''',
-        expect_error='Line 3: Invalid range: infinity..')
+        expect_error='Line 3: Invalid character range: infinity..')
 
         self.given('''
             x
                 x: ..bigbang
         ''',
-        expect_error='Line 3: Invalid range: ..bigbang')
+        expect_error='Line 3: Invalid character range: ..bigbang')
 
         self.given('''
             x
                 x: bigcrunch..bigbang
         ''',
-        expect_error='Line 3: Invalid range: bigcrunch..bigbang')
+        expect_error='Line 3: Invalid character range: bigcrunch..bigbang')
 
         self.given('''
             x
                 x: A...Z
         ''',
-        expect_error='Line 3: Invalid range: A...Z')
+        expect_error='Line 3: Invalid character range: A...Z')
 
         self.given('''
             x
                 x: 1..2..3
         ''',
-        expect_error='Line 3: Invalid range: 1..2..3')
+        expect_error='Line 3: Invalid character range: 1..2..3')
 
         self.given('''
             x
                 x: /IsAlphabetic..Z
         ''',
-        expect_error='Line 3: Invalid range: /IsAlphabetic..Z')
+        expect_error='Line 3: Invalid character range: /IsAlphabetic..Z')
 
         self.given('''
             x
                 x: +alpha..Z
         ''',
-        expect_error='Line 3: Invalid range: +alpha..Z')
+        expect_error='Line 3: Invalid character range: +alpha..Z')
 
 
     def test_invalid_charclass_include(self):
@@ -848,6 +848,40 @@ class TestOutput(unittest.TestCase):
         expect_regex=u'[0-9a-fA-F]')
 
 
+    def test_nested_charclass_output(self):
+        self.given(u'''
+            vowhex
+                vowhex: +vowel +hex
+                    vowel: a i u e o
+                    hex: a..z A..Z 0..9
+        ''',
+        expect_regex='[[aiueo][a-zA-Z0-9]]')
+
+        self.given(u'''
+            vowhex
+                vowhex: +!vowel +hex
+                    vowel: a i u e o
+                    hex: a..z A..Z 0..9
+        ''',
+        expect_regex='[[^aiueo][a-zA-Z0-9]]')
+
+        self.given(u'''
+            vowhex
+                vowhex: +vowel +!hex
+                    vowel: a i u e o
+                    hex: a..z A..Z 0..9
+        ''',
+        expect_regex='[[aiueo][^a-zA-Z0-9]]')
+
+        self.given(u'''
+            vowhex
+                vowhex: +!vowel +!hex
+                    vowel: a i u e o
+                    hex: a..z A..Z 0..9
+        ''',
+        expect_regex='[[^aiueo][^a-zA-Z0-9]]')
+
+
     def test_capturing(self):
         self.given('''
             /defcon/(level)/
@@ -1032,7 +1066,7 @@ class TestMatches(unittest.TestCase):
                     oprex_source or '(empty string)', 
                     text or '(empty string)', 
                     'But it does match. The match is: ' + (match.group(0) or '(empty string)'),
-                    regex_source, 'utf-8' or '(empty string)',
+                    regex_source or '(empty string)',
                 ))
 
 
@@ -1040,15 +1074,22 @@ class TestMatches(unittest.TestCase):
             match = regex.match(regex_source, text)
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
-                assertion_error('%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
-                    oprex_source or '(empty string)', 
-                    text or '(empty string)', 
-                    "But it doesn't match at all." if not match else 'The expected partial match is: %s\nBut the resulting match is: %s' % (
-                        partmatch or '(empty string)', 
-                        match.group(0) or '(empty string)'
-                    ),
-                    regex_source or '(empty string)',
-                ))
+                if match.group(0) == text:
+                    assertion_error("%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
+                        oprex_source or '(empty string)', 
+                        text or '(empty string)', 
+                        regex_source or '(empty string)',
+                    ))
+                else:
+                    assertion_error('%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
+                        oprex_source or '(empty string)', 
+                        text or '(empty string)', 
+                        "But it doesn't match at all." if not match else 'The expected partial match is: %s\nBut the resulting match is: %s' % (
+                            partmatch or '(empty string)', 
+                            match.group(0) or '(empty string)'
+                        ),
+                        regex_source or '(empty string)',
+                    ))
 
 
     def test_simple_optional(self):
@@ -1210,6 +1251,26 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['++++', '+-*/', u'×÷*/'],
         no_match=['×××x', '+++'])
+
+        self.given(u'''
+            binary
+                binary: +bindigit
+                    bindigit: 0..1
+        ''',
+        expect_full_match=['0', '1'],
+        no_match=['2', 'I', ''],
+        partial_match={
+            '0-1'  : '0',
+            '0..1' : '0',
+        })
+
+        self.given(u'''
+            /hex/hex/hex/
+                hex: +hexdigit
+                    hexdigit: 0..9 a..f A..F
+        ''',
+        expect_full_match=['AcE', '12e', 'fff'],
+        no_match=['WOW', 'hi!', '...'])
 
         self.given(u'''
             /nonhex/nonhex/nonhex/

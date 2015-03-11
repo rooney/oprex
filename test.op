@@ -1,3 +1,4 @@
 
-AZ
-    AZ: U+41..Z
+binary
+    binary: +bindigit
+        bindigit: 0..1
