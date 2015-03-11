@@ -8,10 +8,10 @@ Rule 2     oprex -> WHITESPACE
 Rule 3     oprex -> NEWLINE
 Rule 4     oprex -> NEWLINE expression
 Rule 5     oprex -> NEWLINE INDENT expression DEDENT
-Rule 6     expression -> lookup NEWLINE
-Rule 7     expression -> lookup NEWLINE beginscope definitions DEDENT
-Rule 8     lookup -> VARNAME
-Rule 9     lookup -> SLASH cells
+Rule 6     expression -> lookups NEWLINE
+Rule 7     expression -> lookups NEWLINE beginscope definitions DEDENT
+Rule 8     lookups -> VARNAME
+Rule 9     lookups -> SLASH cells
 Rule 10    cells -> cell SLASH
 Rule 11    cells -> cell SLASH cells
 Rule 12    cell -> VARNAME
@@ -59,7 +59,7 @@ charclass            : 25
 definition           : 18 19
 definitions          : 7 19 27
 expression           : 4 5 23
-lookup               : 6 7
+lookups              : 6 7
 oprex                : 0
 
 Parsing method: LALR
@@ -97,51 +97,51 @@ state 3
     (3) oprex -> NEWLINE .
     (4) oprex -> NEWLINE . expression
     (5) oprex -> NEWLINE . INDENT expression DEDENT
-    (6) expression -> . lookup NEWLINE
-    (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (6) expression -> . lookups NEWLINE
+    (7) expression -> . lookups NEWLINE beginscope definitions DEDENT
+    (8) lookups -> . VARNAME
+    (9) lookups -> . SLASH cells
 
     $end            reduce using rule 3 (oprex -> NEWLINE .)
-    INDENT          shift and go to state 4
-    VARNAME         shift and go to state 5
+    INDENT          shift and go to state 5
+    VARNAME         shift and go to state 6
     SLASH           shift and go to state 7
 
-    lookup                         shift and go to state 6
+    lookups                        shift and go to state 4
     expression                     shift and go to state 8
 
 state 4
 
-    (5) oprex -> NEWLINE INDENT . expression DEDENT
-    (6) expression -> . lookup NEWLINE
-    (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (6) expression -> lookups . NEWLINE
+    (7) expression -> lookups . NEWLINE beginscope definitions DEDENT
 
-    VARNAME         shift and go to state 5
-    SLASH           shift and go to state 7
+    NEWLINE         shift and go to state 9
 
-    lookup                         shift and go to state 6
-    expression                     shift and go to state 9
 
 state 5
 
-    (8) lookup -> VARNAME .
+    (5) oprex -> NEWLINE INDENT . expression DEDENT
+    (6) expression -> . lookups NEWLINE
+    (7) expression -> . lookups NEWLINE beginscope definitions DEDENT
+    (8) lookups -> . VARNAME
+    (9) lookups -> . SLASH cells
 
-    NEWLINE         reduce using rule 8 (lookup -> VARNAME .)
+    VARNAME         shift and go to state 6
+    SLASH           shift and go to state 7
 
+    lookups                        shift and go to state 4
+    expression                     shift and go to state 10
 
 state 6
 
-    (6) expression -> lookup . NEWLINE
-    (7) expression -> lookup . NEWLINE beginscope definitions DEDENT
+    (8) lookups -> VARNAME .
 
-    NEWLINE         shift and go to state 10
+    NEWLINE         reduce using rule 8 (lookups -> VARNAME .)
 
 
 state 7
 
-    (9) lookup -> SLASH . cells
+    (9) lookups -> SLASH . cells
     (10) cells -> . cell SLASH
     (11) cells -> . cell SLASH cells
     (12) cell -> . VARNAME
@@ -165,24 +165,24 @@ state 8
 
 state 9
 
-    (5) oprex -> NEWLINE INDENT expression . DEDENT
+    (6) expression -> lookups NEWLINE .
+    (7) expression -> lookups NEWLINE . beginscope definitions DEDENT
+    (17) beginscope -> . INDENT
 
-    DEDENT          shift and go to state 15
+    GLOBALMARK      reduce using rule 6 (expression -> lookups NEWLINE .)
+    VARNAME         reduce using rule 6 (expression -> lookups NEWLINE .)
+    DEDENT          reduce using rule 6 (expression -> lookups NEWLINE .)
+    $end            reduce using rule 6 (expression -> lookups NEWLINE .)
+    INDENT          shift and go to state 16
 
+    beginscope                     shift and go to state 15
 
 state 10
 
-    (6) expression -> lookup NEWLINE .
-    (7) expression -> lookup NEWLINE . beginscope definitions DEDENT
-    (17) beginscope -> . INDENT
+    (5) oprex -> NEWLINE INDENT expression . DEDENT
 
-    GLOBALMARK      reduce using rule 6 (expression -> lookup NEWLINE .)
-    VARNAME         reduce using rule 6 (expression -> lookup NEWLINE .)
-    DEDENT          reduce using rule 6 (expression -> lookup NEWLINE .)
-    $end            reduce using rule 6 (expression -> lookup NEWLINE .)
-    INDENT          shift and go to state 17
+    DEDENT          shift and go to state 17
 
-    beginscope                     shift and go to state 16
 
 state 11
 
@@ -195,9 +195,9 @@ state 11
 
 state 12
 
-    (9) lookup -> SLASH cells .
+    (9) lookups -> SLASH cells .
 
-    NEWLINE         reduce using rule 9 (lookup -> SLASH cells .)
+    NEWLINE         reduce using rule 9 (lookups -> SLASH cells .)
 
 
 state 13
@@ -219,14 +219,7 @@ state 14
 
 state 15
 
-    (5) oprex -> NEWLINE INDENT expression DEDENT .
-
-    $end            reduce using rule 5 (oprex -> NEWLINE INDENT expression DEDENT .)
-
-
-state 16
-
-    (7) expression -> lookup NEWLINE beginscope . definitions DEDENT
+    (7) expression -> lookups NEWLINE beginscope . definitions DEDENT
     (18) definitions -> . definition
     (19) definitions -> . definition definitions
     (20) definition -> . assignment
@@ -243,12 +236,19 @@ state 16
     assignment                     shift and go to state 22
     definitions                    shift and go to state 25
 
-state 17
+state 16
 
     (17) beginscope -> INDENT .
 
     GLOBALMARK      reduce using rule 17 (beginscope -> INDENT .)
     VARNAME         reduce using rule 17 (beginscope -> INDENT .)
+
+
+state 17
+
+    (5) oprex -> NEWLINE INDENT expression DEDENT .
+
+    $end            reduce using rule 5 (oprex -> NEWLINE INDENT expression DEDENT .)
 
 
 state 18
@@ -342,7 +342,7 @@ state 24
 
 state 25
 
-    (7) expression -> lookup NEWLINE beginscope definitions . DEDENT
+    (7) expression -> lookups NEWLINE beginscope definitions . DEDENT
 
     DEDENT          shift and go to state 33
 
@@ -405,27 +405,27 @@ state 32
     (23) assignment -> . VARNAME EQUALSIGN expression
     (24) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
     (25) assignment -> . VARNAME COLON charclass
-    (6) expression -> . lookup NEWLINE
-    (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (6) expression -> . lookups NEWLINE
+    (7) expression -> . lookups NEWLINE beginscope definitions DEDENT
+    (8) lookups -> . VARNAME
+    (9) lookups -> . SLASH cells
 
     LITERAL         shift and go to state 39
     VARNAME         shift and go to state 38
     SLASH           shift and go to state 7
 
+    lookups                        shift and go to state 4
     assignment                     shift and go to state 40
-    lookup                         shift and go to state 6
     expression                     shift and go to state 41
 
 state 33
 
-    (7) expression -> lookup NEWLINE beginscope definitions DEDENT .
+    (7) expression -> lookups NEWLINE beginscope definitions DEDENT .
 
-    GLOBALMARK      reduce using rule 7 (expression -> lookup NEWLINE beginscope definitions DEDENT .)
-    VARNAME         reduce using rule 7 (expression -> lookup NEWLINE beginscope definitions DEDENT .)
-    DEDENT          reduce using rule 7 (expression -> lookup NEWLINE beginscope definitions DEDENT .)
-    $end            reduce using rule 7 (expression -> lookup NEWLINE beginscope definitions DEDENT .)
+    GLOBALMARK      reduce using rule 7 (expression -> lookups NEWLINE beginscope definitions DEDENT .)
+    VARNAME         reduce using rule 7 (expression -> lookups NEWLINE beginscope definitions DEDENT .)
+    DEDENT          reduce using rule 7 (expression -> lookups NEWLINE beginscope definitions DEDENT .)
+    $end            reduce using rule 7 (expression -> lookups NEWLINE beginscope definitions DEDENT .)
 
 
 state 34
@@ -465,11 +465,11 @@ state 38
     (23) assignment -> VARNAME . EQUALSIGN expression
     (24) assignment -> VARNAME . EQUALSIGN LITERAL NEWLINE
     (25) assignment -> VARNAME . COLON charclass
-    (8) lookup -> VARNAME .
+    (8) lookups -> VARNAME .
 
     EQUALSIGN       shift and go to state 32
     COLON           shift and go to state 31
-    NEWLINE         reduce using rule 8 (lookup -> VARNAME .)
+    NEWLINE         reduce using rule 8 (lookups -> VARNAME .)
 
 
 state 39
@@ -506,7 +506,7 @@ state 42
     GLOBALMARK      reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
     VARNAME         reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
     DEDENT          reduce using rule 26 (charclass -> CHARCLASS NEWLINE .)
-    INDENT          shift and go to state 17
+    INDENT          shift and go to state 16
 
     beginscope                     shift and go to state 44
 

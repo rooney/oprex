@@ -1,5 +1,6 @@
 
-nonVowelZ
-    nonVowelZ: +!vowel +!Z
-        vowel: a i u e o
-        Z: Z
+            /alice/bob/
+                alice = 'alice'
+                bob = robert
+                    robert = 'bob'
+                    doe = 'doe'

@@ -59,7 +59,25 @@ t_SLASH      = r'/'
 t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
 
-class CharclassInclude(namedtuple('CharclassInclude', 'name negated')):
+class Assignment(namedtuple('Assignment', 'varnames value lineno')):
+    __slots__ = ()
+
+
+class Variable(namedtuple('Variable', 'name value lineno')):
+    __slots__ = ()
+    def __str__(self):
+        return self.value
+
+
+class VariableLookup(namedtuple('VariableLookup', 'varname fmt')):
+    __slots__ = ()
+
+
+class CharClass(unicode):
+    pass
+
+
+class CharClassInclude(namedtuple('CharClassInclude', 'name negated')):
     __slots__ = ()
 
 
@@ -105,7 +123,7 @@ def t_character_class(t):
                 varname, negated = chardef[2:], True
             else:
                 varname, negated = chardef[1:], False
-            return CharclassInclude(varname, negated)
+            return CharClassInclude(varname, negated)
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
         if chardef.startswith('/'):
@@ -140,7 +158,7 @@ def t_character_class(t):
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
 
         compiled = try_parse(chardef, 'Not a valid character class keyword: ' + chardef, range, single, uhex, by_prop, by_name, include)
-        if not isinstance(compiled, CharclassInclude):
+        if not isinstance(compiled, CharClassInclude):
             if isinstance(compiled, list):
                 test = ''.join(compiled)
             else:
@@ -176,21 +194,6 @@ def t_LITERAL(t):
         special_only=True,
     )
     return t
-
-
-class Variable(namedtuple('Variable', 'name value lineno charclass')):
-    __slots__ = ()
-    def __str__(self):
-        return self.value
-
-
-class VariableLookup:
-    names = []
-    fmt = ''
-    def add(self, name, fmt):
-        self.names.append(name)
-        self.fmt = fmt + self.fmt
-        return self
 
 
 def t_VARNAME(t):
@@ -312,53 +315,58 @@ def p_oprex(t):
     t[0] = expression
 
 
-def check_unused_variable(t, lookups):
-    try:
-        definitions = t[4]
-    except IndexError:
-        pass
-    else:
-        for var in definitions:
-            if var.name not in lookups:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
+def check_unused_variable(t, definitions, referenced_varnames):
+    for var in definitions:
+        if var.name not in referenced_varnames:
+            raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+    t.lexer.scopes.pop()
 
 
 def p_expression(t):
-    '''expression : lookup NEWLINE
-                  | lookup NEWLINE beginscope definitions DEDENT'''
-    lookup = t[1]
+    '''expression : lookups NEWLINE
+                  | lookups NEWLINE beginscope definitions DEDENT'''
+    lookups = t[1]
+    referenced_varnames = []
+    fmt = ''
+    for lookup in lookups:
+        referenced_varnames.append(lookup.varname)
+        fmt += lookup.fmt
+
     current_scope = t.lexer.scopes[-1]
     try:
-        result = lookup.fmt % current_scope
+        result = fmt % current_scope
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
-    check_unused_variable(t, lookup.names)
+    if len(t) > 3:
+        check_unused_variable(t, t[4], referenced_varnames)
+
     t[0] = result
 
 
-def p_lookup(t):
-    '''lookup : VARNAME
-              | SLASH cells'''
+def p_lookups(t):
+    '''lookups : VARNAME
+               | SLASH cells'''
     if t[1] == '/':
-        lookup = t[2]
+        lookups = t[2]
     else:
         varname = t[1]
-        lookup = VariableLookup()
-        lookup.add(varname, '%(' + varname + ')s')
-    t[0] = lookup
+        lookups = deque()
+        lookups.append(VariableLookup(varname, '%(' + varname + ')s'))
+    t[0] = lookups
 
 
 def p_cells(t):
     '''cells : cell SLASH
              | cell SLASH cells'''
-    varname, fmt = t[1]
+    lookup = t[1]
     try:
-        lookup = t[3]
+        lookups = t[3]
     except IndexError:
-        lookup = VariableLookup()
-    t[0] = lookup.add(varname, fmt)
+        lookups = deque()
+
+    lookups.appendleft(lookup)
+    t[0] = lookups
 
 
 def p_cell(t):
@@ -393,7 +401,7 @@ def p_cell(t):
     elif optional and not capture:
         fmt = '(?:%s)?+' % fmt
 
-    t[0] = varname, fmt
+    t[0] = VariableLookup(varname, fmt)
 
 
 def p_beginscope(t):
@@ -405,6 +413,7 @@ def p_beginscope(t):
 def p_definitions(t):
     '''definitions : definition
                    | definition definitions'''
+
     try:
         variables = t[1] + t[2]
     except IndexError:
@@ -428,53 +437,61 @@ def p_definition(t):
                         var.name, already_defined.lineno
                     ))
 
+    def vars_from(assignment):
+        return map(
+            lambda varname: Variable(varname, assignment.value, assignment.lineno),
+            assignment.varnames
+        )
+
     has_globalmark = t[1] == GLOBALMARK
     if has_globalmark:
-        variables = t[2]
-        for scope in t.lexer.scopes:
-            define(variables, scope) # global variable, define in all scopes
+        assignment = t[2]
+        variables = vars_from(assignment)
+        for scope in t.lexer.scopes: # global variable, define in all scopes
+            define(variables, scope) 
     else:
-        variables = t[1]
+        assignment = t[1]
+        variables = vars_from(assignment)
         current_scope = t.lexer.scopes[-1] 
         define(variables, current_scope) # non-global, define in current scope only
+
     t[0] = variables
 
 
 def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN assignment
                   | VARNAME EQUALSIGN expression
-                  | VARNAME EQUALSIGN LITERAL   NEWLINE
+                  | VARNAME EQUALSIGN LITERAL NEWLINE
                   | VARNAME COLON     charclass'''
     varname = t[1]
-    charclass = t[2] == ':'
     lineno = t.lineno(1)
-    if isinstance(t[3], list): # t[3] is another assignment
-        variables = t[3]
-        value = variables[0].value
+    if isinstance(t[3], Assignment):
+        assignment = t[3]
+        assignment.varnames.append(varname)
     else:
-        variables = []
         value = t[3]
-    variables.append(Variable(varname, value, lineno, charclass))
-    t[0] = variables
+        assignment = Assignment([varname], value, lineno)
+
+    t[0] = assignment
 
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
                  | CHARCLASS NEWLINE beginscope definitions DEDENT'''
     charclass = t[1]
-    lookups = []
+    referenced_varnames = []
     current_scope = t.lexer.scopes[-1]
     result = []
 
     t.nested_brackets = False
     def translate(charclass_include):
         varname, negated = charclass_include
-        lookups.append(varname)
+        referenced_varnames.append(varname)
         try:
             var = current_scope[varname]
         except KeyError:
             raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
-        if not var.charclass:
+        if not isinstance(var.value, CharClass):
             raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
 
         include = var.value
@@ -492,19 +509,19 @@ def p_charclass(t):
 
         return include
 
-    translate.including_brackets = False
-
     for chardef in charclass:
-        if isinstance(chardef, CharclassInclude):
+        if isinstance(chardef, CharClassInclude):
             chardef = translate(chardef)
         result.append(chardef)
-    check_unused_variable(t, lookups)
+
+    if len(t) > 3:
+        check_unused_variable(t, t[4], referenced_varnames)
 
     if len(result) > 1 or t.nested_brackets:
         result = '[' + ''.join(result) + ']'
     else:
         result = result[0]
-    t[0] = result
+    t[0] = CharClass(result)
 
 
 def p_error(t):
