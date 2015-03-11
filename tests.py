@@ -830,7 +830,7 @@ class TestOutput(unittest.TestCase):
                     mul: * ×
                     div: / ÷ :
         ''',
-        expect_regex=ur'[+\-[*×][/÷:]]')
+        expect_regex=ur'[+\-*×/÷:]')
 
         self.given(u'''
             aUmlaut
@@ -940,34 +940,34 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             vowhex
                 vowhex: +vowel +hex
-                    vowel: a i u e o
-                    hex: a..z A..Z 0..9
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
         ''',
-        expect_regex='[[aiueo][a-zA-Z0-9]]')
+        expect_regex='[aiueoAIUEO0-9a-fA-F]')
 
         self.given(u'''
             vowhex
                 vowhex: +!vowel +hex
-                    vowel: a i u e o
-                    hex: a..z A..Z 0..9
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
         ''',
-        expect_regex='[[^aiueo][a-zA-Z0-9]]')
+        expect_regex='[[^aiueoAIUEO]0-9a-fA-F]')
 
         self.given(u'''
             vowhex
                 vowhex: +vowel +!hex
-                    vowel: a i u e o
-                    hex: a..z A..Z 0..9
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
         ''',
-        expect_regex='[[aiueo][^a-zA-Z0-9]]')
+        expect_regex='[aiueoAIUEO[^0-9a-fA-F]]')
 
         self.given(u'''
             vowhex
                 vowhex: +!vowel +!hex
-                    vowel: a i u e o
-                    hex: a..z A..Z 0..9
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
         ''',
-        expect_regex='[[^aiueo][^a-zA-Z0-9]]')
+        expect_regex='[[^aiueoAIUEO][^0-9a-fA-F]]')
 
 
     def test_capturing(self):
@@ -1422,7 +1422,7 @@ class TestMatches(unittest.TestCase):
         no_match=['A', 'Z', u'ä'])
 
 
-    def test_negated_charclass_output(self):
+    def test_negated_charclass(self):
         self.given(u'''
             notA
                 notA: +!A
@@ -1488,6 +1488,44 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['A', 'Z', u'Ä', u'ä', '1', '$'],
         no_match=['a', 'b', 'z'])
+
+
+    def test_nested_charclass(self):
+        self.given(u'''
+            vowhex
+                vowhex: +vowel +hex
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
+        ''',
+        expect_full_match=['a', 'b', 'f', 'A', 'B', 'F', '0', '1', '9', 'i', 'u', 'E', 'O'],
+        no_match=['$', 'z', 'k'])
+
+        self.given(u'''
+            vowhex
+                vowhex: +!vowel +hex
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
+        ''',
+        expect_full_match=['a', 'b', 'f', 'A', 'B', 'F', '0', '1', '9', 'E', '$', 'z', 'k'],
+        no_match=['i', 'u', 'O'])
+
+        self.given(u'''
+            vowhex
+                vowhex: +vowel +!hex
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
+        ''',
+        expect_full_match=['a', 'A', 'i', 'u', 'E', 'O', '$', 'z', 'k'],
+        no_match=['b', 'f', 'B', 'F', '0', '1', '9'])
+
+        self.given(u'''
+            vowhex
+                vowhex: +!vowel +!hex
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
+        ''',
+        expect_full_match=['b', 'f', 'B', 'F', '0', '1', '9', 'i', 'u', 'O', '$', 'z', 'k'],
+        no_match=['a', 'A', 'E'])
 
 
 if __name__ == '__main__':

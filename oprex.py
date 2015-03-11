@@ -466,6 +466,7 @@ def p_charclass(t):
     current_scope = t.lexer.scopes[-1]
     result = []
 
+    t.nested_brackets = False
     def translate(charclass_include):
         varname, negated = charclass_include
         lookups.append(varname)
@@ -484,7 +485,14 @@ def p_charclass(t):
                 include = include.replace('[', '[^', 1)
             else:
                 include = '[^' + include + ']'
+
+        if include.startswith('[') and not include.startswith('[^'): # remove redundant nested []
+            t.nested_brackets = True
+            include = include[1:-1]
+
         return include
+
+    translate.including_brackets = False
 
     for chardef in charclass:
         if isinstance(chardef, CharclassInclude):
@@ -492,7 +500,7 @@ def p_charclass(t):
         result.append(chardef)
     check_unused_variable(t, lookups)
 
-    if len(result) > 1:
+    if len(result) > 1 or t.nested_brackets:
         result = '[' + ''.join(result) + ']'
     else:
         result = result[0]

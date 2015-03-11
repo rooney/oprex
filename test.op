@@ -1,4 +1,5 @@
 
-binary
-    binary: +bindigit
-        bindigit: 0..1
+nonVowelZ
+    nonVowelZ: +!vowel +!Z
+        vowel: a i u e o
+        Z: Z
