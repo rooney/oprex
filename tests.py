@@ -980,6 +980,16 @@ class TestOutput(unittest.TestCase):
         expect_regex='[[^aiueoAIUEO][^0-9a-fA-F]]')
 
 
+    def test_charclass_operation_output(self):
+        self.given(u'''
+            xb123
+                xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
+                    hex: 0..9 a..f A..F
+                    vocal: a i u e o A I U E O
+        ''',
+        expect_regex='[Xx0-9a-fA-F--c-fC-D\N{LATIN CAPITAL LETTER F}aiueoAIUEO&&123\p{Alphabetic}]')
+
+
     def test_capturing(self):
         self.given('''
             /defcon/(level)/
@@ -1547,6 +1557,17 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['b', 'f', 'B', 'F', '0', '1', '9', 'i', 'u', 'O', '$', 'z', 'k'],
         no_match=['a', 'A', 'E'])
+
+
+    def test_charclass_operation_output(self):
+        self.given(u'''
+            xb123
+                xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
+                    hex: 0..9 a..f A..F
+                    vocal: a i u e o A I U E O
+        ''',
+        expect_full_match=['x', 'X', 'b', 'B', '1', '2', '3'],
+        no_match=['a', 'A', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'y', 'Y', 'z', 'Z', '0', '4', '9'])
 
 
 if __name__ == '__main__':

@@ -154,6 +154,12 @@ def t_character_class(t):
             upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
             return [lower_bound, '-', upper_bound]
 
+    def set_op(chardef): # example: +alpha and +hex not +lower
+        return {
+            'and' : '&&',
+            'not' : '--',
+        }.get(chardef)
+
     processed = []
     charclass = []
     for chardef in chardefs[1:]:
@@ -162,7 +168,10 @@ def t_character_class(t):
         if chardef in processed:
             raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
 
-        compiled = try_parse(chardef, 'Not a valid character class keyword: ' + chardef, range, single, uhex, by_prop, by_name, include)
+        compiled = try_parse(chardef, 
+            'Not a valid character class keyword: ' + chardef, 
+            range, single, uhex, by_prop, by_name, include, set_op
+        )
         if not isinstance(compiled, CharClassInclude):
             if isinstance(compiled, list):
                 test = ''.join(compiled)
