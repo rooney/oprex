@@ -1153,6 +1153,19 @@ class TestOutput(unittest.TestCase):
         expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
 
 
+    def test_builtin_output(self):
+        self.given('''
+            /alpha/upper/lower/digit/alnum/
+        ''',
+        expect_regex='[a-zA-Z][A-Z][a-z][0-9][a-zA-Z0-9]')
+
+        self.given('''
+            builtin
+                builtin: +alpha +!alpha +upper +!upper +lower +!lower +digit +!digit +alnum +!alnum
+        ''',
+        expect_regex='[a-zA-Z[^a-zA-Z]A-Z[^A-Z]a-z[^a-z]0-9[^0-9]a-zA-Z0-9[^a-zA-Z0-9]]')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -1559,7 +1572,7 @@ class TestMatches(unittest.TestCase):
         no_match=['a', 'A', 'E'])
 
 
-    def test_charclass_operation_output(self):
+    def test_charclass_operation(self):
         self.given(u'''
             xb123
                 xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
@@ -1568,6 +1581,15 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['x', 'X', 'b', 'B', '1', '2', '3'],
         no_match=['a', 'A', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'y', 'Y', 'z', 'Z', '0', '4', '9'])
+
+
+    def test_builtin(self):
+        self.given('''
+            lowhex
+                lowhex: +alpha +alnum +lower not G..Z g..z +upper +digit
+        ''',
+        expect_full_match=['a', 'b', 'c', 'd', 'e', 'f'],
+        no_match=['A', 'B', 'F', 'x', 'X', 'z', 'Z', '0', '1', '9'])
 
 
 if __name__ == '__main__':

@@ -1,5 +1,2 @@
 
-xb
-    xb: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
-        hex: 0..9 a..f A..F
-        vocal: a i u e o A I U E O
+/alpha/upper/lower/digit/alnum/

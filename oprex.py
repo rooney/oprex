@@ -447,10 +447,14 @@ def p_definition(t):
             except KeyError:
                 scope[var.name] = var
             else:
-                raise OprexSyntaxError( t.lineno(1), 
-                    "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (
+                if already_defined.lineno == 0:
+                    errmsg = "'%s' is a built-in variable and cannot be redefined" % var.name
+                else:
+                    errmsg = "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (
                         var.name, already_defined.lineno
-                    ))
+                    )
+                raise OprexSyntaxError(t.lineno(1), errmsg)
+                        
 
     def vars_from(assignment):
         return map(
@@ -593,7 +597,13 @@ def build_lexer(source_lines):
     lexer.indent_stack = [0]  # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.scopes = [{}]
+    lexer.scopes = [{ # built-in variables
+        'alpha' : Variable('alpha', CharClass('[a-zA-Z]'), 0),
+        'upper' : Variable('upper', CharClass('[A-Z]'), 0),
+        'lower' : Variable('lower', CharClass('[a-z]'), 0),
+        'digit' : Variable('digit', CharClass('[0-9]'), 0),
+        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]'), 0),
+    }]
     return CustomLexer(lexer)
 
 
