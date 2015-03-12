@@ -88,6 +88,8 @@ class CharClassInclude(namedtuple('CharClassInclude', 'name negated')):
 
 def t_character_class(t):
     ''':.*'''
+    charclass = []
+    processed = []
     chardefs = t.value.strip().split(' ')
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
@@ -155,13 +157,18 @@ def t_character_class(t):
             return [lower_bound, '-', upper_bound]
 
     def set_op(chardef): # example: +alpha and +hex not +lower
-        return {
-            'and' : '&&',
-            'not' : '--',
-        }.get(chardef)
+        if chardef in ['and', 'not']:
+            is_first = len(processed) == 0
+            is_last  = len(processed) == len(chardefs)-2 # -2 is for the colon and the current chardef
+            if is_first and chardef == 'and':
+                raise OprexSyntaxError(t.lineno, "Character class operator 'and' requires two arguments")
+            if is_last:
+                raise OprexSyntaxError(t.lineno, "Argument required after character class operator '%s'" % chardef)
+            return {
+                'and' : '&&',
+                'not' : '^' if is_first else '--',
+            }[chardef]
 
-    processed = []
-    charclass = []
     for chardef in chardefs[1:]:
         if not chardef: # multiple spaces for separator is ok
             continue
@@ -172,7 +179,7 @@ def t_character_class(t):
             'Not a valid character class keyword: ' + chardef, 
             range, single, uhex, by_prop, by_name, include, set_op
         )
-        if not isinstance(compiled, CharClassInclude):
+        if not isinstance(compiled, CharClassInclude) and compiled != '^':
             if isinstance(compiled, list):
                 test = ''.join(compiled)
             else:

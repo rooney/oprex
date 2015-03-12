@@ -688,6 +688,38 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 3: Cannot include 'y': not a character class")
 
 
+    def test_invalid_charclass_operation(self):
+        self.given(u'''
+            missing_arg
+                missing_arg: /Alphabetic and
+        ''',
+        expect_error="Line 3: Argument required after character class operator 'and'")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: and /Alphabetic
+        ''',
+        expect_error="Line 3: Character class operator 'and' requires two arguments")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: /Alphabetic not
+        ''',
+        expect_error="Line 3: Argument required after character class operator 'not'")
+
+        self.given(u'''
+            missing_args
+                missing_args: and
+        ''',
+        expect_error="Line 3: Character class operator 'and' requires two arguments")
+
+        self.given(u'''
+            missing_args
+                missing_args: not
+        ''',
+        expect_error="Line 3: Argument required after character class operator 'not'")
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         alwayson_flags = '(?umV1)'
@@ -989,14 +1021,17 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[Xx0-9a-fA-F--c-fC-D\N{LATIN CAPITAL LETTER F}aiueoAIUEO&&123\p{Alphabetic}]')
 
-
-    def test_capturing(self):
-        self.given('''
-            /defcon/(level)/
-                defcon = 'DEFCON'
-                level: 1 2 3 4 5
+        self.given(u'''
+            allButU
+                allButU: not U
         ''',
-        expect_regex=r'DEFCON(?<level>[12345])')
+        expect_regex='[^U]')
+
+        self.given(u'''
+            nonalpha
+                nonalpha: not /Alphabetic
+        ''',
+        expect_regex='[^\p{Alphabetic}]')
 
 
     def test_string_interpolation(self):
@@ -1145,12 +1180,19 @@ class TestOutput(unittest.TestCase):
         expect_regex='thequickbrownfoxjumpsoverthelazydog')
 
 
-    def test_captures(self):
+    def test_captures_output(self):
         self.given('''
             /extra/(extra)/(extra?)/(extra)?/
                 extra = 'icing'
         ''',
         expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
+
+        self.given('''
+            /defcon/(level)/
+                defcon = 'DEFCON'
+                level: 1 2 3 4 5
+        ''',
+        expect_regex=r'DEFCON(?<level>[12345])')
 
 
     def test_builtin_output(self):
@@ -1571,7 +1613,6 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['b', 'f', 'B', 'F', '0', '1', '9', 'i', 'u', 'O', '$', 'z', 'k'],
         no_match=['a', 'A', 'E'])
 
-
     def test_charclass_operation(self):
         self.given(u'''
             xb123
@@ -1580,7 +1621,21 @@ class TestMatches(unittest.TestCase):
                     vocal: a i u e o A I U E O
         ''',
         expect_full_match=['x', 'X', 'b', 'B', '1', '2', '3'],
-        no_match=['a', 'A', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'y', 'Y', 'z', 'Z', '0', '4', '9'])
+        no_match=['a', 'A', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'y', 'Y', 'z', 'Z', '0', '4', '9', '-'])
+
+        self.given(u'''
+            allButU
+                allButU: not U
+        ''',
+        expect_full_match=['^', 'u'],
+        no_match=['U', ''])
+
+        self.given(u'''
+            nonalpha
+                nonalpha: not /Alphabetic
+        ''',
+        expect_full_match=['-', '^', '1'],
+        no_match=['A', 'a', u'Ä', u'ä'])
 
 
     def test_builtin(self):
