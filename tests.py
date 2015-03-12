@@ -43,7 +43,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             `@$%^&;{}[]\\
         ''',
-        expect_error='Line 2: Unsupported syntax: `@$%^&;{}[]\\')
+        expect_error='Line 2: Syntax error at or near: `@$%^&;{}[]\\')
 
 
     def test_unexpected_token(self):
@@ -315,7 +315,7 @@ class TestErrorHandling(unittest.TestCase):
             warming
                 warming*) = 'global'
         ''',
-        expect_error="Line 3: Unsupported syntax: *) = 'global'")
+        expect_error="Line 3: Syntax error at or near: *) = 'global'")
 
         self.given('''
             warming
@@ -327,7 +327,7 @@ class TestErrorHandling(unittest.TestCase):
             warming
                 warming = *) 'global'
         ''',
-        expect_error="Line 3: Unsupported syntax: *) 'global'")
+        expect_error="Line 3: Syntax error at or near: *) 'global'")
 
         self.given('''
             warming
@@ -345,7 +345,7 @@ class TestErrorHandling(unittest.TestCase):
             warming
 *)              warming*) = 'global'
         ''',
-        expect_error="Line 3: Unsupported syntax: *) = 'global'")
+        expect_error="Line 3: Syntax error at or near: *) = 'global'")
 
         self.given('''
             warming
@@ -658,7 +658,7 @@ class TestErrorHandling(unittest.TestCase):
                 x: ++
                     +: p l u s
         ''',
-        expect_error='Line 4: Unsupported syntax: +: p l u s')
+        expect_error='Line 4: Syntax error at or near: +: p l u s')
 
         self.given('''
             x

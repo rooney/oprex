@@ -307,7 +307,7 @@ def t_linemark(t):
 
 
 def t_error(t):
-    raise OprexSyntaxError(t.lineno, 'Unsupported syntax: ' + t.value.split('\n')[0])
+    raise OprexSyntaxError(t.lineno, 'Syntax error at or near: ' + t.value.split('\n')[0])
 
 
 def endpos(t):
