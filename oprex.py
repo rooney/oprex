@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, argparse, codecs
+import regex, string, argparse, codecs
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -65,36 +65,42 @@ class Assignment(namedtuple('Assignment', 'varnames value lineno')):
 
 class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
+
+
+class LookupChain(namedtuple('LookupChain', 'varnames fmts')):
+    __slots__ = ()
+
+
+class CharClass(namedtuple('CharClass', 'value subvalue')):
+    __slots__ = () # subvalue is for inclusion by other charclass
+    escapes = {
+        '['  : '\\[',
+        ']'  : '\\]',
+        '^'  : '\\^',
+        '-'  : '\\-',
+        '\\' : '\\\\',
+        '{'  : '{{',
+        '}'  : '}}',
+    }
     def __str__(self):
         return self.value
 
 
-class SimpleLookup(namedtuple('SimpleLookup', 'varname')):
-    __slots__ = ()
-
-
-class ChainedLookup:
-    varnames = []
-    fmt = ''
-
-
-class CharClass(unicode):
-    pass
-
-
-class CharClassInclude(namedtuple('CharClassInclude', 'name negated')):
-    __slots__ = ()
-
-
 def t_character_class(t):
     ''':.*'''
-    charclass = []
-    processed = []
     chardefs = t.value.strip().split(' ')
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
-    if len(chardefs) == 1: # only colon not followed by anything
+
+    del chardefs[0] # no need to process the colon
+    if not chardefs:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
+
+    includes = set()
+    processed = set()
+    t.set_operation = False
+    t.need_brackets = len(chardefs) > 1
+    t.counter = 0
 
     def try_parse(chardef, errmsg, *methods): # try the methods until we get something
         for method in methods:                # otherwise raise errmsg
@@ -105,9 +111,9 @@ def t_character_class(t):
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
-            if chardef in ['[', ']', '^', '-', '\\']: # need escape
-                chardef = '\\' + chardef
-            return chardef
+            if chardef in processed:
+                raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
+            return CharClass.escapes.get(chardef, chardef)
 
     def uhex(chardef): # example: U+65 u+1F4A9
         if chardef[:2].upper() == 'U+':
@@ -120,46 +126,46 @@ def t_character_class(t):
             if hexlen > 8:
                 raise OprexSyntaxError(t.lineno, 'Syntax error %s out of range' % chardef)
             if hexlen <= 4:
-                return unicode(r'\u' + ('0' * (4-hexlen) + hexnum))
+                return unicode('\\u' + ('0' * (4-hexlen) + hexnum))
             else:
-                return unicode(r'\U' + ('0' * (8-hexlen) + hexnum))
+                return unicode('\\U' + ('0' * (8-hexlen) + hexnum))
 
-    def include(chardef): # example: +upper +!lower
-        if chardef.startswith('+'):
-            if chardef.startswith('+!'):
-                varname, negated = chardef[2:], True
-            else:
-                varname, negated = chardef[1:], False
-            return CharClassInclude(varname, negated)
+    def include(chardef): # example: +alpha +digit
+        if regex.match('\\+[a-zA-Z]\w*+(?<!_)$', chardef):
+            varname = chardef[1:]
+            includes.add(varname)
+            return '{%s.value.subvalue}' % varname
 
-    def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
+    def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
         if chardef.startswith('/'):
             negated = '!' in chardef
             switch = 'P' if negated else 'p'
             prop = chardef[1:].replace('!', '', 1)
-            return '\\%s{%s}' % (switch, prop)
+            return '\\%s{{%s}}' % (switch, prop)
 
     def by_name(chardef):           # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
         if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
             if not chardef.isupper(): 
                 raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
             name = chardef[1:].replace('_', ' ')
-            return '\\N{%s}' % name
+            return '\\N{{%s}}' % name
 
     def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         if '..' in chardef:
+            t.need_brackets = True
             errmsg = 'Invalid character range: ' + chardef
             bounds = chardef.split('..')
             if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
                 raise OprexSyntaxError(t.lineno, errmsg)
             lower_bound = try_parse(bounds[0], errmsg, single, uhex, by_name)
             upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
-            return [lower_bound, '-', upper_bound]
+            return lower_bound + '-' + upper_bound
 
-    def set_op(chardef): # example: +alpha and +hex not +lower
+    def set_operation(chardef): # example: +alpha and +digit not +hex
         if chardef in ['and', 'not']:
-            is_first = len(processed) == 0
-            is_last  = len(processed) == len(chardefs)-2 # -2 is for the colon and the current chardef
+            t.set_operation = True
+            is_first = t.counter == 1
+            is_last  = t.counter == len(chardefs)
             if is_first and chardef == 'and':
                 raise OprexSyntaxError(t.lineno, "Character class operator 'and' requires two arguments")
             if is_last:
@@ -169,38 +175,37 @@ def t_character_class(t):
                 'not' : '^' if is_first else '--',
             }[chardef]
 
-    for chardef in chardefs[1:]:
-        if not chardef: # multiple spaces for separator is ok
-            continue
-        if chardef in processed:
-            raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
+    def not_empty(chardef):
+        t.counter += 1
+        return chardef
 
+    def compile(chardef):
         compiled = try_parse(chardef, 
             'Not a valid character class keyword: ' + chardef, 
-            range, single, uhex, by_prop, by_name, include, set_op
+            range, single, uhex, by_prop, by_name, include, set_operation
         )
-        if not isinstance(compiled, CharClassInclude) and compiled != '^':
-            if isinstance(compiled, list):
-                test = ''.join(compiled)
-            else:
-                test = compiled
-
+        if compiled != '^':
+            curlies_escaped = compiled.replace('{{', '{').replace('}}', '}')
+            test = curlies_escaped
             if test[:2] not in ['\\p', '\\P']:
                 test = '[' + test + ']' 
             try:
                 regex.compile(test)
             except Exception as e:
                 msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
-                raise OprexSyntaxError(t.lineno, msg % (chardef, compiled, e.msg if hasattr(e, 'msg') else e.message))
+                raise OprexSyntaxError(t.lineno, msg % (chardef, curlies_escaped, e.msg if hasattr(e, 'msg') else e.message))
 
-        processed.append(chardef)
-        if isinstance(compiled, list):
-            charclass.extend(compiled)
-        else:
-            charclass.append(compiled)
+        processed.add(chardef)
+        return compiled
 
-    t.type, t.value = 'COLON', ':'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', charclass)]
+    value = ''.join([
+        compile(chardef)
+        for chardef in chardefs
+        if not_empty(chardef)
+    ])
+
+    t.type = 'COLON'
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (value, includes, t.set_operation, t.need_brackets))]
     return t
 
 
@@ -347,19 +352,17 @@ def p_expression(t):
     '''expression : lookup NEWLINE
                   | lookup NEWLINE beginscope definitions DEDENT'''
     lookup = t[1]
-    def do_lookup(fn):
-        try:
-            return fn()
-        except KeyError as e:
-            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
-
     current_scope = t.lexer.scopes[-1]
-    if isinstance(lookup, SimpleLookup):
-        referenced_varnames = [lookup.varname]
-        result = do_lookup(lambda: current_scope[lookup.varname].value)
-    else: # ChainedLookup
-        referenced_varnames = lookup.varnames
-        result = do_lookup(lambda: lookup.fmt % current_scope)
+    try:
+        if isinstance(lookup, LookupChain):
+            referenced_varnames = lookup.varnames
+            for varname in current_scope:
+                var = current_scope[varname]
+            result = ''.join(lookup.fmts).format(**current_scope)
+        else: # simple lookup
+            referenced_varnames, result = [lookup], current_scope[lookup].value
+    except KeyError as e:
+        raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
     if len(t) > 3:
         check_unused_variable(t, t[4], referenced_varnames)
@@ -368,26 +371,21 @@ def p_expression(t):
 
 def p_lookup(t):
     '''lookup : VARNAME
-              | SLASH cells'''
-    if t[1] == '/':
-        lookup = t[2]
-    else:
-        varname = t[1]
-        lookup = SimpleLookup(varname)
-    t[0] = lookup
+              | SLASH   chain'''
+    t[0] = t[1] if t[1] != '/' else t[2]
 
 
-def p_cells(t):
-    '''cells : cell  SLASH
-             | cells       cell SLASH'''
+def p_chain(t):
+    '''chain : cell  SLASH
+             | chain cell  SLASH'''
     if t[2] == '/':
         varname, fmt = t[1]
-        lookup = ChainedLookup()
+        lookup = LookupChain(set(), [])
     else:
         lookup = t[1]
         varname, fmt = t[2]
-    lookup.varnames.append(varname)
-    lookup.fmt += fmt
+    lookup.varnames.add(varname)
+    lookup.fmts.append(fmt)
     t[0] = lookup
 
 
@@ -409,7 +407,7 @@ def p_cell(t):
         5 : (True,  True),
     }[len(t)]
 
-    fmt = '%(' + varname + ')s'
+    fmt = '{%s.value}' % varname
     if capture and optional:
         optional_capture = t[4] == '?'
         if optional_capture:
@@ -464,10 +462,10 @@ def p_definition(t):
                         
 
     def vars_from(assignment):
-        return map(
-            lambda varname: Variable(varname, assignment.value, assignment.lineno),
-            assignment.varnames
-        )
+        variables = []
+        for varname in assignment.varnames:
+            variables.append(Variable(varname, assignment.value, assignment.lineno))
+        return variables
 
     has_globalmark = t[1] == GLOBALMARK
     if has_globalmark:
@@ -504,50 +502,39 @@ def p_assignment(t):
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
                  | CHARCLASS NEWLINE beginscope definitions DEDENT'''
-    charclass = t[1]
-    referenced_varnames = []
+
+    value, includes, t.set_operation, t.need_brackets = t[1]
+    definitions = t[4] if len(t) > 3 else []
     current_scope = t.lexer.scopes[-1]
-    result = []
 
-    t.nested_brackets = False
-    def translate(charclass_include):
-        varname, negated = charclass_include
-        referenced_varnames.append(varname)
-        try:
-            var = current_scope[varname]
-        except KeyError:
-            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % varname)
-        if not isinstance(var.value, CharClass):
-            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
-
-        include = var.value
-        if negated:
-            if include.startswith('[^'): # already a negation
-                include = include.replace('[^', '[', 1) # remove the negation
-            elif include.startswith('['):
-                include = include.replace('[', '[^', 1)
-            else:
-                include = '[^' + include + ']'
-
-        if include.startswith('[') and not include.startswith('[^'): # remove redundant nested []
-            t.nested_brackets = True
-            include = include[1:-1]
-
-        return include
-
-    for chardef in charclass:
-        if isinstance(chardef, CharClassInclude):
-            chardef = translate(chardef)
-        result.append(chardef)
-
-    if len(t) > 3:
-        check_unused_variable(t, t[4], referenced_varnames)
-
-    if len(result) > 1 or t.nested_brackets:
-        result = '[' + ''.join(result) + ']'
+    try:
+        definitions = t[4]
+    except IndexError:
+        pass # no definitions, nothing to check
     else:
-        result = result[0]
-    t[0] = CharClass(result)
+        for var in definitions:
+            if var.name not in includes:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+            try:
+                charclass = var.value
+                if charclass.value != charclass.subvalue:
+                    t.need_brackets = True
+            except AttributeError:
+                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
+        t.lexer.scopes.pop()
+
+    try:
+        value = value.format(**current_scope)
+    except KeyError as e:
+        raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
+
+    subvalue = value
+    if t.need_brackets:
+        value = '[' + value + ']'
+    if t.set_operation:
+        subvalue = value
+
+    t[0] = CharClass(value, subvalue)
 
 
 def p_error(t):
@@ -573,24 +560,24 @@ class CustomLexer:
     def __init__(self, real_lexer):
         self.__dict__ = real_lexer.__dict__
         self.real_lexer = real_lexer
-        self.extras_queue = deque()
+        self.tokens = deque()
 
     def get_next_token(self):
         try:
-            return self.extras_queue.popleft()
+            return self.tokens.popleft()
         except IndexError:
             lexer = self.real_lexer
             token = lexer.token()
             if token:
+                self.tokens.append(token)
                 if hasattr(token, 'extra_tokens'):
-                    self.extras_queue.extend(token.extra_tokens)
-                return token
+                    self.tokens.extend(token.extra_tokens)
             else:
                 extra_dedent = LexToken('DEDENT', 'EOF', len(lexer.source_lines), len(lexer.lexdata), lexer)
                 num_undedented = len(lexer.indent_stack) - 1
-                self.extras_queue.extend([extra_dedent] * num_undedented)
-                self.extras_queue.append(None)
-                return self.extras_queue.popleft()
+                self.tokens.extend([extra_dedent] * num_undedented)
+                self.tokens.append(None)
+            return self.get_next_token()
 
     def token(self):
         token = self.get_next_token()
@@ -605,11 +592,11 @@ def build_lexer(source_lines):
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
     lexer.scopes = [{ # built-in variables
-        'alpha' : Variable('alpha', CharClass('[a-zA-Z]'), 0),
-        'upper' : Variable('upper', CharClass('[A-Z]'), 0),
-        'lower' : Variable('lower', CharClass('[a-z]'), 0),
-        'digit' : Variable('digit', CharClass('[0-9]'), 0),
-        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]'), 0),
+        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z'   ), lineno=0), # lineno=0 --> builtin
+        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z'      ), lineno=0),
+        'lower' : Variable('lower', CharClass('[a-z]',       'a-z'      ), lineno=0),
+        'digit' : Variable('digit', CharClass('[0-9]',       '0-9'      ), lineno=0),
+        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9'), lineno=0),
     }]
     return CustomLexer(lexer)
 
@@ -617,7 +604,7 @@ def build_lexer(source_lines):
 parser = yacc.yacc()
 def parse(lexer):
     # always use V1, UNICODE, and MULTILINE
-    return '(?umV1)' + parser.parse(lexer=lexer, tracking=True)
+    return '(?umV1)' + unicode(parser.parse(lexer=lexer, tracking=True))
 
 
 if __name__ == "__main__":

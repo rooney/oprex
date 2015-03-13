@@ -11,9 +11,9 @@ Rule 5     oprex -> NEWLINE INDENT expression DEDENT
 Rule 6     expression -> lookup NEWLINE
 Rule 7     expression -> lookup NEWLINE beginscope definitions DEDENT
 Rule 8     lookup -> VARNAME
-Rule 9     lookup -> SLASH cells
-Rule 10    cells -> cell SLASH
-Rule 11    cells -> cells cell SLASH
+Rule 9     lookup -> SLASH chain
+Rule 10    chain -> cell SLASH
+Rule 11    chain -> chain cell SLASH
 Rule 12    cell -> VARNAME
 Rule 13    cell -> VARNAME QUESTMARK
 Rule 14    cell -> LPAREN VARNAME RPAREN
@@ -54,7 +54,7 @@ Nonterminals, with rules where they appear
 assignment           : 20 21 22
 beginscope           : 7 27
 cell                 : 10 11
-cells                : 9 11
+chain                : 9 11
 charclass            : 25
 definition           : 18 19
 definitions          : 7 19 27
@@ -100,7 +100,7 @@ state 3
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
     (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (9) lookup -> . SLASH chain
 
     $end            reduce using rule 3 (oprex -> NEWLINE .)
     INDENT          shift and go to state 4
@@ -116,7 +116,7 @@ state 4
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
     (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (9) lookup -> . SLASH chain
 
     VARNAME         shift and go to state 5
     SLASH           shift and go to state 7
@@ -141,20 +141,20 @@ state 6
 
 state 7
 
-    (9) lookup -> SLASH . cells
-    (10) cells -> . cell SLASH
-    (11) cells -> . cells cell SLASH
+    (9) lookup -> SLASH . chain
+    (10) chain -> . cell SLASH
+    (11) chain -> . chain cell SLASH
     (12) cell -> . VARNAME
     (13) cell -> . VARNAME QUESTMARK
     (14) cell -> . LPAREN VARNAME RPAREN
     (15) cell -> . LPAREN VARNAME RPAREN QUESTMARK
     (16) cell -> . LPAREN VARNAME QUESTMARK RPAREN
 
-    VARNAME         shift and go to state 11
+    VARNAME         shift and go to state 12
     LPAREN          shift and go to state 14
 
     cell                           shift and go to state 13
-    cells                          shift and go to state 12
+    chain                          shift and go to state 11
 
 state 8
 
@@ -186,32 +186,32 @@ state 10
 
 state 11
 
-    (12) cell -> VARNAME .
-    (13) cell -> VARNAME . QUESTMARK
-
-    SLASH           reduce using rule 12 (cell -> VARNAME .)
-    QUESTMARK       shift and go to state 18
-
-
-state 12
-
-    (9) lookup -> SLASH cells .
-    (11) cells -> cells . cell SLASH
+    (9) lookup -> SLASH chain .
+    (11) chain -> chain . cell SLASH
     (12) cell -> . VARNAME
     (13) cell -> . VARNAME QUESTMARK
     (14) cell -> . LPAREN VARNAME RPAREN
     (15) cell -> . LPAREN VARNAME RPAREN QUESTMARK
     (16) cell -> . LPAREN VARNAME QUESTMARK RPAREN
 
-    NEWLINE         reduce using rule 9 (lookup -> SLASH cells .)
-    VARNAME         shift and go to state 11
+    NEWLINE         reduce using rule 9 (lookup -> SLASH chain .)
+    VARNAME         shift and go to state 12
     LPAREN          shift and go to state 14
 
-    cell                           shift and go to state 19
+    cell                           shift and go to state 18
+
+state 12
+
+    (12) cell -> VARNAME .
+    (13) cell -> VARNAME . QUESTMARK
+
+    SLASH           reduce using rule 12 (cell -> VARNAME .)
+    QUESTMARK       shift and go to state 19
+
 
 state 13
 
-    (10) cells -> cell . SLASH
+    (10) chain -> cell . SLASH
 
     SLASH           shift and go to state 20
 
@@ -261,25 +261,25 @@ state 17
 
 state 18
 
+    (11) chain -> chain cell . SLASH
+
+    SLASH           shift and go to state 27
+
+
+state 19
+
     (13) cell -> VARNAME QUESTMARK .
 
     SLASH           reduce using rule 13 (cell -> VARNAME QUESTMARK .)
 
 
-state 19
-
-    (11) cells -> cells cell . SLASH
-
-    SLASH           shift and go to state 27
-
-
 state 20
 
-    (10) cells -> cell SLASH .
+    (10) chain -> cell SLASH .
 
-    VARNAME         reduce using rule 10 (cells -> cell SLASH .)
-    LPAREN          reduce using rule 10 (cells -> cell SLASH .)
-    NEWLINE         reduce using rule 10 (cells -> cell SLASH .)
+    VARNAME         reduce using rule 10 (chain -> cell SLASH .)
+    LPAREN          reduce using rule 10 (chain -> cell SLASH .)
+    NEWLINE         reduce using rule 10 (chain -> cell SLASH .)
 
 
 state 21
@@ -354,11 +354,11 @@ state 26
 
 state 27
 
-    (11) cells -> cells cell SLASH .
+    (11) chain -> chain cell SLASH .
 
-    VARNAME         reduce using rule 11 (cells -> cells cell SLASH .)
-    LPAREN          reduce using rule 11 (cells -> cells cell SLASH .)
-    NEWLINE         reduce using rule 11 (cells -> cells cell SLASH .)
+    VARNAME         reduce using rule 11 (chain -> chain cell SLASH .)
+    LPAREN          reduce using rule 11 (chain -> chain cell SLASH .)
+    NEWLINE         reduce using rule 11 (chain -> chain cell SLASH .)
 
 
 state 28
@@ -415,7 +415,7 @@ state 33
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
     (8) lookup -> . VARNAME
-    (9) lookup -> . SLASH cells
+    (9) lookup -> . SLASH chain
 
     LITERAL         shift and go to state 40
     VARNAME         shift and go to state 39
