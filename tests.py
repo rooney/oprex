@@ -4,7 +4,7 @@ import unittest, regex
 from oprex import oprex, OprexSyntaxError
 
 def assertion_error(msg):
-    raise AssertionError(msg.encode('utf-8'))
+    raise AssertionError(msg)
 
 
 class TestErrorHandling(unittest.TestCase):
@@ -481,7 +481,7 @@ class TestErrorHandling(unittest.TestCase):
             /A/a/
                 A: a = A a
         ''',
-        expect_error='Line 3: Duplicate character in character class definition: a')
+        expect_error='Line 3: Duplicate item in character class definition: a')
 
         self.given('''
             /A/a/
@@ -939,9 +939,9 @@ class TestOutput(unittest.TestCase):
     def test_charclass_operation_output(self):
         self.given(u'''
             xb123
-                xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
+                xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vowel and 1 2 3 /Alphabetic
                     hex: 0..9 a..f A..F
-                    vocal: a i u e o A I U E O
+                    vowel: a i u e o A I U E O
         ''',
         expect_regex='[Xx0-9a-fA-F--c-fC-D\N{LATIN CAPITAL LETTER F}aiueoAIUEO&&123\p{Alphabetic}]')
 
@@ -967,9 +967,9 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             maestro
                 maestro: m +ae s t r o 
-                    ae: +vocal and +hex not +upper
+                    ae: +vowel and +hex not +upper
                         hex: +digit a..f A..F 
-                        vocal: a i u e o A I U E O
+                        vowel: a i u e o A I U E O
         ''',
         expect_regex='[m[aiueoAIUEO&&0-9a-fA-F--A-Z]stro]')
 
@@ -1448,9 +1448,9 @@ class TestMatches(unittest.TestCase):
     def test_charclass_operation(self):
         self.given(u'''
             xb123
-                xb123: X x +hex not c..f C..D :LATIN_CAPITAL_LETTER_F +vocal and 1 2 3 /Alphabetic
+                xb123: X x +hex  not  c..f C..D :LATIN_CAPITAL_LETTER_F +vowel  and  1 2 3 /Alphabetic
                     hex: 0..9 a..f A..F
-                    vocal: a i u e o A I U E O
+                    vowel: a i u e o A I U E O
         ''',
         expect_full_match=['x', 'X', 'b', 'B', '1', '2', '3'],
         no_match=['a', 'A', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'y', 'Y', 'z', 'Z', '0', '4', '9', '-'])
@@ -1480,9 +1480,9 @@ class TestMatches(unittest.TestCase):
         self.given(u'''
             maestro
                 maestro: m +ae s t r o 
-                    ae: +vocal and +hex not +upper
+                    ae: +vowel and +hex not +upper
                         hex: +digit a..f A..F 
-                        vocal: a i u e o A I U E O
+                        vowel: a i u e o A I U E O
         ''',
         expect_full_match=['m', 'a', 'e', 's', 't', 'r', 'o'],
         no_match=[u'Ä', u'ä', '-', '^', '1', 'N', 'E', 'W', 'b'])

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, string, argparse, codecs
+import regex, argparse, codecs
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -97,26 +97,24 @@ def t_character_class(t):
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
     includes = set()
-    processed = set()
+    compiled = set()
     t.set_operation = False
     t.need_brackets = len(chardefs) > 1
-    t.counter = 0
+    t.num_checked = 0
 
-    def try_parse(chardef, errmsg, *methods): # try the methods until we get something
-        for method in methods:                # otherwise raise errmsg
-            result = method(chardef)
+    def try_parse(chardef, *functions):
+        for fn in functions:
+            result = fn(chardef)
             if result:
-                return result
-        raise OprexSyntaxError(t.lineno, errmsg)
+                return result, fn
+        return None, None
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
-            if chardef in processed:
-                raise OprexSyntaxError(t.lineno, 'Duplicate character in character class definition: ' + chardef)
             return CharClass.escapes.get(chardef, chardef)
 
     def uhex(chardef): # example: U+65 u+1F4A9
-        if chardef[:2].upper() == 'U+':
+        if chardef.upper().startswith('U+'):
             hexnum = chardef[2:]
             try:
                 int(hexnum, 16)
@@ -131,7 +129,7 @@ def t_character_class(t):
                 return unicode('\\U' + ('0' * (8-hexlen) + hexnum))
 
     def include(chardef): # example: +alpha +digit
-        if regex.match('\\+[a-zA-Z]\w*+(?<!_)$', chardef):
+        if regex.match('\\+[a-zA-Z]\\w*+(?<!_)$', chardef):
             varname = chardef[1:]
             includes.add(varname)
             return '{%s.value.subvalue}' % varname
@@ -153,19 +151,19 @@ def t_character_class(t):
     def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         if '..' in chardef:
             t.need_brackets = True
-            errmsg = 'Invalid character range: ' + chardef
-            bounds = chardef.split('..')
-            if len(bounds) != 2 or bounds[0] == '' or bounds[1] == '':
-                raise OprexSyntaxError(t.lineno, errmsg)
-            lower_bound = try_parse(bounds[0], errmsg, single, uhex, by_name)
-            upper_bound = try_parse(bounds[1], errmsg, single, uhex, by_name)
-            return lower_bound + '-' + upper_bound
+            try:
+                range_from, range_to = chardef.split('..')
+                from_val, _ = try_parse(range_from, single, uhex, by_name)
+                to_val, _   = try_parse(range_to, single, uhex, by_name)
+                return from_val + '-' + to_val
+            except (TypeError, ValueError):
+                raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
 
     def set_operation(chardef): # example: +alpha and +digit not +hex
         if chardef in ['and', 'not']:
             t.set_operation = True
-            is_first = t.counter == 1
-            is_last  = t.counter == len(chardefs)
+            is_first = t.num_checked == 1
+            is_last  = t.num_checked == len(chardefs)
             if is_first and chardef == 'and':
                 raise OprexSyntaxError(t.lineno, "Character class operator 'and' requires two arguments")
             if is_last:
@@ -175,33 +173,35 @@ def t_character_class(t):
                 'not' : '^' if is_first else '--',
             }[chardef]
 
-    def not_empty(chardef):
-        t.counter += 1
-        return chardef
+    def compilable(chardef):
+        t.num_checked += 1
+        if chardef == '':
+            return False
+        if chardef in compiled:
+            raise OprexSyntaxError(t.lineno, 'Duplicate item in character class definition: ' + chardef)
+        else:
+            compiled.add(chardef)
+            return True
 
     def compile(chardef):
-        compiled = try_parse(chardef, 
-            'Not a valid character class keyword: ' + chardef, 
-            range, single, uhex, by_prop, by_name, include, set_operation
-        )
-        if compiled != '^':
-            curlies_escaped = compiled.replace('{{', '{').replace('}}', '}')
-            test = curlies_escaped
-            if test[:2] not in ['\\p', '\\P']:
+        compiled, type = try_parse(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
+        if not compiled:
+            raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
+        if compiled != '^' and type != include:
+            test = curlies_escaped = compiled.replace('{{', '{').replace('}}', '}')
+            if compiled[:2] not in ['\\p', '\\P']:
                 test = '[' + test + ']' 
             try:
                 regex.compile(test)
             except Exception as e:
                 msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
                 raise OprexSyntaxError(t.lineno, msg % (chardef, curlies_escaped, e.msg if hasattr(e, 'msg') else e.message))
-
-        processed.add(chardef)
         return compiled
 
     value = ''.join([
         compile(chardef)
         for chardef in chardefs
-        if not_empty(chardef)
+        if compilable(chardef)
     ])
 
     t.type = 'COLON'
@@ -299,7 +299,7 @@ def t_linemark(t):
 
     # compare with previous indentation
     prev = t.lexer.indent_stack[-1]
-    if indentlen == prev: # no change in indentation depth
+    if indentlen == prev: # no change indentation depth change
         return t
 
     # else, there's indentation depth change
@@ -341,13 +341,6 @@ def p_oprex(t):
     t[0] = expression
 
 
-def check_unused_variable(t, definitions, referenced_varnames):
-    for var in definitions:
-        if var.name not in referenced_varnames:
-            raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-    t.lexer.scopes.pop()
-
-
 def p_expression(t):
     '''expression : lookup NEWLINE
                   | lookup NEWLINE beginscope definitions DEDENT'''
@@ -356,16 +349,19 @@ def p_expression(t):
     try:
         if isinstance(lookup, LookupChain):
             referenced_varnames = lookup.varnames
-            for varname in current_scope:
-                var = current_scope[varname]
             result = ''.join(lookup.fmts).format(**current_scope)
         else: # simple lookup
-            referenced_varnames, result = [lookup], current_scope[lookup].value
+            referenced_varnames = [lookup]
+            result = current_scope[lookup].value
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
     if len(t) > 3:
-        check_unused_variable(t, t[4], referenced_varnames)
+        definitions = t[4]
+        for var in definitions:
+            if var.name not in referenced_varnames:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+        t.lexer.scopes.pop()
     t[0] = result
 
 
@@ -452,14 +448,12 @@ def p_definition(t):
             except KeyError:
                 scope[var.name] = var
             else:
-                if already_defined.lineno == 0:
-                    errmsg = "'%s' is a built-in variable and cannot be redefined" % var.name
-                else:
-                    errmsg = "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)" % (
-                        var.name, already_defined.lineno
-                    )
-                raise OprexSyntaxError(t.lineno(1), errmsg)
-                        
+                raise OprexSyntaxError(t.lineno(1),
+                    "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
+                        % (var.name, already_defined.lineno)
+                    if already_defined.lineno else
+                    "'%s' is a built-in variable and cannot be redefined" % var.name
+                )
 
     def vars_from(assignment):
         variables = []
@@ -478,7 +472,6 @@ def p_definition(t):
         variables = vars_from(assignment)
         current_scope = t.lexer.scopes[-1] 
         define(variables, current_scope) # non-global, define in current scope only
-
     t[0] = variables
 
 
@@ -495,16 +488,13 @@ def p_assignment(t):
     else:
         value = t[3]
         assignment = Assignment([varname], value, lineno)
-
     t[0] = assignment
 
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE
                  | CHARCLASS NEWLINE beginscope definitions DEDENT'''
-
     value, includes, t.set_operation, t.need_brackets = t[1]
-    definitions = t[4] if len(t) > 3 else []
     current_scope = t.lexer.scopes[-1]
 
     try:
