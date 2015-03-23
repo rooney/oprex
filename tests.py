@@ -4,7 +4,7 @@ import unittest, regex
 from oprex import oprex, OprexSyntaxError
 
 def assertion_error(msg):
-    raise AssertionError(msg)
+    raise AssertionError(msg.encode('utf-8'))
 
 
 class TestErrorHandling(unittest.TestCase):
@@ -779,12 +779,19 @@ class TestOutput(unittest.TestCase):
         expect_regex='localglobal')
 
 
-    def test_escaping(self):
+    def test_escaping_output(self):
         self.given('''
             stars
                 stars = '***'
         ''',
         expect_regex=r'\*\*\*')
+
+        self.given('''
+            add
+                add: +plus
+                    plus: +
+        ''',
+        expect_regex=r'\+')
 
 
     def test_character_class(self):
@@ -1205,59 +1212,69 @@ class TestMatches(unittest.TestCase):
                     e = 'e'
                     ther = 'ther'
                 a = 'a'
-            ''',
-            expect_full_match=['ether', 'aether'],
-        )
+        ''',
+        expect_full_match=['ether', 'aether'])
 
         self.given('''
             /air/man?/ship?/
                 air = 'air'
                 man = 'man'
                 ship = 'ship'
-            ''',
-            expect_full_match=['air', 'airman', 'airship', 'airmanship'],
-            no_match=['manship'],
-            partial_match={'airma' : 'air'},
-        )
+        ''',
+        expect_full_match=['air', 'airman', 'airship', 'airmanship'],
+        no_match=['manship'],
+        partial_match={'airma' : 'air'})
 
         self.given('''
             /ultra?/nagog/
                 ultra = "ultra"
                 nagog = 'nagog'
-            ''',
-            expect_full_match=['ultranagog', 'nagog'],
-            no_match=['ultrnagog'],
-        )
+        ''',
+        expect_full_match=['ultranagog', 'nagog'],
+        no_match=['ultrnagog'])
 
         self.given('''
             /cat?/fish?/
                 cat  = 'cat'
                 fish = 'fish'
-            ''',
-            expect_full_match=['catfish', 'cat', 'fish', ''],
-            partial_match={
-                'catfishing' : 'catfish', 
-                'cafis' : '',
-            }
-        )
+        ''',
+        expect_full_match=['catfish', 'cat', 'fish', ''],
+        partial_match={
+            'catfishing' : 'catfish', 
+            'cafis' : '',
+        })
 
         self.given('''
             /very?/very?/nice/
                 very = 'very '
                 nice = "nice"
-            ''',
-            expect_full_match=['nice', 'very nice', 'very very nice'],
-        )
+        ''',
+        expect_full_match=['nice', 'very nice', 'very very nice'])
 
 
     def test_escaping(self):
         self.given('''
             orly
                 orly = "O RLY?"
-            ''',
-            expect_full_match=['O RLY?'],
-            no_match=['O RLY', 'O RL'],
-        )
+        ''',
+        expect_full_match=['O RLY?'],
+        no_match=['O RLY', 'O RL'])
+
+        self.given('''
+            stars
+                stars = '***'
+        ''',
+        expect_full_match=['***'],
+        partial_match={'****' : '***'},
+        no_match=['', '*'])
+
+        self.given('''
+            add
+                add: +plus
+                    plus: +
+        ''',
+        expect_full_match=['+'],
+        no_match=[''])
 
 
     def test_character_class(self):
@@ -1266,10 +1283,9 @@ class TestMatches(unittest.TestCase):
                 papersize = /series/size/
                     series: A B C
                     size: 0 1 2 3 4 5 6 7 8
-            ''',
-            expect_full_match=['A3', 'A4'],
-            no_match=['Legal', 'Folio'],
-        )
+        ''',
+        expect_full_match=['A3', 'A4'],
+        no_match=['Legal', 'Folio'])
 
         self.given('''
             x

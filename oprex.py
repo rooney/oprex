@@ -187,9 +187,9 @@ def t_character_class(t):
         compiled, type = try_parse(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
         if not compiled:
             raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
-        if compiled != '^' and type != include:
+        if type not in [include, set_operation]:
             test = curlies_escaped = compiled.replace('{{', '{').replace('}}', '}')
-            if compiled[:2] not in ['\\p', '\\P']:
+            if type != by_prop:
                 test = '[' + test + ']' 
             try:
                 regex.compile(test)
@@ -507,7 +507,7 @@ def p_charclass(t):
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
             try:
                 charclass = var.value
-                if charclass.value != charclass.subvalue:
+                if charclass.value.startswith('[') and not charclass.subvalue.startswith('['):
                     t.need_brackets = True
             except AttributeError:
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
@@ -523,6 +523,8 @@ def p_charclass(t):
         value = '[' + value + ']'
     if t.set_operation:
         subvalue = value
+    if len(value) == 1:
+        value = regex.escape(value, special_only=True)
 
     t[0] = CharClass(value, subvalue)
 
