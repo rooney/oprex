@@ -535,9 +535,21 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             x
+                x: u+ab
+        ''',
+        expect_error='Line 3: Not a valid character class keyword: u+ab')
+
+        self.given('''
+            x
                 x: u+123z
         ''',
-        expect_error='Line 3: Syntax error u+123z should be U+hexnumber')
+        expect_error='Line 3: Not a valid character class keyword: u+123z')
+
+        self.given('''
+            x
+                x: U+123z
+        ''',
+        expect_error='Line 3: Syntax error U+123z should be U+hexadecimal')
 
         self.given('''
             x
@@ -549,7 +561,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: U+
         ''',
-        expect_error='Line 3: Syntax error U+ should be U+hexnumber')
+        expect_error='Line 3: Syntax error U+ should be U+hexadecimal')
 
         self.given('''
             x
@@ -831,21 +843,21 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             x
-                x: u+ab U+ab u+AB U+AB u+00ab u+00aB U+00ab U+00Ab
+                x: U+ab U+AB U+00ab U+00Ab
         ''',
-        expect_regex='[\u00ab\u00ab\u00AB\u00AB\u00ab\u00aB\u00ab\u00Ab]')
+        expect_regex='[\u00ab\u00AB\u00ab\u00Ab]')
 
         self.given('''
             x
-                x: u+12ab u+12AB u+12aB U+12ab U+12AB U+12Ab
+                x: U+12ab U+12AB U+12Ab
         ''',
-        expect_regex='[\u12ab\u12AB\u12aB\u12ab\u12AB\u12Ab]')
+        expect_regex='[\u12ab\u12AB\u12Ab]')
 
         self.given('''
             x
-                x: u+1234a u+1234A U+1234a U+1234A u+01234A U+01234a
+                x: U+1234a U+1234A U+01234a
         ''',
-        expect_regex='[\U0001234a\U0001234A\U0001234a\U0001234A\U0001234A\U0001234a]')
+        expect_regex='[\U0001234a\U0001234A\U0001234a]')
 
         self.given('''
             x
@@ -1289,7 +1301,7 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             x
-                x: u+41 u+042 u+00043 U+44 U+0045
+                x: U+41 U+042 U+00043 U+44 U+0045
         ''',
         expect_full_match=['A', 'B', 'C', 'D', 'E'],
         no_match=['a', 'b', 'c', 'd', 'e'])

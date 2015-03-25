@@ -113,13 +113,13 @@ def t_character_class(t):
         if len(chardef) == 1:
             return CharClass.escapes.get(chardef, chardef)
 
-    def uhex(chardef): # example: U+65 u+1F4A9
-        if chardef.upper().startswith('U+'):
+    def uhex(chardef): # example: U+65 U+1F4A9
+        if chardef.startswith('U+'):
             hexnum = chardef[2:]
             try:
                 int(hexnum, 16)
             except ValueError:
-                raise OprexSyntaxError(t.lineno, 'Syntax error %s should be U+hexnumber' % chardef)
+                raise OprexSyntaxError(t.lineno, 'Syntax error %s should be U+hexadecimal' % chardef)
             hexlen = len(hexnum)
             if hexlen > 8:
                 raise OprexSyntaxError(t.lineno, 'Syntax error %s out of range' % chardef)
