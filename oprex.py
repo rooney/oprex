@@ -511,7 +511,9 @@ def p_charclass(t):
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
             try:
                 charclass = var.value
-                if charclass.value.startswith('[') and not charclass.subvalue.startswith('['):
+                need_brackets = charclass.value.startswith('[')
+                set_operation = charclass.subvalue.startswith('[')
+                if need_brackets and not set_operation:
                     t.need_brackets = True
             except AttributeError:
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
