@@ -849,9 +849,9 @@ class TestOutput(unittest.TestCase):
     def test_char(self):
         self.given('''
             x
-                x: /Alphabetic /Script=Latin /InBasicLatin /!IsCyrillic /Script!=Cyrillic /!Script=Cyrillic
+                x: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic /Script=Cyrillic
         ''',
-        expect_regex='[\p{Alphabetic}\p{Script=Latin}\p{InBasicLatin}\P{IsCyrillic}\P{Script=Cyrillic}\P{Script=Cyrillic}]')
+        expect_regex='[\p{Alphabetic}\p{Script=Latin}\p{InBasicLatin}\p{IsCyrillic}\p{Script=Cyrillic}]')
 
         self.given('''
             x
@@ -986,7 +986,7 @@ class TestOutput(unittest.TestCase):
             nonalpha
                 nonalpha: not: /Alphabetic
         ''',
-        expect_regex='[^\p{Alphabetic}]')
+        expect_regex='\P{Alphabetic}')
 
         self.given(u'''
             a_or_consonant
@@ -1333,10 +1333,10 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             x
-                x: /!Symbol
+                x: /Symbol
         ''',
-        expect_full_match=['A', '1'],
-        no_match=['$'])
+        expect_full_match=['$'],
+        no_match=['A', '1'])
 
         # uppercase or greek
         self.given('''
@@ -1349,10 +1349,10 @@ class TestMatches(unittest.TestCase):
         # not uppercase or not greek == not(uppercase and greek)
         self.given('''
             x
-                x: /!Uppercase_Letter /!IsGreek
+                x: /Uppercase_Letter /IsGreek
         ''',
-        expect_full_match=['a', 'A', u'γ'],
-        no_match=[u'Γ'])
+        expect_full_match=['A', u'γ', u'Γ'],
+        no_match=['a'])
 
         self.given('''
             /open/bs/caret/close/

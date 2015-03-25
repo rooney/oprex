@@ -96,8 +96,8 @@ def t_character_class(t):
     if not chardefs:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
+    seen = set()
     includes = set()
-    compiled = set()
     t.set_operation = False
     t.need_brackets = len(chardefs) > 1
     t.num_checked = 0
@@ -135,11 +135,9 @@ def t_character_class(t):
             return '{%s.value.subvalue}' % varname
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
-        if chardef.startswith('/'):
-            negated = '!' in chardef
-            switch = 'P' if negated else 'p'
-            prop = chardef[1:].replace('!', '', 1)
-            return '\\%s{{%s}}' % (switch, prop)
+        if regex.match('/\\w+', chardef):
+            prop = chardef[1:]
+            return '\\p{{%s}}' % prop
 
     def by_name(chardef):           # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
         if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
@@ -160,18 +158,18 @@ def t_character_class(t):
                 raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
 
     def set_operation(chardef): # example: +alpha and +digit not +hex
-        if chardef in ['and', 'not', 'not:']:
+        if chardef in ['not:', 'and', 'not']:
             t.set_operation = True
             is_first = t.num_checked == 1
             is_last = t.num_checked == len(chardefs)
             prefix = is_first and not is_last
             infix = not (is_first or is_last)
-            placement_valid, translation = {
-                'and' : (infix, '&&'),
-                'not' : (infix, '--'),
+            valid_placement, translation = {
                 'not:': (prefix, '^'),
+                'not' : (infix, '--'),
+                'and' : (infix, '&&'),
             }[chardef]
-            if placement_valid:
+            if valid_placement:
                 return translation
             else:
                 raise OprexSyntaxError(t.lineno, "Incorrect use of '%s' operator" % chardef)
@@ -180,10 +178,10 @@ def t_character_class(t):
         t.num_checked += 1
         if chardef == '':
             return False
-        if chardef in compiled:
+        if chardef in seen:
             raise OprexSyntaxError(t.lineno, 'Duplicate item in character class definition: ' + chardef)
         else:
-            compiled.add(chardef)
+            seen.add(chardef)
             return True
 
     def compile(chardef):
@@ -206,6 +204,9 @@ def t_character_class(t):
         for chardef in chardefs
         if compilable(chardef)
     ])
+    if len(chardefs) == 2 and value.startswith('^\\p{'): # convert ^\p{something} to \P{something}
+        value = value.replace('^\\p{', '\\P{', 1)
+        t.need_brackets = t.set_operation = False
 
     t.type = 'COLON'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (value, includes, t.set_operation, t.need_brackets))]
