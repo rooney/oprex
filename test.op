@@ -1,4 +1,3 @@
 
-add
-    add: +plus
-        plus: +
+            missing_arg
+                missing_arg: not:

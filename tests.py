@@ -713,31 +713,43 @@ class TestErrorHandling(unittest.TestCase):
             missing_arg
                 missing_arg: /Alphabetic and
         ''',
-        expect_error="Line 3: Argument required after character class operator 'and'")
+        expect_error="Line 3: Incorrect use of 'and' operator")
 
         self.given(u'''
             missing_arg
                 missing_arg: and /Alphabetic
         ''',
-        expect_error="Line 3: Character class operator 'and' requires two arguments")
+        expect_error="Line 3: Incorrect use of 'and' operator")
 
         self.given(u'''
             missing_arg
                 missing_arg: /Alphabetic not
         ''',
-        expect_error="Line 3: Argument required after character class operator 'not'")
+        expect_error="Line 3: Incorrect use of 'not' operator")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: not /Alphabetic
+        ''',
+        expect_error="Line 3: Incorrect use of 'not' operator")
 
         self.given(u'''
             missing_args
                 missing_args: and
         ''',
-        expect_error="Line 3: Character class operator 'and' requires two arguments")
+        expect_error="Line 3: Incorrect use of 'and' operator")
 
         self.given(u'''
             missing_args
                 missing_args: not
         ''',
-        expect_error="Line 3: Argument required after character class operator 'not'")
+        expect_error="Line 3: Incorrect use of 'not' operator")
+
+        self.given(u'''
+            missing_args
+                missing_args: not:
+        ''',
+        expect_error="Line 3: Incorrect use of 'not:' operator")
 
 
 class TestOutput(unittest.TestCase):
@@ -966,13 +978,13 @@ class TestOutput(unittest.TestCase):
 
         self.given(u'''
             allButU
-                allButU: not U
+                allButU: not: U
         ''',
         expect_regex='[^U]')
 
         self.given(u'''
             nonalpha
-                nonalpha: not /Alphabetic
+                nonalpha: not: /Alphabetic
         ''',
         expect_regex='[^\p{Alphabetic}]')
 
@@ -997,7 +1009,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             otherz
                 otherz: +nonz
-                    nonz: not z
+                    nonz: not: z
         ''',
         expect_regex='[^z]')
 
@@ -1485,14 +1497,14 @@ class TestMatches(unittest.TestCase):
 
         self.given(u'''
             allButU
-                allButU: not U
+                allButU: not: U
         ''',
         expect_full_match=['^', 'u'],
         no_match=['U', ''])
 
         self.given(u'''
             nonalpha
-                nonalpha: not /Alphabetic
+                nonalpha: not: /Alphabetic
         ''',
         expect_full_match=['-', '^', '1'],
         no_match=['A', 'a', u'Ä', u'ä'])
@@ -1520,7 +1532,7 @@ class TestMatches(unittest.TestCase):
         self.given(u'''
             otherz
                 otherz: +nonz
-                    nonz: not z
+                    nonz: not: z
         ''',
         expect_full_match=['-', '^', '1', 'A', 'a', u'Ä', u'ä', 'Z'],
         no_match=['z'])

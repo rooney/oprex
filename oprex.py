@@ -160,18 +160,21 @@ def t_character_class(t):
                 raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
 
     def set_operation(chardef): # example: +alpha and +digit not +hex
-        if chardef in ['and', 'not']:
+        if chardef in ['and', 'not', 'not:']:
             t.set_operation = True
             is_first = t.num_checked == 1
-            is_last  = t.num_checked == len(chardefs)
-            if is_first and chardef == 'and':
-                raise OprexSyntaxError(t.lineno, "Character class operator 'and' requires two arguments")
-            if is_last:
-                raise OprexSyntaxError(t.lineno, "Argument required after character class operator '%s'" % chardef)
-            return {
-                'and' : '&&',
-                'not' : '^' if is_first else '--',
+            is_last = t.num_checked == len(chardefs)
+            prefix = is_first and not is_last
+            infix = not (is_first or is_last)
+            placement_valid, translation = {
+                'and' : (infix, '&&'),
+                'not' : (infix, '--'),
+                'not:': (prefix, '^'),
             }[chardef]
+            if placement_valid:
+                return translation
+            else:
+                raise OprexSyntaxError(t.lineno, "Incorrect use of '%s' operator" % chardef)
 
     def compilable(chardef):
         t.num_checked += 1
