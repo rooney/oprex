@@ -196,7 +196,9 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             101dalmatians
         ''',
-        expect_error='Line 2: Illegal name (must start with a letter): 101dalmatians')
+        expect_error='''Line 2: Unexpected VARNAME
+            101dalmatians
+               ^''')
 
         self.given('''
             _this_
@@ -690,7 +692,7 @@ class TestErrorHandling(unittest.TestCase):
                 x: y
                     y: m i s n g +
         ''',
-        expect_error="Line 4: 'y' is defined but not used (by its parent expression)")
+        expect_error="Line 4: 'y' is defined but not used (by its parent character class definition)")
 
         self.given('''
             x
@@ -750,6 +752,132 @@ class TestErrorHandling(unittest.TestCase):
                 missing_args: not:
         ''',
         expect_error="Line 3: Incorrect use of 'not:' operator")
+
+
+    def test_invalid_quantifier(self):
+        self.given(u'''
+            3 alpha
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            3 alpha
+                   ^''')
+
+        self.given(u'''
+            3 ofalpha
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            3 ofalpha
+                     ^''')
+
+        self.given(u'''
+            3of alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3of alpha
+             ^''')
+
+        self.given(u'''
+            3 o falpha
+        ''',
+        expect_error="Line 2: Expected 'of' but instead got: o")
+
+        self.given(u'''
+            3 office alpha
+        ''',
+        expect_error="Line 2: Expected 'of' but instead got: office")
+
+        self.given(u'''
+            3. of alpha
+        ''',
+        expect_error='Line 2: Syntax error at or near: . of alpha')
+
+        self.given(u'''
+            3... of alpha
+        ''',
+        expect_error='Line 2: Syntax error at or near: . of alpha')
+
+        self.given(u'''
+            3+ of alpha
+        ''',
+        expect_error='''Line 2: Unexpected PLUS
+            3+ of alpha
+             ^''')
+
+        self.given(u'''
+            .. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOTDOT
+            .. of alpha
+            ^''')
+
+        self.given(u'''
+            ..3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOTDOT
+            ..3 of alpha
+            ^''')
+
+        self.given(u'''
+            3+3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected PLUS
+            3+3 of alpha
+             ^''')
+
+        self.given(u'''
+            3..2 of alpha
+        ''',
+        expect_error='Line 2: Repeat max < min')
+
+        self.given(u'''
+            0..3 of alpha
+        ''',
+        expect_error='Line 2: Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
+
+        self.given(u'''
+            0.. of alpha
+        ''',
+        expect_error='Line 2: Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
+
+        self.given(u'''
+            1 ..3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOTDOT
+            1 ..3 of alpha
+              ^''')
+
+        self.given(u'''
+            1.. 3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected NUMBER
+            1.. 3 of alpha
+                ^''')
+
+        self.given(u'''
+            1 .. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOTDOT
+            1 .. of alpha
+              ^''')
+
+        self.given(u'''
+            1 <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            1 <<- of alpha
+                ^''')
+
+        self.given(u'''
+            1 <<+ of alpha
+        ''',
+        expect_error='''Line 2: Unexpected WHITESPACE
+            1 <<+ of alpha
+                 ^''')
+
+        self.given(u'''
+            1 <<+..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max < min')
 
 
 class TestOutput(unittest.TestCase):
@@ -1182,6 +1310,62 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z][A-Z][a-z][0-9][a-zA-Z0-9]')
 
 
+    def test_quantifier_output(self):
+        self.given('''
+            1 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){1}')
+
+        self.given('''
+            2 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){2}')
+
+        self.given('''
+            3.. of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){3,}+')
+
+        self.given('''
+            4..5 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){4,5}+')
+
+        self.given('''
+            1..2 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){1,2}')
+
+        self.given('''
+            3.. <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){3,}')
+
+        self.given('''
+            1 <<+..2 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){1,2}?')
+
+        self.given('''
+            3 <<+.. of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]){3,}?')
+
+        self.given('''
+            css_color
+                css_color = 6 of hex
+                    hex: 0..9 a..f
+        ''',
+        expect_regex='(?:[0-9a-f]){6}')
+
+        self.given('''
+            DWORD_speak
+                DWORD_speak = 1.. of 4 of hex
+                    hex: 0..9 A..F
+        ''',
+        expect_regex='(?:(?:[0-9A-F]){4}){1,}+')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -1211,7 +1395,7 @@ class TestMatches(unittest.TestCase):
             match = regex.match(regex_source, text)
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
-                if match.group(0) == text:
+                if match and match.group(0) == text:
                     assertion_error("%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
                         oprex_source or '(empty string)', 
                         text or '(empty string)', 
@@ -1545,6 +1729,87 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', 'b', 'c', 'd', 'e', 'f'],
         no_match=['A', 'B', 'F', 'x', 'X', 'z', 'Z', '0', '1', '9'])
+
+
+    def test_quantifier(self):
+        self.given('''
+            1 of alpha
+        ''',
+        expect_full_match=['a', 'B'],
+        no_match=['', '1', '$'],
+        partial_match={'Cd' : 'C'})
+
+        self.given('''
+            2 of alpha
+        ''',
+        expect_full_match=['ab', 'Cd'],
+        no_match=['', 'A1', '$1'],
+        partial_match={'ABC' : 'AB'})
+
+        self.given('''
+            3.. of alpha
+        ''',
+        expect_full_match=['abc', 'DeFGhij'],
+        no_match=['', 'Aa4'])
+
+        self.given('''
+            4..5 of alpha
+        ''',
+        expect_full_match=['abcd', 'abcDE'],
+        no_match=['', 'ab123'],
+        partial_match={'ABCDEF' : 'ABCDE'})
+
+        self.given('''
+            /prefix/alnum/
+                prefix = 1..2 <<- of alpha
+        ''',
+        expect_full_match=['A1', 'Ab', 'Ab3', 'abc'],
+        no_match=['', '99', '9z'],
+        partial_match={'YAMM' : 'YAM', 'B52' : 'B5'})
+
+        self.given('''
+            /prefix/alnum/
+                prefix = 3.. <<- of alpha
+        ''',
+        expect_full_match=['AAA1', 'YAMM', 'Fubar', 'YAMM2', 'Fubar4'],
+        no_match=['', 'A1', 'Ab', 'abc', 'Ab3', 'ABC', '99', '9z', 'B52'],
+        partial_match={'Test123' : 'Test1'})
+
+        self.given('''
+            /open/content/close/
+                open: (
+                close: )
+                content = 1.. <<- of: +alnum +open +close
+        ''',
+        expect_full_match=['(sic)'],
+        no_match=['f(x)'],
+        partial_match={'(pow)wow(kaching)zzz' : '(pow)wow(kaching)'})
+
+        self.given('''
+            /open/content/close/
+                open: (
+                content = 1 <<+.. of alnum
+                close: )
+        ''',
+        expect_full_match=['(sic)'],
+        no_match=['f(x)'],
+        partial_match={'(pow)wow(kaching)zzz' : '(pow)'})
+
+        self.given('''
+            css_color
+                css_color = 6 of hex
+                    hex: 0..9 a..f
+        ''',
+        expect_full_match=['ff0000', 'cccccc', 'a762b3'],
+        no_match=['', 'black', 'white'])
+
+        self.given('''
+            DWORD_speak
+                DWORD_speak = 1.. of 4 of hex
+                    hex: 0..9 A..F
+        ''',
+        expect_full_match=['CAFEBABE', 'DEADBEEF', '0FF1CE95'],
+        no_match=['', 'YIKE'])
 
 
 if __name__ == '__main__':

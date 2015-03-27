@@ -35,15 +35,20 @@ def sanitize(source_code):
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
 tokens = (
+    'BACKTRACK',
     'CHARCLASS',
     'COLON',
     'DEDENT',
+    'DOTDOT',
     'EQUALSIGN',
     'GLOBALMARK',
     'INDENT',
+    'NUMBER',
     'LITERAL',
     'LPAREN',
+    'MINUS',
     'NEWLINE',
+    'PLUS',
     'QUESTMARK',
     'RPAREN',
     'SLASH',
@@ -52,10 +57,15 @@ tokens = (
 )
 
 GLOBALMARK   = '*)'
+t_BACKTRACK  = r'\<\<'
+t_DOTDOT     = r'\.\.'
 t_LPAREN     = r'\('
-t_RPAREN     = r'\)'
+t_MINUS      = r'\-'
+t_NUMBER     = r'\d+'
+t_PLUS       = r'\+'
 t_QUESTMARK  = r'\?'
-t_SLASH      = r'/'
+t_RPAREN     = r'\)'
+t_SLASH      = r'\/'
 t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
 
@@ -71,7 +81,7 @@ class LookupChain(namedtuple('LookupChain', 'varnames fmts')):
     __slots__ = ()
 
 
-class CharClass(namedtuple('CharClass', 'value subvalue')):
+class CharClass(namedtuple('CharClass', 'value subvalue rebracket')):
     __slots__ = () # subvalue is for inclusion by other charclass
     escapes = {
         '['  : '\\[',
@@ -96,11 +106,10 @@ def t_character_class(t):
     if not chardefs:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    seen = set()
     includes = set()
     t.set_operation = False
-    t.need_brackets = len(chardefs) > 1
-    t.num_checked = 0
+    t.need_brackets = len(chardefs) > 1 # single-membered charclass doesn't need the brackets
+    t.counter = 0
 
     def try_parse(chardef, *functions):
         for fn in functions:
@@ -160,8 +169,8 @@ def t_character_class(t):
     def set_operation(chardef): # example: +alpha and +digit not +hex
         if chardef in ['not:', 'and', 'not']:
             t.set_operation = True
-            is_first = t.num_checked == 1
-            is_last = t.num_checked == len(chardefs)
+            is_first = t.counter == 1
+            is_last = t.counter == len(chardefs)
             prefix = is_first and not is_last
             infix = not (is_first or is_last)
             valid_placement, translation = {
@@ -174,8 +183,9 @@ def t_character_class(t):
             else:
                 raise OprexSyntaxError(t.lineno, "Incorrect use of '%s' operator" % chardef)
 
+    seen = set()
     def compilable(chardef):
-        t.num_checked += 1
+        t.counter += 1
         if chardef == '':
             return False
         if chardef in seen:
@@ -214,7 +224,7 @@ def t_character_class(t):
 
 
 def t_LITERAL(t):
-    r"""(?:'|")(.*)"""
+    r"""('|")(.*)"""
     value = t.value.strip()
     if len(value) < 2 or value[0] != value[-1]:
         raise OprexSyntaxError(t.lineno, 'Missing closing quote: ' + value)
@@ -227,11 +237,11 @@ def t_LITERAL(t):
 
 
 def t_VARNAME(t):
-    r'[A-Za-z0-9_]+'
+    r'[A-Za-z_][A-Za-z0-9_]*'
     name = t.value
-    if regex.match('[0-9_]', name):
+    if name.startswith('_'):
         raise OprexSyntaxError(t.lineno, 'Illegal name (must start with a letter): ' + name)
-    if name[-1] == '_':
+    if name.endswith('_'):
         raise OprexSyntaxError(t.lineno, 'Illegal name (must not end with underscore): ' + name)
     return t
 
@@ -346,33 +356,80 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : lookup NEWLINE
-                  | lookup NEWLINE beginscope definitions DEDENT'''
-    lookup = t[1]
-    current_scope = t.lexer.scopes[-1]
-    try:
-        if isinstance(lookup, LookupChain):
-            referenced_varnames = lookup.varnames
-            result = ''.join(lookup.fmts).format(**current_scope)
-        else: # simple lookup
-            referenced_varnames = [lookup]
-            result = current_scope[lookup].value
-    except KeyError as e:
-        raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
+    '''expression : lookup     NEWLINE
+                  | lookup     NEWLINE    beginscope definitions DEDENT
+                  | quantifier WHITESPACE LITERAL    NEWLINE
+                  | quantifier WHITESPACE expression
+                  | quantifier COLON      charclass'''
+    if '\n' in t[2]: # t1 is lookup
+        lookup = t[1]
+        current_scope = t.lexer.scopes[-1]
+        try:
+            if isinstance(lookup, LookupChain):
+                referenced_varnames = lookup.varnames
+                result = ''.join(lookup.fmts).format(**current_scope)
+            else:
+                referenced_varnames = [lookup]
+                result = current_scope[lookup].value
+        except KeyError as e:
+            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
-    if len(t) > 3:
-        definitions = t[4]
-        for var in definitions:
-            if var.name not in referenced_varnames:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
+        if len(t) > 3:
+            definitions = t[4]
+            for var in definitions:
+                if var.name not in referenced_varnames:
+                    raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+            t.lexer.scopes.pop()
+    else: # t1 is quantifier
+        quantifier = t[1]
+        quantified = '(?:%s)' % str(t[3])
+        result = quantified + quantifier
+
+    t[0] = result
+
+
+def p_quantifier(t):
+    '''quantifier : NUMBER                                          WHITESPACE VARNAME
+                  | NUMBER DOTDOT                                   WHITESPACE VARNAME
+                  | NUMBER DOTDOT NUMBER                            WHITESPACE VARNAME
+                  | NUMBER DOTDOT        WHITESPACE BACKTRACK MINUS WHITESPACE VARNAME
+                  | NUMBER DOTDOT NUMBER WHITESPACE BACKTRACK MINUS WHITESPACE VARNAME
+                  | NUMBER WHITESPACE BACKTRACK PLUS DOTDOT         WHITESPACE VARNAME
+                  | NUMBER WHITESPACE BACKTRACK PLUS DOTDOT NUMBER  WHITESPACE VARNAME'''
+    numtoks = len(t)
+    varname = t[numtoks-1] # the last token
+    if varname != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow variable named 'of'
+        raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + varname)
+
+    fixrep     = numtoks == 4
+    possessive = numtoks in [5, 6]
+    greedy     = numtoks in [8, 9] and '..' == t[2]
+    lazy       = numtoks in [8, 9] and '..' == t[5]
+
+    min = t[1]
+    if int(min) < 1:
+        raise OprexSyntaxError(t.lineno(0), 'Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
+
+    if fixrep:
+        result = '{%s}' % min
+    else:
+        max = t[3] if greedy or possessive else t[6] # this will catch either NUMBER or WHITESPACE
+        max = max.strip() # in case of catching WHITESPACE, turn it into empty string
+        if max and int(max) < int(min):
+            raise OprexSyntaxError(t.lineno(0), 'Repeat max < min')
+
+        suffix = '+' if possessive else '?' if lazy else ''
+        result = '{%s,%s}%s' % (min, max, suffix)
     t[0] = result
 
 
 def p_lookup(t):
     '''lookup : VARNAME
-              | SLASH   chain'''
-    t[0] = t[1] if t[1] != '/' else t[2]
+              | SLASH chain'''
+    if t[1] == '/':
+        t[0] = t[2]
+    else:
+        t[0] = t[1]
 
 
 def p_chain(t):
@@ -508,15 +565,11 @@ def p_charclass(t):
     else:
         for var in definitions:
             if var.name not in includes:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-            try:
-                charclass = var.value
-                need_brackets = charclass.value.startswith('[')
-                set_operation = charclass.subvalue.startswith('[')
-                if need_brackets and not set_operation:
-                    t.need_brackets = True
-            except AttributeError:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent character class definition)" % var.name)
+            if not isinstance(var.value, CharClass):
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
+            if var.value.rebracket:
+                t.need_brackets = True
         t.lexer.scopes.pop()
 
     try:
@@ -531,8 +584,9 @@ def p_charclass(t):
         subvalue = value
     if len(value) == 1:
         value = regex.escape(value, special_only=True)
+    rebracket = t.need_brackets and not t.set_operation
 
-    t[0] = CharClass(value, subvalue)
+    t[0] = CharClass(value, subvalue, rebracket)
 
 
 def p_error(t):
@@ -589,12 +643,12 @@ def build_lexer(source_lines):
     lexer.indent_stack = [0]  # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.scopes = [{ # built-in variables
-        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z'   ), lineno=0), # lineno=0 --> builtin
-        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z'      ), lineno=0),
-        'lower' : Variable('lower', CharClass('[a-z]',       'a-z'      ), lineno=0),
-        'digit' : Variable('digit', CharClass('[0-9]',       '0-9'      ), lineno=0),
-        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9'), lineno=0),
+    lexer.scopes = [{ # built-in variables                                     # lineno=0 --> builtin
+        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z',    True), lineno=0),
+        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z',       True), lineno=0),
+        'lower' : Variable('lower', CharClass('[a-z]',       'a-z',       True), lineno=0),
+        'digit' : Variable('digit', CharClass('[0-9]',       '0-9',       True), lineno=0),
+        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9', True), lineno=0),
     }]
     return CustomLexer(lexer)
 
