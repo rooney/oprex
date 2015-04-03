@@ -1314,7 +1314,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
             1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){1}')
+        expect_regex='(?:[a-zA-Z])')
 
         self.given('''
             2 of alpha
@@ -1352,6 +1352,21 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]){3,}?')
 
         self.given('''
+            1.. of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z])++')
+
+        self.given('''
+            1.. <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z])+')
+
+        self.given('''
+            1 <<+.. of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z])+?')
+
+        self.given('''
             css_color
                 css_color = 6 of hex
                     hex: 0..9 a..f
@@ -1363,11 +1378,11 @@ class TestOutput(unittest.TestCase):
                 DWORD_speak = 1.. of 4 of hex
                     hex: 0..9 A..F
         ''',
-        expect_regex='(?:(?:[0-9A-F]){4}){1,}+')
+        expect_regex='(?:(?:[0-9A-F]){4})++')
 
 
 class TestMatches(unittest.TestCase):
-    def given(self, oprex_source, expect_full_match, no_match=[], partial_match={}):
+    def given(self, oprex_source, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
         for text in expect_full_match:
             match = regex.match(regex_source, text)
@@ -1389,7 +1404,6 @@ class TestMatches(unittest.TestCase):
                     'But it does match. The match is: ' + (match.group(0) or '(empty string)'),
                     regex_source or '(empty string)',
                 ))
-
 
         for text, partmatch in partial_match.iteritems():
             match = regex.match(regex_source, text)
@@ -1788,12 +1802,20 @@ class TestMatches(unittest.TestCase):
         self.given('''
             /open/content/close/
                 open: (
-                content = 1 <<+.. of alnum
                 close: )
+                content = 1 <<+.. of: +alnum +open +close
         ''',
         expect_full_match=['(sic)'],
         no_match=['f(x)'],
         partial_match={'(pow)wow(kaching)zzz' : '(pow)'})
+
+        self.given('''
+            /open/content/close/
+                open: (
+                close: )
+                content = 1.. of: +alnum +open +close
+        ''',
+        no_match=['(pow)wow(kaching)zzz'])
 
         self.given('''
             css_color

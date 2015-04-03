@@ -398,7 +398,7 @@ def p_quantifier(t):
                   | NUMBER WHITESPACE BACKTRACK PLUS DOTDOT NUMBER  WHITESPACE VARNAME'''
     numtoks = len(t)
     varname = t[numtoks-1] # the last token
-    if varname != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow variable named 'of'
+    if varname != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow naming variables 'of'
         raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + varname)
 
     fixrep     = numtoks == 4
@@ -407,19 +407,22 @@ def p_quantifier(t):
     lazy       = numtoks in [8, 9] and '..' == t[5]
 
     min = t[1]
-    if int(min) < 1:
+    if min == '0':
         raise OprexSyntaxError(t.lineno(0), 'Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
 
     if fixrep:
-        result = '{%s}' % min
+        result = '' if min == '1' else '{%s}' % min
     else:
-        max = t[3] if greedy or possessive else t[6] # this will catch either NUMBER or WHITESPACE
+        max = t[6] if lazy else t[3] # this will catch either NUMBER or WHITESPACE
         max = max.strip() # in case of catching WHITESPACE, turn it into empty string
-        if max and int(max) < int(min):
-            raise OprexSyntaxError(t.lineno(0), 'Repeat max < min')
+        if max:
+            if int(max) < int(min):
+                raise OprexSyntaxError(t.lineno(0), 'Repeat max < min')
+            result = '{%s,%s}' % (min, max)
+        else: # no max (infinite)
+            result = '+' if min == '1' else '{%s,}' % min
+        result += '+' if possessive else '?' if lazy else ''
 
-        suffix = '+' if possessive else '?' if lazy else ''
-        result = '{%s,%s}%s' % (min, max, suffix)
     t[0] = result
 
 
