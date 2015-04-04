@@ -10,7 +10,7 @@ Rule 4     oprex -> NEWLINE expression
 Rule 5     oprex -> NEWLINE INDENT expression DEDENT
 Rule 6     expression -> lookup NEWLINE
 Rule 7     expression -> lookup NEWLINE beginscope definitions DEDENT
-Rule 8     expression -> quantifier WHITESPACE LITERAL NEWLINE
+Rule 8     expression -> quantifier WHITESPACE STRING NEWLINE
 Rule 9     expression -> quantifier WHITESPACE expression
 Rule 10    expression -> quantifier COLON charclass
 Rule 11    quantifier -> NUMBER WHITESPACE VARNAME
@@ -36,7 +36,7 @@ Rule 30    definition -> assignment
 Rule 31    definition -> GLOBALMARK assignment
 Rule 32    assignment -> VARNAME EQUALSIGN assignment
 Rule 33    assignment -> VARNAME EQUALSIGN expression
-Rule 34    assignment -> VARNAME EQUALSIGN LITERAL NEWLINE
+Rule 34    assignment -> VARNAME EQUALSIGN STRING NEWLINE
 Rule 35    assignment -> VARNAME COLON charclass
 Rule 36    charclass -> CHARCLASS NEWLINE
 Rule 37    charclass -> CHARCLASS NEWLINE beginscope definitions DEDENT
@@ -51,7 +51,6 @@ DOTDOT               : 12 13 14 15 16 17
 EQUALSIGN            : 32 33 34
 GLOBALMARK           : 31
 INDENT               : 5 27
-LITERAL              : 8 34
 LPAREN               : 24 25 26
 MINUS                : 14 15
 NEWLINE              : 3 4 5 6 7 8 34 36 37
@@ -60,6 +59,7 @@ PLUS                 : 16 17
 QUESTMARK            : 23 25 26
 RPAREN               : 24 25 26
 SLASH                : 19 20 21
+STRING               : 8 34
 VARNAME              : 11 12 13 14 15 16 17 18 22 23 24 25 26 32 33 34 35
 WHITESPACE           : 2 8 9 11 12 13 14 14 15 15 16 16 17 17
 error                : 
@@ -115,7 +115,7 @@ state 3
     (5) oprex -> NEWLINE . INDENT expression DEDENT
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) expression -> . quantifier WHITESPACE LITERAL NEWLINE
+    (8) expression -> . quantifier WHITESPACE STRING NEWLINE
     (9) expression -> . quantifier WHITESPACE expression
     (10) expression -> . quantifier COLON charclass
     (18) lookup -> . VARNAME
@@ -143,7 +143,7 @@ state 4
     (5) oprex -> NEWLINE INDENT . expression DEDENT
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) expression -> . quantifier WHITESPACE LITERAL NEWLINE
+    (8) expression -> . quantifier WHITESPACE STRING NEWLINE
     (9) expression -> . quantifier WHITESPACE expression
     (10) expression -> . quantifier COLON charclass
     (18) lookup -> . VARNAME
@@ -212,7 +212,7 @@ state 8
 
 state 9
 
-    (8) expression -> quantifier . WHITESPACE LITERAL NEWLINE
+    (8) expression -> quantifier . WHITESPACE STRING NEWLINE
     (9) expression -> quantifier . WHITESPACE expression
     (10) expression -> quantifier . COLON charclass
 
@@ -312,11 +312,11 @@ state 18
 
 state 19
 
-    (8) expression -> quantifier WHITESPACE . LITERAL NEWLINE
+    (8) expression -> quantifier WHITESPACE . STRING NEWLINE
     (9) expression -> quantifier WHITESPACE . expression
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) expression -> . quantifier WHITESPACE LITERAL NEWLINE
+    (8) expression -> . quantifier WHITESPACE STRING NEWLINE
     (9) expression -> . quantifier WHITESPACE expression
     (10) expression -> . quantifier COLON charclass
     (18) lookup -> . VARNAME
@@ -329,14 +329,14 @@ state 19
     (16) quantifier -> . NUMBER WHITESPACE BACKTRACK PLUS DOTDOT WHITESPACE VARNAME
     (17) quantifier -> . NUMBER WHITESPACE BACKTRACK PLUS DOTDOT NUMBER WHITESPACE VARNAME
 
-    LITERAL         shift and go to state 32
+    STRING          shift and go to state 33
     VARNAME         shift and go to state 5
     SLASH           shift and go to state 8
     NUMBER          shift and go to state 6
 
     lookup                         shift and go to state 7
     quantifier                     shift and go to state 9
-    expression                     shift and go to state 33
+    expression                     shift and go to state 32
 
 state 20
 
@@ -397,7 +397,7 @@ state 26
     (31) definition -> . GLOBALMARK assignment
     (32) assignment -> . VARNAME EQUALSIGN assignment
     (33) assignment -> . VARNAME EQUALSIGN expression
-    (34) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> . VARNAME EQUALSIGN STRING NEWLINE
     (35) assignment -> . VARNAME COLON charclass
 
     GLOBALMARK      shift and go to state 42
@@ -450,19 +450,19 @@ state 31
 
 state 32
 
-    (8) expression -> quantifier WHITESPACE LITERAL . NEWLINE
-
-    NEWLINE         shift and go to state 48
-
-
-state 33
-
     (9) expression -> quantifier WHITESPACE expression .
 
     $end            reduce using rule 9 (expression -> quantifier WHITESPACE expression .)
     DEDENT          reduce using rule 9 (expression -> quantifier WHITESPACE expression .)
     GLOBALMARK      reduce using rule 9 (expression -> quantifier WHITESPACE expression .)
     VARNAME         reduce using rule 9 (expression -> quantifier WHITESPACE expression .)
+
+
+state 33
+
+    (8) expression -> quantifier WHITESPACE STRING . NEWLINE
+
+    NEWLINE         shift and go to state 48
 
 
 state 34
@@ -525,7 +525,7 @@ state 40
     (31) definition -> . GLOBALMARK assignment
     (32) assignment -> . VARNAME EQUALSIGN assignment
     (33) assignment -> . VARNAME EQUALSIGN expression
-    (34) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> . VARNAME EQUALSIGN STRING NEWLINE
     (35) assignment -> . VARNAME COLON charclass
 
     DEDENT          reduce using rule 28 (definitions -> definition .)
@@ -550,7 +550,7 @@ state 42
     (31) definition -> GLOBALMARK . assignment
     (32) assignment -> . VARNAME EQUALSIGN assignment
     (33) assignment -> . VARNAME EQUALSIGN expression
-    (34) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> . VARNAME EQUALSIGN STRING NEWLINE
     (35) assignment -> . VARNAME COLON charclass
 
     VARNAME         shift and go to state 43
@@ -561,7 +561,7 @@ state 43
 
     (32) assignment -> VARNAME . EQUALSIGN assignment
     (33) assignment -> VARNAME . EQUALSIGN expression
-    (34) assignment -> VARNAME . EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> VARNAME . EQUALSIGN STRING NEWLINE
     (35) assignment -> VARNAME . COLON charclass
 
     EQUALSIGN       shift and go to state 57
@@ -602,12 +602,12 @@ state 47
 
 state 48
 
-    (8) expression -> quantifier WHITESPACE LITERAL NEWLINE .
+    (8) expression -> quantifier WHITESPACE STRING NEWLINE .
 
-    $end            reduce using rule 8 (expression -> quantifier WHITESPACE LITERAL NEWLINE .)
-    DEDENT          reduce using rule 8 (expression -> quantifier WHITESPACE LITERAL NEWLINE .)
-    GLOBALMARK      reduce using rule 8 (expression -> quantifier WHITESPACE LITERAL NEWLINE .)
-    VARNAME         reduce using rule 8 (expression -> quantifier WHITESPACE LITERAL NEWLINE .)
+    $end            reduce using rule 8 (expression -> quantifier WHITESPACE STRING NEWLINE .)
+    DEDENT          reduce using rule 8 (expression -> quantifier WHITESPACE STRING NEWLINE .)
+    GLOBALMARK      reduce using rule 8 (expression -> quantifier WHITESPACE STRING NEWLINE .)
+    VARNAME         reduce using rule 8 (expression -> quantifier WHITESPACE STRING NEWLINE .)
 
 
 state 49
@@ -685,14 +685,14 @@ state 57
 
     (32) assignment -> VARNAME EQUALSIGN . assignment
     (33) assignment -> VARNAME EQUALSIGN . expression
-    (34) assignment -> VARNAME EQUALSIGN . LITERAL NEWLINE
+    (34) assignment -> VARNAME EQUALSIGN . STRING NEWLINE
     (32) assignment -> . VARNAME EQUALSIGN assignment
     (33) assignment -> . VARNAME EQUALSIGN expression
-    (34) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> . VARNAME EQUALSIGN STRING NEWLINE
     (35) assignment -> . VARNAME COLON charclass
     (6) expression -> . lookup NEWLINE
     (7) expression -> . lookup NEWLINE beginscope definitions DEDENT
-    (8) expression -> . quantifier WHITESPACE LITERAL NEWLINE
+    (8) expression -> . quantifier WHITESPACE STRING NEWLINE
     (9) expression -> . quantifier WHITESPACE expression
     (10) expression -> . quantifier COLON charclass
     (18) lookup -> . VARNAME
@@ -705,8 +705,8 @@ state 57
     (16) quantifier -> . NUMBER WHITESPACE BACKTRACK PLUS DOTDOT WHITESPACE VARNAME
     (17) quantifier -> . NUMBER WHITESPACE BACKTRACK PLUS DOTDOT NUMBER WHITESPACE VARNAME
 
-    LITERAL         shift and go to state 68
-    VARNAME         shift and go to state 67
+    STRING          shift and go to state 67
+    VARNAME         shift and go to state 68
     SLASH           shift and go to state 8
     NUMBER          shift and go to state 6
 
@@ -748,7 +748,7 @@ state 61
     (31) definition -> . GLOBALMARK assignment
     (32) assignment -> . VARNAME EQUALSIGN assignment
     (33) assignment -> . VARNAME EQUALSIGN expression
-    (34) assignment -> . VARNAME EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> . VARNAME EQUALSIGN STRING NEWLINE
     (35) assignment -> . VARNAME COLON charclass
 
     GLOBALMARK      shift and go to state 42
@@ -797,22 +797,22 @@ state 66
 
 state 67
 
+    (34) assignment -> VARNAME EQUALSIGN STRING . NEWLINE
+
+    NEWLINE         shift and go to state 76
+
+
+state 68
+
     (32) assignment -> VARNAME . EQUALSIGN assignment
     (33) assignment -> VARNAME . EQUALSIGN expression
-    (34) assignment -> VARNAME . EQUALSIGN LITERAL NEWLINE
+    (34) assignment -> VARNAME . EQUALSIGN STRING NEWLINE
     (35) assignment -> VARNAME . COLON charclass
     (18) lookup -> VARNAME .
 
     EQUALSIGN       shift and go to state 57
     COLON           shift and go to state 56
     NEWLINE         reduce using rule 18 (lookup -> VARNAME .)
-
-
-state 68
-
-    (34) assignment -> VARNAME EQUALSIGN LITERAL . NEWLINE
-
-    NEWLINE         shift and go to state 76
 
 
 state 69
@@ -872,11 +872,11 @@ state 75
 
 state 76
 
-    (34) assignment -> VARNAME EQUALSIGN LITERAL NEWLINE .
+    (34) assignment -> VARNAME EQUALSIGN STRING NEWLINE .
 
-    GLOBALMARK      reduce using rule 34 (assignment -> VARNAME EQUALSIGN LITERAL NEWLINE .)
-    VARNAME         reduce using rule 34 (assignment -> VARNAME EQUALSIGN LITERAL NEWLINE .)
-    DEDENT          reduce using rule 34 (assignment -> VARNAME EQUALSIGN LITERAL NEWLINE .)
+    GLOBALMARK      reduce using rule 34 (assignment -> VARNAME EQUALSIGN STRING NEWLINE .)
+    VARNAME         reduce using rule 34 (assignment -> VARNAME EQUALSIGN STRING NEWLINE .)
+    DEDENT          reduce using rule 34 (assignment -> VARNAME EQUALSIGN STRING NEWLINE .)
 
 
 state 77

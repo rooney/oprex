@@ -44,7 +44,6 @@ tokens = (
     'GLOBALMARK',
     'INDENT',
     'NUMBER',
-    'LITERAL',
     'LPAREN',
     'MINUS',
     'NEWLINE',
@@ -52,6 +51,7 @@ tokens = (
     'QUESTMARK',
     'RPAREN',
     'SLASH',
+    'STRING',
     'VARNAME',
     'WHITESPACE',
 )
@@ -223,7 +223,7 @@ def t_character_class(t):
     return t
 
 
-def t_LITERAL(t):
+def t_STRING(t):
     r"""('|")(.*)"""
     value = t.value.strip()
     if len(value) < 2 or value[0] != value[-1]:
@@ -358,7 +358,7 @@ def p_oprex(t):
 def p_expression(t):
     '''expression : lookup     NEWLINE
                   | lookup     NEWLINE    beginscope definitions DEDENT
-                  | quantifier WHITESPACE LITERAL    NEWLINE
+                  | quantifier WHITESPACE STRING NEWLINE
                   | quantifier WHITESPACE expression
                   | quantifier COLON      charclass'''
     if '\n' in t[2]: # t1 is lookup
@@ -405,7 +405,6 @@ def p_quantifier(t):
     possessive = numtoks in [5, 6]
     greedy     = numtoks in [8, 9] and '..' == t[2]
     lazy       = numtoks in [8, 9] and '..' == t[5]
-
     min = t[1]
     if min == '0':
         raise OprexSyntaxError(t.lineno(0), 'Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
@@ -422,7 +421,6 @@ def p_quantifier(t):
         else: # no max (infinite)
             result = '+' if min == '1' else '{%s,}' % min
         result += '+' if possessive else '?' if lazy else ''
-
     t[0] = result
 
 
@@ -542,7 +540,7 @@ def p_definition(t):
 def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN assignment
                   | VARNAME EQUALSIGN expression
-                  | VARNAME EQUALSIGN LITERAL NEWLINE
+                  | VARNAME EQUALSIGN STRING NEWLINE
                   | VARNAME COLON     charclass'''
     varname = t[1]
     lineno = t.lineno(1)
