@@ -356,8 +356,7 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : lookup     NEWLINE
-                  | lookup     NEWLINE    beginscope definitions DEDENT
+    '''expression : lookup     NEWLINE    optional_subblock
                   | quantifier WHITESPACE STRING NEWLINE
                   | quantifier WHITESPACE expression
                   | quantifier COLON      charclass'''
@@ -368,15 +367,15 @@ def p_expression(t):
             if isinstance(lookup, ChainedLookup):
                 referenced_varnames = lookup.varnames
                 result = ''.join(lookup.fmts).format(**current_scope)
-            else:
+            else: # Simple lookup
                 referenced_varnames = [lookup]
                 result = current_scope[lookup].value
         except KeyError as e:
             raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
-        if len(t) > 3:
-            definitions = t[4]
-            for var in definitions:
+        subblock = t[3] # optional, can be None
+        if subblock:
+            for var in subblock:
                 if var.name not in referenced_varnames:
                     raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
             t.lexer.scopes.pop()
@@ -482,10 +481,21 @@ def p_cell(t):
     t[0] = varname, fmt
 
 
-def p_beginscope(t):
-    '''beginscope : INDENT'''
+def p_optional_subblock(t):
+    '''optional_subblock : begin_block definitions end_block
+                         |'''
+    if len(t) > 1:
+        t[0] = t[2]
+
+
+def p_begin_block(t):
+    '''begin_block : INDENT'''
     current_scope = t.lexer.scopes[-1]
     t.lexer.scopes.append(current_scope.copy())
+
+
+def p_end_block(t):
+    '''end_block : DEDENT'''
 
 
 def p_definitions(t):
@@ -554,17 +564,12 @@ def p_assignment(t):
 
 
 def p_charclass(t):
-    '''charclass : CHARCLASS NEWLINE
-                 | CHARCLASS NEWLINE beginscope definitions DEDENT'''
+    '''charclass : CHARCLASS NEWLINE optional_subblock'''
     value, includes, t.set_operation, t.need_brackets = t[1]
     current_scope = t.lexer.scopes[-1]
-
-    try:
-        definitions = t[4]
-    except IndexError:
-        pass # no definitions, nothing to check
-    else:
-        for var in definitions:
+    subblock = t[3] # optional, can be None
+    if subblock:
+        for var in subblock:
             if var.name not in includes:
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent character class definition)" % var.name)
             if not isinstance(var.value, CharClass):
