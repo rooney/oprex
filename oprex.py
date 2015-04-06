@@ -77,7 +77,7 @@ class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
 
 
-class LookupChain(namedtuple('LookupChain', 'varnames fmts')):
+class ChainedLookup(namedtuple('ChainedLookup', 'varnames fmts')):
     __slots__ = ()
 
 
@@ -365,7 +365,7 @@ def p_expression(t):
         lookup = t[1]
         current_scope = t.lexer.scopes[-1]
         try:
-            if isinstance(lookup, LookupChain):
+            if isinstance(lookup, ChainedLookup):
                 referenced_varnames = lookup.varnames
                 result = ''.join(lookup.fmts).format(**current_scope)
             else:
@@ -438,7 +438,7 @@ def p_chain(t):
              | chain cell  SLASH'''
     if t[2] == '/':
         varname, fmt = t[1]
-        lookup = LookupChain(set(), [])
+        lookup = ChainedLookup(set(), [])
     else:
         lookup = t[1]
         varname, fmt = t[2]
