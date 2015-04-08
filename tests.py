@@ -4,7 +4,7 @@ import unittest, regex
 from oprex import oprex, OprexSyntaxError
 
 def assertion_error(msg):
-    raise AssertionError(msg.encode('utf-8'))
+    raise AssertionError(msg)
 
 
 class TestErrorHandling(unittest.TestCase):
