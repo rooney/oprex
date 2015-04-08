@@ -356,11 +356,11 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : lookup     NEWLINE    optional_subblock
+    '''expression : value      NEWLINE    optional_subblock
                   | quantifier WHITESPACE STRING NEWLINE
                   | quantifier WHITESPACE expression
                   | quantifier COLON      charclass'''
-    if '\n' in t[2]: # t1 is lookup
+    if '\n' in t[2]: # first form: t1 value, t2 newline
         lookup = t[1]
         current_scope = t.lexer.scopes[-1]
         try:
@@ -385,6 +385,15 @@ def p_expression(t):
         result = quantified + quantifier
 
     t[0] = result
+
+
+def p_value(t):
+    '''value : VARNAME
+             | SLASH chain'''
+    if t[1] == '/':
+        t[0] = t[2]
+    else:
+        t[0] = t[1]
 
 
 def p_quantifier(t):
@@ -421,15 +430,6 @@ def p_quantifier(t):
             result = '+' if min == '1' else '{%s,}' % min
         result += '+' if possessive else '?' if lazy else ''
     t[0] = result
-
-
-def p_lookup(t):
-    '''lookup : VARNAME
-              | SLASH chain'''
-    if t[1] == '/':
-        t[0] = t[2]
-    else:
-        t[0] = t[1]
 
 
 def p_chain(t):
