@@ -77,6 +77,12 @@ class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
 
 
+class StringLiteral(unicode):
+    pass
+
+class SimpleLookup(unicode):
+    pass
+
 class ChainedLookup(namedtuple('ChainedLookup', 'varnames fmts')):
     __slots__ = ()
 
@@ -357,19 +363,21 @@ def p_oprex(t):
 
 def p_expression(t):
     '''expression : value      NEWLINE    optional_subblock
-                  | quantifier WHITESPACE STRING NEWLINE
                   | quantifier WHITESPACE expression
                   | quantifier COLON      charclass'''
-    if '\n' in t[2]: # first form: t1 value, t2 newline
+    if '\n' in t[2]: # t1 is value
         lookup = t[1]
         current_scope = t.lexer.scopes[-1]
         try:
             if isinstance(lookup, ChainedLookup):
                 referenced_varnames = lookup.varnames
                 result = ''.join(lookup.fmts).format(**current_scope)
-            else: # Simple lookup
+            elif isinstance(lookup, SimpleLookup):
                 referenced_varnames = [lookup]
                 result = current_scope[lookup].value
+            else:
+                referenced_varnames = []
+                result = lookup
         except KeyError as e:
             raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
@@ -388,12 +396,18 @@ def p_expression(t):
 
 
 def p_value(t):
-    '''value : VARNAME
+    '''value : STRING
+             | simple_lookup
              | SLASH chain'''
     if t[1] == '/':
         t[0] = t[2]
     else:
         t[0] = t[1]
+
+
+def p_simple_lookup(t):
+    '''simple_lookup : VARNAME'''
+    t[0] = SimpleLookup(t[1])
 
 
 def p_quantifier(t):
