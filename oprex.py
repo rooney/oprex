@@ -400,10 +400,7 @@ def p_value(t):
     '''value : STRING
              | simple_lookup
              | SLASH chain'''
-    if t[1] == '/':
-        t[0] = t[2]
-    else:
-        t[0] = t[1]
+    t[0] = t[len(t)-1]
 
 
 def p_simple_lookup(t):
@@ -565,7 +562,6 @@ def p_definition(t):
 def p_assignment(t):
     '''assignment : VARNAME EQUALSIGN assignment
                   | VARNAME EQUALSIGN expression
-                  | VARNAME EQUALSIGN STRING NEWLINE
                   | VARNAME COLON     charclass'''
     varname = t[1]
     lineno = t.lineno(1)
