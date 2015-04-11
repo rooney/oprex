@@ -77,6 +77,9 @@ class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
 
 
+class Quantifier(unicode):
+    pass
+
 class StringLiteral(unicode):
     pass
 
@@ -366,21 +369,26 @@ def p_expression(t):
     '''expression : value      NEWLINE    optional_subblock
                   | quantifier WHITESPACE expression
                   | quantifier COLON      charclass'''
-    if '\n' in t[2]: # t1 is value
-        lookup = t[1]
-        current_scope = t.lexer.scopes[-1]
-        try:
-            if isinstance(lookup, ChainedLookup):
-                referenced_varnames = lookup.varnames
-                result = ''.join(lookup.fmts).format(**current_scope)
-            elif isinstance(lookup, SimpleLookup):
-                referenced_varnames = [lookup]
-                result = current_scope[lookup].value
-            else:
-                referenced_varnames = []
-                result = lookup
-        except KeyError as e:
-            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
+    t1 = t[1]
+    if isinstance(t1, Quantifier):
+        quantified = '(?:%s)' % str(t[3])
+        result = quantified + t1
+    else:
+        if isinstance(t1, StringLiteral):
+            result = t1
+            referenced_varnames = ()
+        else:
+            lookup = t1
+            current_scope = t.lexer.scopes[-1]
+            try:
+                if isinstance(lookup, ChainedLookup):
+                    referenced_varnames = lookup.varnames
+                    result = ''.join(lookup.fmts).format(**current_scope)
+                elif isinstance(lookup, SimpleLookup):
+                    referenced_varnames = (lookup,)
+                    result = current_scope[lookup].value
+            except KeyError as e:
+                raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
 
         subblock = t[3] # optional, can be None
         if subblock:
@@ -388,10 +396,6 @@ def p_expression(t):
                 if var.name not in referenced_varnames:
                     raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
             t.lexer.scopes.pop()
-    else: # t1 is quantifier
-        quantifier = t[1]
-        quantified = '(?:%s)' % str(t[3])
-        result = quantified + quantifier
 
     t[0] = result
 
@@ -441,7 +445,7 @@ def p_quantifier(t):
         else: # no max (infinite)
             result = '+' if min == '1' else '{%s,}' % min
         result += '+' if possessive else '?' if lazy else ''
-    t[0] = result
+    t[0] = Quantifier(result)
 
 
 def p_chain(t):
