@@ -235,10 +235,11 @@ def t_STRING(t):
     if len(value) < 2 or value[0] != value[-1]:
         raise OprexSyntaxError(t.lineno, 'Missing closing quote: ' + value)
 
-    t.value = regex.escape(
+    value = regex.escape(
         value[1:-1], # remove the surrounding quotes
         special_only=True,
     )
+    t.value = StringLiteral(value)
     return t
 
 

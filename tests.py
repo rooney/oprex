@@ -3,10 +3,6 @@
 import unittest, regex
 from oprex import oprex, OprexSyntaxError
 
-def assertion_error(msg):
-    raise AssertionError(msg)
-
-
 class TestErrorHandling(unittest.TestCase):
     def given(self, oprex_source, expect_error):
         expect_error = '\n' + expect_error
@@ -19,7 +15,7 @@ class TestErrorHandling(unittest.TestCase):
 
         if got_error != expect_error:
             msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
-            assertion_error(msg % (
+            raise AssertionError(msg % (
                 oprex_source or '(empty string)', 
                 got_error or '\n(no error)', 
                 expect_error or '\n(no error)',
@@ -212,14 +208,14 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_duplicate_variable(self):
-        self.given('''
+        self.given(u'''
             dejavu
                 dejavu = 'Déjà vu'
                 dejavu = 'Déjà vu'
         ''',
         expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
-        self.given('''
+        self.given(u'''
             dejavu
                 dejavu = dejavu = 'Déjà vu'
         ''',
@@ -887,7 +883,7 @@ class TestOutput(unittest.TestCase):
         regex_source = regex_source.replace(alwayson_flags, '', 1)
         if regex_source != expect_regex:
             msg = 'For input: %s\n---------------------------- Got Output: -----------------------------\n%s\n\n------------------------- Expected Output: ---------------------------\n%s'
-            assertion_error(msg % (
+            raise AssertionError(msg % (
                 oprex_source or '(empty string)', 
                 regex_source or '(empty string)', 
                 expect_regex or '(empty string)',
@@ -1388,7 +1384,7 @@ class TestMatches(unittest.TestCase):
             match = regex.match(regex_source, text)
             partial = match and match.group(0) != text
             if not match or partial:
-                assertion_error('%s\nis expected to fully match: %s\n%s\nThe regex is: %s' % (
+                raise AssertionError('%s\nis expected to fully match: %s\n%s\nThe regex is: %s' % (
                     oprex_source or '(empty string)', 
                     text or '(empty string)', 
                     'It does match, but only partially. The match is: ' + (match.group(0) or '(empty string)') if partial else "But it doesn't match at all.",
@@ -1398,7 +1394,7 @@ class TestMatches(unittest.TestCase):
         for text in no_match:
             match = regex.match(regex_source, text)
             if match:
-                assertion_error('%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
+                raise AssertionError('%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
                     oprex_source or '(empty string)', 
                     text or '(empty string)', 
                     'But it does match. The match is: ' + (match.group(0) or '(empty string)'),
@@ -1410,13 +1406,13 @@ class TestMatches(unittest.TestCase):
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
                 if match and match.group(0) == text:
-                    assertion_error("%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
+                    raise AssertionError("%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
                         oprex_source or '(empty string)', 
                         text or '(empty string)', 
                         regex_source or '(empty string)',
                     ))
                 else:
-                    assertion_error('%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
+                    raise AssertionError('%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
                         oprex_source or '(empty string)', 
                         text or '(empty string)', 
                         "But it doesn't match at all." if not match else 'The expected partial match is: %s\nBut the resulting match is: %s' % (
