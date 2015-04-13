@@ -90,8 +90,8 @@ class ChainedLookup(namedtuple('ChainedLookup', 'varnames fmts')):
     __slots__ = ()
 
 
-class CharClass(namedtuple('CharClass', 'value subvalue rebracket')):
-    __slots__ = () # subvalue is for inclusion by other charclass
+class CharClass(namedtuple('CharClass', 'value for_import need_brackets')):
+    __slots__ = ()
     escapes = {
         '['  : '\\[',
         ']'  : '\\]',
@@ -116,8 +116,8 @@ def t_character_class(t):
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
     includes = set()
-    t.set_operation = False
-    t.need_brackets = len(chardefs) > 1 # single-membered charclass doesn't need the brackets
+    t.contains_setop = False
+    t.need_brackets = len(chardefs) > 1 # single-membered? brackets not needed
     t.counter = 0
 
     def try_parse(chardef, *functions):
@@ -150,7 +150,7 @@ def t_character_class(t):
         if regex.match('\\+[a-zA-Z]\\w*+(?<!_)$', chardef):
             varname = chardef[1:]
             includes.add(varname)
-            return '{%s.value.subvalue}' % varname
+            return '{%s.value.for_import}' % varname
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
         if regex.match('/\\w+', chardef):
@@ -177,7 +177,7 @@ def t_character_class(t):
 
     def set_operation(chardef): # example: +alpha and +digit not +hex
         if chardef in ['not:', 'and', 'not']:
-            t.set_operation = True
+            t.contains_setop = True
             is_first = t.counter == 1
             is_last = t.counter == len(chardefs)
             prefix = is_first and not is_last
@@ -225,10 +225,12 @@ def t_character_class(t):
     ])
     if len(chardefs) == 2 and value.startswith('^\\p{'): # convert ^\p{something} to \P{something}
         value = value.replace('^\\p{', '\\P{', 1)
-        t.need_brackets = t.set_operation = False
+        t.need_brackets = t.contains_setop = False
+    if t.contains_setop: # set operation must be bracketed even when nested
+        value = '[' + value + ']'
 
     t.type = 'COLON'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (value, includes, t.set_operation, t.need_brackets))]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (value, includes, t.need_brackets))]
     return t
 
 
@@ -580,7 +582,7 @@ def p_assignment(t):
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE optional_subblock'''
-    value, includes, t.set_operation, t.need_brackets = t[1]
+    value, includes, t.need_brackets = t[1]
     current_scope = t.lexer.scopes[-1]
     subblock = t[3] # optional, can be None
     if subblock:
@@ -589,7 +591,7 @@ def p_charclass(t):
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent character class definition)" % var.name)
             if not isinstance(var.value, CharClass):
                 raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
-            if var.value.rebracket:
+            if var.value.need_brackets and not var.value.for_import.startswith('['):
                 t.need_brackets = True
         t.lexer.scopes.pop()
 
@@ -598,16 +600,13 @@ def p_charclass(t):
     except KeyError as e:
         raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
 
-    subvalue = value
-    if t.need_brackets:
+    for_import = value
+    if t.need_brackets and not value.startswith('['):
         value = '[' + value + ']'
-    if t.set_operation:
-        subvalue = value
     if len(value) == 1:
         value = regex.escape(value, special_only=True)
-    rebracket = t.need_brackets and not t.set_operation
 
-    t[0] = CharClass(value, subvalue, rebracket)
+    t[0] = CharClass(value, for_import, t.need_brackets)
 
 
 def p_error(t):
