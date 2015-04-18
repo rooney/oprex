@@ -1,4 +1,3 @@
 
-            root
-                root = '/'
-            root2
+/empty?/
+	empty = 1.. of ''

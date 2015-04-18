@@ -14,6 +14,7 @@ def oprex(source_code):
 
 class OprexSyntaxError(Exception):
     def __init__(self, lineno, msg):
+        msg = msg.replace('\t', ' ')
         if lineno:
             Exception.__init__(self, '\nLine %d: %s' % (lineno, msg))
         else:
@@ -72,15 +73,13 @@ t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 class Assignment(namedtuple('Assignment', 'varnames value lineno')):
     __slots__ = ()
 
-
 class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
 
-
-class Quantifier(unicode):
+class StringLiteral(unicode):
     pass
 
-class StringLiteral(unicode):
+class Quantifier(unicode):
     pass
 
 class SimpleLookup(unicode):
@@ -182,15 +181,15 @@ def t_character_class(t):
             is_last = t.counter == len(chardefs)
             prefix = is_first and not is_last
             infix = not (is_first or is_last)
-            valid_placement, translation = {
-                'not:': (prefix, '^'),
-                'not' : (infix, '--'),
-                'and' : (infix, '&&'),
+            type, valid_placement, translation = {
+                'not:': ('unary',  prefix, '^'),
+                'not' : ('binary', infix,  '--'),
+                'and' : ('binary', infix,  '&&'),
             }[chardef]
             if valid_placement:
                 return translation
             else:
-                raise OprexSyntaxError(t.lineno, "Incorrect use of '%s' operator" % chardef)
+                raise OprexSyntaxError(t.lineno, "Incorrect use of %s '%s' operator" % (type, chardef))
 
     seen = set()
     def compilable(chardef):
@@ -378,8 +377,13 @@ def p_expression(t):
                   | quantifier COLON      charclass'''
     t1 = t[1]
     if isinstance(t1, Quantifier):
-        quantified = '(?:%s)' % str(t[3])
-        result = quantified + t1
+        t3 = t[3]
+        quantifier = t1
+        quantified = unicode(t3)
+        grouping_unnecessary = isinstance(t3, CharClass) or len(quantified) == 1 or quantifier == ''
+        if not grouping_unnecessary:
+            quantified = '(?:%s)' % quantified
+        result = quantified + quantifier
     else:
         if isinstance(t1, StringLiteral):
             result = t1

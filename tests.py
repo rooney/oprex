@@ -285,7 +285,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
 *)\t
         ''',
-        expect_error='Line 2: Unexpected GLOBALMARK\n*)\t\n^')
+        expect_error='Line 2: Unexpected GLOBALMARK\n*) \n^')
 
         self.given('''
 *)warming
@@ -711,43 +711,43 @@ class TestErrorHandling(unittest.TestCase):
             missing_arg
                 missing_arg: /Alphabetic and
         ''',
-        expect_error="Line 3: Incorrect use of 'and' operator")
+        expect_error="Line 3: Incorrect use of binary 'and' operator")
 
         self.given(u'''
             missing_arg
                 missing_arg: and /Alphabetic
         ''',
-        expect_error="Line 3: Incorrect use of 'and' operator")
+        expect_error="Line 3: Incorrect use of binary 'and' operator")
 
         self.given(u'''
             missing_arg
                 missing_arg: /Alphabetic not
         ''',
-        expect_error="Line 3: Incorrect use of 'not' operator")
+        expect_error="Line 3: Incorrect use of binary 'not' operator")
 
         self.given(u'''
             missing_arg
                 missing_arg: not /Alphabetic
         ''',
-        expect_error="Line 3: Incorrect use of 'not' operator")
+        expect_error="Line 3: Incorrect use of binary 'not' operator")
 
         self.given(u'''
             missing_args
                 missing_args: and
         ''',
-        expect_error="Line 3: Incorrect use of 'and' operator")
+        expect_error="Line 3: Incorrect use of binary 'and' operator")
 
         self.given(u'''
             missing_args
                 missing_args: not
         ''',
-        expect_error="Line 3: Incorrect use of 'not' operator")
+        expect_error="Line 3: Incorrect use of binary 'not' operator")
 
         self.given(u'''
             missing_args
                 missing_args: not:
         ''',
-        expect_error="Line 3: Incorrect use of 'not:' operator")
+        expect_error="Line 3: Incorrect use of unary 'not:' operator")
 
 
     def test_invalid_quantifier(self):
@@ -1310,71 +1310,71 @@ class TestOutput(unittest.TestCase):
         self.given('''
             1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z])')
+        expect_regex='[a-zA-Z]')
 
         self.given('''
             2 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){2}')
+        expect_regex='[a-zA-Z]{2}')
 
         self.given('''
             3.. of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){3,}+')
+        expect_regex='[a-zA-Z]{3,}+')
 
         self.given('''
             4..5 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){4,5}+')
+        expect_regex='[a-zA-Z]{4,5}+')
 
         self.given('''
             1..2 <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){1,2}')
+        expect_regex='[a-zA-Z]{1,2}')
 
         self.given('''
             3.. <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){3,}')
+        expect_regex='[a-zA-Z]{3,}')
 
         self.given('''
             1 <<+..2 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){1,2}?')
+        expect_regex='[a-zA-Z]{1,2}?')
 
         self.given('''
             3 <<+.. of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]){3,}?')
+        expect_regex='[a-zA-Z]{3,}?')
 
         self.given('''
             1.. of alpha
         ''',
-        expect_regex='(?:[a-zA-Z])++')
+        expect_regex='[a-zA-Z]++')
 
         self.given('''
             1.. <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z])+')
+        expect_regex='[a-zA-Z]+')
 
         self.given('''
             1 <<+.. of alpha
         ''',
-        expect_regex='(?:[a-zA-Z])+?')
+        expect_regex='[a-zA-Z]+?')
 
         self.given('''
             css_color
                 css_color = 6 of hex
                     hex: 0..9 a..f
         ''',
-        expect_regex='(?:[0-9a-f]){6}')
+        expect_regex='[0-9a-f]{6}')
 
         self.given('''
             DWORD_speak
                 DWORD_speak = 1.. of 4 of hex
                     hex: 0..9 A..F
         ''',
-        expect_regex='(?:(?:[0-9A-F]){4})++')
+        expect_regex='(?:[0-9A-F]{4})++')
 
 
 class TestMatches(unittest.TestCase):
@@ -1422,6 +1422,12 @@ class TestMatches(unittest.TestCase):
                         regex_source or '(empty string)',
                     ))
 
+
+    def test_unicode(self):
+        self.given(u'''
+            'Déjà vu'
+        ''',
+        expect_full_match=[u'Déjà vu'])
 
     def test_simple_optional(self):
         self.given('''
