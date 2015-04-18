@@ -176,7 +176,7 @@ def t_character_class(t):
                 raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
 
     def set_operation(chardef): # example: +alpha and +digit not +hex
-        if chardef in ['not:', 'and', 'not']:
+        if chardef in ('not:', 'and', 'not'):
             t.contains_setop = True
             is_first = t.counter == 1
             is_last = t.counter == len(chardefs)
@@ -207,16 +207,21 @@ def t_character_class(t):
         compiled, type = try_parse(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
         if not compiled:
             raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
-        if type not in [include, set_operation]:
-            test = curlies_escaped = compiled.replace('{{', '{').replace('}}', '}')
-            if type != by_prop:
-                test = '[' + test + ']' 
-            try:
-                regex.compile(test)
-            except Exception as e:
-                msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
-                raise OprexSyntaxError(t.lineno, msg % (chardef, curlies_escaped, e.msg if hasattr(e, 'msg') else e.message))
+        test(compiled, type)
         return compiled
+
+    def test(result, type):
+        if type in (include, set_operation): # includes are variable names -- not testable at this point
+            return                           # set operators (e.g. and, not) are not testable by itself
+                                             # so just skip test for those cases
+        test = curlies_escaped = result.replace('{{', '{').replace('}}', '}')
+        if type != by_prop:
+            test = '[' + test + ']' 
+        try:
+            regex.compile(test)
+        except Exception as e:
+            msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
+            raise OprexSyntaxError(t.lineno, msg % (chardef, curlies_escaped, e.msg if hasattr(e, 'msg') else e.message))
 
     value = ''.join([
         compile(chardef)
@@ -428,9 +433,9 @@ def p_quantifier(t):
         raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + varname)
 
     fixrep     = numtoks == 4
-    possessive = numtoks in [5, 6]
-    greedy     = numtoks in [8, 9] and '..' == t[2]
-    lazy       = numtoks in [8, 9] and '..' == t[5]
+    possessive = numtoks in (5, 6)
+    greedy     = numtoks in (8, 9) and '..' == t[2]
+    lazy       = numtoks in (8, 9) and '..' == t[5]
     min = t[1]
     if min == '0':
         raise OprexSyntaxError(t.lineno(0), 'Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
