@@ -380,10 +380,13 @@ def p_expression(t):
         t3 = t[3]
         quantifier = t1
         quantified = unicode(t3)
-        grouping_unnecessary = isinstance(t3, CharClass) or len(quantified) == 1 or quantifier == ''
-        if not grouping_unnecessary:
-            quantified = '(?:%s)' % quantified
-        result = quantified + quantifier
+        if quantified:
+            grouping_unnecessary = isinstance(t3, CharClass) or len(quantified) == 1 or quantifier == ''
+            if not grouping_unnecessary:
+                quantified = '(?:%s)' % quantified
+            result = quantified + quantifier
+        else:
+            result = ''
     else:
         if isinstance(t1, StringLiteral):
             result = t1
