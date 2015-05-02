@@ -42,6 +42,7 @@ tokens = (
     'DEDENT',
     'DOTDOT',
     'EQUALSIGN',
+    'EXCLAMARK',
     'GLOBALMARK',
     'INDENT',
     'NUMBER',
@@ -60,6 +61,7 @@ tokens = (
 GLOBALMARK   = '*)'
 t_BACKTRACK  = r'\<\<'
 t_DOTDOT     = r'\.\.'
+t_EXCLAMARK  = r'\!'
 t_LPAREN     = r'\('
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
@@ -76,21 +78,19 @@ class Assignment(namedtuple('Assignment', 'varnames value lineno')):
 class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
 
-class StringLiteral(unicode):
-    pass
-
-class Quantifier(unicode):
-    pass
-
-class SimpleLookup(unicode):
-    pass
-
-class ChainedLookup(namedtuple('ChainedLookup', 'varnames fmts')):
+class Lookup(namedtuple('Lookup', 'varname optional capture')):
     __slots__ = ()
 
+class Quantification(unicode):
+    __slots__ = ('quantified', 'quantifier')
+    def __new__(cls, quantified, quantifier):
+        quantification = unicode.__new__(cls, quantified + quantifier)
+        quantification.quantified = quantified
+        quantification.quantifier = quantifier
+        return quantification
 
-class CharClass(namedtuple('CharClass', 'value for_import need_brackets')):
-    __slots__ = ()
+class CharClass(unicode):
+    __slots__ = ('for_import', 'need_brackets')
     escapes = {
         '['  : '\\[',
         ']'  : '\\]',
@@ -100,8 +100,11 @@ class CharClass(namedtuple('CharClass', 'value for_import need_brackets')):
         '{'  : '{{',
         '}'  : '}}',
     }
-    def __str__(self):
-        return self.value
+    def __new__(cls, value, for_import, need_brackets):
+        charclass = unicode.__new__(cls, value)
+        charclass.for_import = for_import
+        charclass.need_brackets = need_brackets
+        return charclass
 
 
 def t_character_class(t):
@@ -244,11 +247,10 @@ def t_STRING(t):
     if len(value) < 2 or value[0] != value[-1]:
         raise OprexSyntaxError(t.lineno, 'Missing closing quote: ' + value)
 
-    value = regex.escape(
+    t.value = regex.escape(
         value[1:-1], # remove the surrounding quotes
         special_only=True,
     )
-    t.value = StringLiteral(value)
     return t
 
 
@@ -372,58 +374,65 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : value      NEWLINE    optional_subblock
-                  | quantifier WHITESPACE expression
-                  | quantifier COLON      charclass'''
-    t1 = t[1]
-    if isinstance(t1, Quantifier):
-        t3 = t[3]
-        quantifier = t1
-        quantified = unicode(t3)
-        if quantified:
-            grouping_unnecessary = isinstance(t3, CharClass) or len(quantified) == 1 or quantifier == ''
-            if not grouping_unnecessary:
-                quantified = '(?:%s)' % quantified
-            result = quantified + quantifier
-        else:
-            result = ''
-    else:
-        if isinstance(t1, StringLiteral):
-            result = t1
-            referenced_varnames = ()
-        else:
-            lookup = t1
-            current_scope = t.lexer.scopes[-1]
-            try:
-                if isinstance(lookup, ChainedLookup):
-                    referenced_varnames = lookup.varnames
-                    result = ''.join(lookup.fmts).format(**current_scope)
-                elif isinstance(lookup, SimpleLookup):
-                    referenced_varnames = (lookup,)
-                    result = current_scope[lookup].value
-            except KeyError as e:
-                raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
-
-        subblock = t[3] # optional, can be None
-        if subblock:
-            for var in subblock:
-                if var.name not in referenced_varnames:
-                    raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-            t.lexer.scopes.pop()
-
-    t[0] = result
+    '''expression : repeat_expr
+                  | string_expr
+                  | lookup_expr'''
+    t[0] = t[1]
 
 
-def p_value(t):
-    '''value : STRING
-             | simple_lookup
-             | SLASH chain'''
-    t[0] = t[len(t)-1]
+def p_repeat_expr(t):
+    '''repeat_expr : quantifier WHITESPACE expression
+                   | quantifier COLON      charclass'''
+    t[0] = quantify(quantified=t[3], quantifier=t[1])
 
 
-def p_simple_lookup(t):
-    '''simple_lookup : VARNAME'''
-    t[0] = SimpleLookup(t[1])
+def p_string_expr(t):
+    '''string_expr : STRING NEWLINE optional_block'''
+    check_unused_vars(t, optional_block=t[3], referenced_vars=())
+    t[0] = t[1]
+
+
+def p_lookup_expr(t):
+    '''lookup_expr : lookup             NEWLINE optional_block
+                   | SLASH lookup_chain NEWLINE optional_block'''
+
+    referenced_vars = set()
+    current_scope = t.lexer.scopes[-1]
+    def resolve_variable(varname):
+        referenced_vars.add(varname)
+        try:
+            return current_scope[varname].value
+        except KeyError as e:
+            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
+
+    def resolve_lookup(lookup):
+        value = resolve_variable(lookup.varname)
+        if lookup.optional:
+            value = merge_quantifier(value, lookup.optional)
+        if lookup.capture:
+            value = lookup.capture % value
+        return value
+
+    def merge_quantifier(expr, optionality):
+        if not isinstance(expr, Quantification):
+            return quantify(expr, optionality)
+        try:
+            return expr.quantified + {
+                '++ ?+' : '*+',
+                '*+ ?+' : '*+',
+                '+? ??' : '*?',
+                '*? ??' : '*?',
+                '+ ?'   : '*' ,
+                '* ?'   : '*' ,
+            }[expr.quantifier + ' ' + optionality]
+        except KeyError:
+            return '(?:%s)%s' % (expr, optionality)
+
+    if t[1] == '/': # lookup chain
+        t[0] = ''.join(map(resolve_lookup, t[2]))
+    else: # single lookup
+        t[0] = resolve_lookup(t[1])
+    check_unused_vars(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
 def p_quantifier(t):
@@ -459,61 +468,67 @@ def p_quantifier(t):
         else: # no max (infinite)
             result = '+' if min == '1' else '{%s,}' % min
         result += '+' if possessive else '?' if lazy else ''
-    t[0] = Quantifier(result)
+    t[0] = result
 
 
-def p_chain(t):
-    '''chain : cell  SLASH
-             | chain cell  SLASH'''
-    if t[2] == '/':
-        varname, fmt = t[1]
-        lookup = ChainedLookup(set(), [])
-    else:
-        lookup = t[1]
-        varname, fmt = t[2]
-    lookup.varnames.add(varname)
-    lookup.fmts.append(fmt)
-    t[0] = lookup
+def p_lookup_chain(t):
+    '''lookup_chain : lookup SLASH
+                    | lookup SLASH lookup_chain'''
+    try:
+        t[0] = t[3]
+    except IndexError:
+        t[0] = deque()
+    t[0].appendleft(t[1])
 
 
-def p_cell(t):
-    '''cell : VARNAME
-            | VARNAME QUESTMARK
-            | LPAREN VARNAME RPAREN
-            | LPAREN VARNAME RPAREN QUESTMARK
-            | LPAREN VARNAME QUESTMARK RPAREN'''
-    if t[1] == '(':
-        varname = t[2]
-    else:
-        varname = t[1]
-
-    optional, capture = {
-        2 : (False, False),
-        3 : (True,  False),
-        4 : (False, True),
-        5 : (True,  True),
-    }[len(t)]
-
-    fmt = '{%s.value}' % varname
-    if capture and optional:
-        optional_capture = t[4] == '?'
-        if optional_capture:
-            fmt = '(?<%s>%s)?+' % (varname, fmt)
-        else: # capture optional
-            fmt = '(?<%s>(?:%s)?+)' % (varname, fmt)
-
-    elif capture and not optional:
-        fmt = '(?<%s>%s)' % (varname, fmt)
-        
-    elif optional and not capture:
-        fmt = '(?:%s)?+' % fmt
-
-    t[0] = varname, fmt
+def p_lookup(t):
+    '''lookup : simple_lookup
+              | captured_lookup
+              | captured_optional_lookup'''
+    t[0] = t[1]
 
 
-def p_optional_subblock(t):
-    '''optional_subblock : begin_block definitions end_block
-                         |'''
+def p_simple_lookup(t):
+    '''simple_lookup : VARNAME
+                     | VARNAME optional'''
+    try:
+        optional = t[2]
+    except IndexError:
+        optional = ''
+    t[0] = Lookup(varname=t[1], optional=optional, capture=False)
+
+
+def p_captured_lookup(t):
+    '''captured_lookup : LPAREN VARNAME RPAREN
+                       | LPAREN VARNAME RPAREN optional'''
+    varname = t[2]
+    capture = '(?<' + varname + '>%s)'
+    if len(t) > 4:
+        capture += t[4]
+    t[0] = Lookup(varname, optional=False, capture=capture)
+
+
+def p_captured_optional_lookup(t):
+    '''captured_optional_lookup : LPAREN VARNAME optional RPAREN'''
+    varname = t[2]
+    optional = t[3]
+    capture = '(?<' + varname + '>%s)'
+    t[0] = Lookup(varname, optional, capture)
+
+
+def p_optional(t):
+    '''optional : QUESTMARK
+                | QUESTMARK QUESTMARK
+                | QUESTMARK EXCLAMARK'''
+    possessive = len(t) == 2
+    lazy = not possessive and t[2] == '?'
+    greedy = not possessive and t[2] == '!'
+    t[0] = '?+' if possessive else '??' if lazy else '?'
+
+
+def p_optional_block(t):
+    '''optional_block : begin_block definitions end_block
+                      |'''
     if len(t) > 1:
         t[0] = t[2]
 
@@ -531,12 +546,10 @@ def p_end_block(t):
 def p_definitions(t):
     '''definitions : definition
                    | definition definitions'''
-
     try:
-        variables = t[1] + t[2]
+        t[0] = t[1] + t[2]
     except IndexError:
-        variables = t[1]
-    t[0] = variables
+        t[0] = t[1]
 
 
 def p_definition(t):
@@ -593,12 +606,12 @@ def p_assignment(t):
 
 
 def p_charclass(t):
-    '''charclass : CHARCLASS NEWLINE optional_subblock'''
+    '''charclass : CHARCLASS NEWLINE optional_block'''
     value, includes, t.need_brackets = t[1]
     current_scope = t.lexer.scopes[-1]
-    subblock = t[3] # optional, can be None
-    if subblock:
-        for var in subblock:
+    optional_block = t[3]
+    if optional_block:
+        for var in optional_block:
             if var.name not in includes:
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent character class definition)" % var.name)
             if not isinstance(var.value, CharClass):
@@ -633,11 +646,30 @@ def p_error(t):
     raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
 
 
+def check_unused_vars(t, optional_block, referenced_vars):
+    if optional_block:
+        for var in optional_block:
+            if var.name not in referenced_vars:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+        t.lexer.scopes.pop()
+
+
 def find_column(t):
     last_newline = t.lexer.lexdata.rfind('\n', 0, t.lexpos)
     if last_newline < 0:
         last_newline = 0
     return t.lexpos - last_newline
+
+
+def quantify(quantified, quantifier):
+    if not quantified:
+        return ''
+    if not quantifier:
+        return quantified
+    grouping_unnecessary = isinstance(quantified, CharClass) or len(quantified) == 1
+    if not grouping_unnecessary:
+        quantified = '(?:%s)' % quantified
+    return Quantification(quantified, quantifier)
 
 
 class CustomLexer:
