@@ -75,11 +75,13 @@ t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 class Assignment(namedtuple('Assignment', 'varnames value lineno')):
     __slots__ = ()
 
-class Variable(namedtuple('Variable', 'name value lineno')):
-    __slots__ = ()
-
 class Lookup(namedtuple('Lookup', 'varname optional capture')):
     __slots__ = ()
+
+class Variable(namedtuple('Variable', 'name value lineno')):
+    __slots__ = ()
+    def is_builtin(self):
+        return self.lineno == 0
 
 class Quantification(unicode):
     __slots__ = ('quantified', 'quantifier')
@@ -555,39 +557,28 @@ def p_definitions(t):
 def p_definition(t):
     '''definition : assignment
                   | GLOBALMARK assignment'''
-
-    def define(variables, scope):
-        for var in variables:
-            try:
-                already_defined = scope[var.name]
-            except KeyError:
-                scope[var.name] = var
-            else:
-                raise OprexSyntaxError(t.lineno(1),
-                    "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
-                        % (var.name, already_defined.lineno)
-                    if already_defined.lineno else
-                    "'%s' is a built-in variable and cannot be redefined" % var.name
-                )
-
-    def vars_from(assignment):
-        variables = []
-        for varname in assignment.varnames:
-            variables.append(Variable(varname, assignment.value, assignment.lineno))
-        return variables
-
-    has_globalmark = t[1] == GLOBALMARK
-    if has_globalmark:
+    if t[1] == GLOBALMARK:
         assignment = t[2]
-        variables = vars_from(assignment)
-        for scope in t.lexer.scopes: # global variable, define in all scopes
-            define(variables, scope) 
+        scopes = t.lexer.scopes # global variable, define in all scopes
     else:
         assignment = t[1]
-        variables = vars_from(assignment)
-        current_scope = t.lexer.scopes[-1] 
-        define(variables, current_scope) # non-global, define in current scope only
-    t[0] = variables
+        scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
+
+    def define(varname):
+        var = Variable(varname, assignment.value, assignment.lineno)
+        try: # check the deepest scope for varname (every scope supersets its parent scope, so...
+            already_defined = scopes[-1][varname] # ...checking only the deepeset is sufficient)
+        except KeyError: # not already defined, OK to define it
+            for scope in scopes:
+                scope[varname] = var
+        else: # already defined
+            raise OprexSyntaxError(t.lineno(1),
+                "'%s' is a built-in variable and cannot be redefined" % var.name
+                if already_defined.is_builtin() else
+                "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
+                    % (varname, already_defined.lineno))
+        return var
+    t[0] = map(define, assignment.varnames)
 
 
 def p_assignment(t):
@@ -666,8 +657,7 @@ def quantify(quantified, quantifier):
         return ''
     if not quantifier:
         return quantified
-    grouping_unnecessary = isinstance(quantified, CharClass) or len(quantified) == 1
-    if not grouping_unnecessary:
+    if len(quantified) > 1 and not isinstance(quantified, CharClass): # needs grouping
         quantified = '(?:%s)' % quantified
     return Quantification(quantified, quantifier)
 
