@@ -785,12 +785,16 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             3. of alpha
         ''',
-        expect_error='Line 2: Syntax error at or near: . of alpha')
+        expect_error='''Line 2: Unexpected WHITESPACE
+            3. of alpha
+              ^''')
 
         self.given(u'''
             3... of alpha
         ''',
-        expect_error='Line 2: Syntax error at or near: . of alpha')
+        expect_error='''Line 2: Unexpected DOT
+            3... of alpha
+               ^''')
 
         self.given(u'''
             3+ of alpha
@@ -798,20 +802,6 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected PLUS
             3+ of alpha
              ^''')
-
-        self.given(u'''
-            .. of alpha
-        ''',
-        expect_error='''Line 2: Unexpected DOTDOT
-            .. of alpha
-            ^''')
-
-        self.given(u'''
-            ..3 of alpha
-        ''',
-        expect_error='''Line 2: Unexpected DOTDOT
-            ..3 of alpha
-            ^''')
 
         self.given(u'''
             3+3 of alpha
@@ -823,22 +813,22 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             3..2 of alpha
         ''',
-        expect_error='Line 2: Repeat max < min')
+        expect_error='Line 2: Repeat max must be > min')
 
         self.given(u'''
-            0..3 of alpha
+            2..2 of alpha
         ''',
-        expect_error='Line 2: Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
+        expect_error='Line 2: Repeat max must be > min')
 
         self.given(u'''
-            0.. of alpha
+            0..0 of alpha
         ''',
-        expect_error='Line 2: Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
+        expect_error='Line 2: Repeat max must be > min')
 
         self.given(u'''
             1 ..3 of alpha
         ''',
-        expect_error='''Line 2: Unexpected DOTDOT
+        expect_error='''Line 2: Unexpected DOT
             1 ..3 of alpha
               ^''')
 
@@ -852,7 +842,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             1 .. of alpha
         ''',
-        expect_error='''Line 2: Unexpected DOTDOT
+        expect_error='''Line 2: Unexpected DOT
             1 .. of alpha
               ^''')
 
@@ -873,7 +863,12 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             1 <<+..0 of alpha
         ''',
-        expect_error='Line 2: Repeat max < min')
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            0 <<+..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
 
 
 class TestOutput(unittest.TestCase):
@@ -1375,6 +1370,26 @@ class TestOutput(unittest.TestCase):
                     hex: 0..9 A..F
         ''',
         expect_regex='(?:[0-9A-F]{4})++')
+
+        self.given(u'''
+            .. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*+')
+
+        self.given(u'''
+            ..3 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,3}+')
+
+        self.given(u'''
+            0..3 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,3}+')
+
+        self.given(u'''
+            0.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*+')
 
 
 class TestMatches(unittest.TestCase):

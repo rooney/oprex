@@ -1,3 +1,3 @@
 
-vowel?
-		vowel = 1.. of: a
+(vowel)
+	vowel = .. of alpha

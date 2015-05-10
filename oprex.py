@@ -40,7 +40,7 @@ tokens = (
     'CHARCLASS',
     'COLON',
     'DEDENT',
-    'DOTDOT',
+    'DOT',
     'EQUALSIGN',
     'EXCLAMARK',
     'GLOBALMARK',
@@ -60,7 +60,7 @@ tokens = (
 
 GLOBALMARK   = '*)'
 t_BACKTRACK  = r'\<\<'
-t_DOTDOT     = r'\.\.'
+t_DOT        = r'\.'
 t_EXCLAMARK  = r'\!'
 t_LPAREN     = r'\('
 t_MINUS      = r'\-'
@@ -82,6 +82,9 @@ class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
+
+class Quantifier(namedtuple('Quantifier', 'base modifier')):
+    __slots__ = ()
 
 class Quantification(unicode):
     __slots__ = ('quantified', 'quantifier')
@@ -438,39 +441,76 @@ def p_lookup_expr(t):
 
 
 def p_quantifier(t):
-    '''quantifier : NUMBER                                          WHITESPACE VARNAME
-                  | NUMBER DOTDOT                                   WHITESPACE VARNAME
-                  | NUMBER DOTDOT NUMBER                            WHITESPACE VARNAME
-                  | NUMBER DOTDOT        WHITESPACE BACKTRACK MINUS WHITESPACE VARNAME
-                  | NUMBER DOTDOT NUMBER WHITESPACE BACKTRACK MINUS WHITESPACE VARNAME
-                  | NUMBER WHITESPACE BACKTRACK PLUS DOTDOT         WHITESPACE VARNAME
-                  | NUMBER WHITESPACE BACKTRACK PLUS DOTDOT NUMBER  WHITESPACE VARNAME'''
-    numtoks = len(t)
-    varname = t[numtoks-1] # the last token
-    if varname != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow naming variables 'of'
-        raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + varname)
+    '''quantifier : repeat_N_times
+                  | repeat_range
+                  | optionalize'''
+    quant = t[1]
+    base = {
+        '{1}'   : '',
+        '{,}'   : '*',
+        '{0,}'  : '*',
+        '{1,}'  : '+',
+        '{0,1}' : '?',
+    }.get(quant.base, quant.base)
+    modifier = quant.modifier if base else ''
+    t[0] = base + modifier
 
-    fixrep     = numtoks == 4
-    possessive = numtoks in (5, 6)
-    greedy     = numtoks in (8, 9) and '..' == t[2]
-    lazy       = numtoks in (8, 9) and '..' == t[5]
-    min = t[1]
-    if min == '0':
-        raise OprexSyntaxError(t.lineno(0), 'Minimum repeat is 1 (to allow zero quantity, put it inside optional expression)')
 
-    if fixrep:
-        result = '' if min == '1' else '{%s}' % min
+def p_repeat_N_times(t):
+    '''repeat_N_times : NUMBER of'''
+    t[0] = Quantifier(base=('{%s}' % t[1]), modifier='')
+
+
+def p_repeat_range(t):
+    '''repeat_range : numrange of
+                    | numrange WHITESPACE BACKTRACK MINUS of
+                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT of
+                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT NUMBER of'''
+    possessive = len(t) == 3 # the first form above
+    greedy     = len(t) == 6 # the second form
+    lazy       = not possessive and not greedy # third & fourth forms
+    
+    if lazy:
+        min = t[1]
+        max = t[7] if len(t) == 9 else ''
     else:
-        max = t[6] if lazy else t[3] # this will catch either NUMBER or WHITESPACE
-        max = max.strip() # in case of catching WHITESPACE, turn it into empty string
-        if max:
-            if int(max) < int(min):
-                raise OprexSyntaxError(t.lineno(0), 'Repeat max < min')
-            result = '{%s,%s}' % (min, max)
-        else: # no max (infinite)
-            result = '+' if min == '1' else '{%s,}' % min
-        result += '+' if possessive else '?' if lazy else ''
-    t[0] = result
+        min, max = t[1]
+
+    if not min:
+        min = '0'
+    if max and int(max) <= int(min):
+        raise OprexSyntaxError(t.lineno(0), 'Repeat max must be > min')
+    if min == '0':
+        min = ''
+
+    t[0] = Quantifier(
+        base='{%s,%s}' % (min, max),
+        modifier='+' if possessive else '?' if lazy else ''
+    )
+
+
+def p_optionalize(t):
+    '''optionalize : optional of'''
+    opt = t[1]
+    t[0] = Quantifier(base=opt[0], modifier=opt[1:])
+
+
+def p_numrange(t):
+    '''numrange :        DOT DOT
+                | NUMBER DOT DOT
+                |        DOT DOT NUMBER
+                | NUMBER DOT DOT NUMBER'''
+    def number_or_empty(str):
+        return str if str != '.' else ''
+    min = number_or_empty(t[1])
+    max = number_or_empty(t[len(t)-1])
+    t[0] = min, max
+
+
+def p_of(t):
+    '''of : WHITESPACE VARNAME'''
+    if t[2] != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow having variable named 'of'
+        raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + t[2])
 
 
 def p_lookup_chain(t):
