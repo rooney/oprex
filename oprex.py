@@ -388,7 +388,7 @@ def p_expression(t):
 def p_repeat_expr(t):
     '''repeat_expr : quantifier WHITESPACE expression
                    | quantifier COLON      charclass'''
-    t[0] = quantify(quantified=t[3], quantifier=t[1])
+    t[0] = quantify(t[3], quantifier=t[1])
 
 
 def p_string_expr(t):
@@ -413,31 +413,44 @@ def p_lookup_expr(t):
     def resolve_lookup(lookup):
         value = resolve_variable(lookup.varname)
         if lookup.optional:
-            value = merge_quantifier(value, lookup.optional)
+            value = quantify(value, lookup.optional)
         if lookup.capture:
             value = lookup.capture % value
         return value
-
-    def merge_quantifier(expr, optionality):
-        if not isinstance(expr, Quantification):
-            return quantify(expr, optionality)
-        try:
-            return expr.quantified + {
-                '++ ?+' : '*+',
-                '*+ ?+' : '*+',
-                '+? ??' : '*?',
-                '*? ??' : '*?',
-                '+ ?'   : '*' ,
-                '* ?'   : '*' ,
-            }[expr.quantifier + ' ' + optionality]
-        except KeyError:
-            return '(?:%s)%s' % (expr, optionality)
 
     if t[1] == '/': # lookup chain
         t[0] = ''.join(map(resolve_lookup, t[2]))
     else: # single lookup
         t[0] = resolve_lookup(t[1])
     check_unused_vars(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
+
+
+def quantify(expr, quantifier):
+    if quantifier == '{0}' or expr == '':
+        return ''
+    if quantifier == '{1}' or quantifier == '':
+        return expr
+    try: # assume expr is already a Quantification, merge the quantifiers
+        return expr.quantified + {
+            '++ ?+' : '*+',
+            '*+ ?+' : '*+',
+            '+? ??' : '*?',
+            '*? ??' : '*?',
+            '+ ?'   : '*' ,
+            '* ?'   : '*' ,
+        }[expr.quantifier + ' ' + quantifier]
+    except KeyError: # expr is a Quantification, but the quantifiers combination is not in the merge dict
+        repeat_N_times = regex.compile(r'{(\d+)}')
+        try: # assume both quantifiers are in the form of {N}, merge by multipling the Ns
+            N1 = int(repeat_N_times.match(expr.quantifier).group(1))
+            N2 = int(repeat_N_times.match(quantifier).group(1))
+            return Quantification(expr, quantifier='{%d}' % (N1 * N2))
+        except AttributeError: # one or both of the quantifiers are not in the form of {N}
+            return Quantification('(?:%s)' % expr, quantifier)
+    except AttributeError: # expr is a plain string (not a Quantification)
+        if len(expr) > 1 and not isinstance(expr, CharClass): # needs grouping
+            expr = '(?:%s)' % expr
+        return Quantification(expr, quantifier)
 
 
 def p_quantifier(t):
@@ -469,7 +482,7 @@ def p_repeat_range(t):
     possessive = len(t) == 3 # the first form above
     greedy     = len(t) == 6 # the second form
     lazy       = not possessive and not greedy # third & fourth forms
-    
+
     if lazy:
         min = t[1]
         max = t[7] if len(t) == 9 else ''
@@ -690,16 +703,6 @@ def find_column(t):
     if last_newline < 0:
         last_newline = 0
     return t.lexpos - last_newline
-
-
-def quantify(quantified, quantifier):
-    if not quantified:
-        return ''
-    if not quantifier:
-        return quantified
-    if len(quantified) > 1 and not isinstance(quantified, CharClass): # needs grouping
-        quantified = '(?:%s)' % quantified
-    return Quantification(quantified, quantifier)
 
 
 class CustomLexer:
