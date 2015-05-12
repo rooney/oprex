@@ -444,7 +444,7 @@ def quantify(expr, quantifier):
         try: # assume both quantifiers are in the form of {N}, merge by multipling the Ns
             N1 = int(repeat_N_times.match(expr.quantifier).group(1))
             N2 = int(repeat_N_times.match(quantifier).group(1))
-            return Quantification(expr, quantifier='{%d}' % (N1 * N2))
+            return Quantification(expr.quantified, quantifier='{%d}' % (N1 * N2))
         except AttributeError: # one or both of the quantifiers are not in the form of {N}
             return Quantification('(?:%s)' % expr, quantifier)
     except AttributeError: # expr is a plain string (not a Quantification)
@@ -463,6 +463,7 @@ def p_quantifier(t):
         '{,}'   : '*',
         '{0,}'  : '*',
         '{1,}'  : '+',
+        '{,1}'  : '?',
         '{0,1}' : '?',
     }.get(quant.base, quant.base)
     modifier = quant.modifier if base else ''
@@ -471,7 +472,8 @@ def p_quantifier(t):
 
 def p_repeat_N_times(t):
     '''repeat_N_times : NUMBER of'''
-    t[0] = Quantifier(base=('{%s}' % t[1]), modifier='')
+    number = t[1]
+    t[0] = Quantifier(base=('{%s}' % number), modifier='')
 
 
 def p_repeat_range(t):
@@ -493,11 +495,9 @@ def p_repeat_range(t):
         min = '0'
     if max and int(max) <= int(min):
         raise OprexSyntaxError(t.lineno(0), 'Repeat max must be > min')
-    if min == '0':
-        min = ''
 
     t[0] = Quantifier(
-        base='{%s,%s}' % (min, max),
+        base='{%s,%s}' % ('' if min == '0' else min, max),
         modifier='+' if possessive else '?' if lazy else ''
     )
 

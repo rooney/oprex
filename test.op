@@ -1,3 +1,4 @@
 
-vowel
-	vowel = 3 of 2 of alpha
+            css_color
+                css_color = 3 of 2 of hex
+                    hex: 0..9 a..f

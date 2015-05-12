@@ -821,6 +821,11 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 2: Repeat max must be > min')
 
         self.given(u'''
+            1..1 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
             0..0 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
@@ -867,6 +872,21 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given(u'''
             0 <<+..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            1 <<+..1 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            2 <<+..2 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            2..1 <<- of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
@@ -1303,6 +1323,11 @@ class TestOutput(unittest.TestCase):
 
     def test_quantifier_output(self):
         self.given('''
+            0 of alpha
+        ''',
+        expect_regex='')
+
+        self.given('''
             1 of alpha
         ''',
         expect_regex='[a-zA-Z]')
@@ -1313,34 +1338,14 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{2}')
 
         self.given('''
-            3.. of alpha
+            .. of alpha
         ''',
-        expect_regex='[a-zA-Z]{3,}+')
+        expect_regex='[a-zA-Z]*+')
 
         self.given('''
-            4..5 of alpha
+            0.. of alpha
         ''',
-        expect_regex='[a-zA-Z]{4,5}+')
-
-        self.given('''
-            1..2 <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]{1,2}')
-
-        self.given('''
-            3.. <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]{3,}')
-
-        self.given('''
-            1 <<+..2 of alpha
-        ''',
-        expect_regex='[a-zA-Z]{1,2}?')
-
-        self.given('''
-            3 <<+.. of alpha
-        ''',
-        expect_regex='[a-zA-Z]{3,}?')
+        expect_regex='[a-zA-Z]*+')
 
         self.given('''
             1.. of alpha
@@ -1348,14 +1353,303 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]++')
 
         self.given('''
+            2.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]{2,}+')
+
+        self.given('''
+            ..2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,2}+')
+
+        self.given('''
+            0..2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,2}+')
+
+        self.given('''
+            ..1 of alpha
+        ''',
+        expect_regex='[a-zA-Z]?+')
+
+        self.given('''
+            0..1 of alpha
+        ''',
+        expect_regex='[a-zA-Z]?+')
+
+        self.given('''
+            3..4 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{3,4}+')
+
+        self.given('''
+            .. <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]*')
+
+        self.given('''
+            0.. <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]*')
+
+        self.given('''
             1.. <<- of alpha
         ''',
         expect_regex='[a-zA-Z]+')
 
         self.given('''
+            2.. <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]{2,}')
+
+        self.given('''
+            ..2 <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,2}')
+
+        self.given('''
+            0..2 <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,2}')
+
+        self.given('''
+            ..1 <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]?')
+
+        self.given('''
+            0..1 <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]?')
+
+        self.given('''
+            3..4 <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]{3,4}')
+
+        self.given('''
+            0 <<+.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*?')
+
+        self.given('''
             1 <<+.. of alpha
         ''',
         expect_regex='[a-zA-Z]+?')
+
+        self.given('''
+            2 <<+.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]{2,}?')
+
+        self.given('''
+            0 <<+..1 of alpha
+        ''',
+        expect_regex='[a-zA-Z]??')
+
+        self.given('''
+            0 <<+..2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{,2}?')
+
+        self.given('''
+            1 <<+..2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{1,2}?')
+
+        self.given('''
+            ? of alpha
+        ''',
+        expect_regex='[a-zA-Z]?+')
+
+        self.given('''
+            ?? of alpha
+        ''',
+        expect_regex='[a-zA-Z]??')
+
+        self.given('''
+            ?! of alpha
+        ''',
+        expect_regex='[a-zA-Z]?')
+
+        self.given('''
+            alphas?
+                alphas = 1.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*+')
+
+        self.given('''
+            alphas?!
+                alphas = 1.. <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]*')
+
+        self.given('''
+            alphas??
+                alphas = 1 <<+.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*?')
+
+        self.given('''
+            alphas?
+                alphas = .. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*+')
+
+        self.given('''
+            alphas?!
+                alphas = 0.. <<- of alpha
+        ''',
+        expect_regex='[a-zA-Z]*')
+
+        self.given('''
+            alphas??
+                alphas = 0 <<+.. of alpha
+        ''',
+        expect_regex='[a-zA-Z]*?')
+
+        self.given('''
+            opt_alpha?
+                opt_alpha = ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+)?+')
+
+        self.given('''
+            opt_alpha??
+                opt_alpha = 0 <<+..1 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]??)??')
+
+        self.given('''
+            opt_alpha?!
+                opt_alpha = ..1 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?)?')
+
+        self.given('''
+            ? of ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+)?+')
+
+        self.given('''
+            ?! of ?! of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?)?')
+
+        self.given('''
+            ?? of ?? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]??)??')
+
+        self.given('''
+            ?? of ?! of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?)??')
+
+        self.given('''
+            ?! of ?? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]??)?')
+
+        self.given('''
+            ?? of ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+)??')
+
+        self.given('''
+            ? of ?? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]??)?+')
+
+        self.given('''
+            ?! of ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+)?')
+
+        self.given('''
+            ? of ?! of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?)?+')
+
+        self.given('''
+            2 of ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+){2}')
+
+        self.given('''
+            ? of 2 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{2})?+')
+
+        self.given('''
+            ? of 1..3 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{1,3}+)?+')
+
+        self.given('''
+            1..3 of ? of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]?+){1,3}+')
+
+        self.given('''
+            1..3 <<- of 5..7 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}+){1,3}')
+
+        self.given('''
+            1..3 of 5..7 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}){1,3}+')
+
+        self.given('''
+            1..3 <<- of 5..7 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}){1,3}')
+
+        self.given('''
+            1 <<+..3 of 5..7 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}){1,3}?')
+
+        self.given('''
+            1..3 <<- of 5 <<+..7 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}?){1,3}')
+
+        self.given('''
+            1 <<+..3 of 5 <<+..7 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{5,7}?){1,3}?')
+
+        self.given('''
+            2 of 3..4 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{3,4}+){2}')
+
+        self.given('''
+            2 of 3..4 <<- of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{3,4}){2}')
+
+        self.given('''
+            2 of 3 <<+..4 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{3,4}?){2}')
+
+        self.given('''
+            2..3 of 4 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{4}){2,3}+')
+
+        self.given('''
+            2..3 <<- of 4 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{4}){2,3}')
+
+        self.given('''
+            2 <<+..3 of 4 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]{4}){2,3}?')
 
         self.given('''
             css_color
@@ -1365,31 +1659,25 @@ class TestOutput(unittest.TestCase):
         expect_regex='[0-9a-f]{6}')
 
         self.given('''
+            css_color
+                css_color = 3 of 2 of hex
+                    hex: 0..9 a..f
+        ''',
+        expect_regex='[0-9a-f]{6}')
+
+        self.given('''
+            css_color
+                css_color = 3 of hexbyte
+                    hexbyte = 2 of: 0..9 a..f
+        ''',
+        expect_regex='[0-9a-f]{6}')
+
+        self.given('''
             DWORD_speak
                 DWORD_speak = 1.. of 4 of hex
                     hex: 0..9 A..F
         ''',
         expect_regex='(?:[0-9A-F]{4})++')
-
-        self.given(u'''
-            .. of alpha
-        ''',
-        expect_regex='[a-zA-Z]*+')
-
-        self.given(u'''
-            ..3 of alpha
-        ''',
-        expect_regex='[a-zA-Z]{,3}+')
-
-        self.given(u'''
-            0..3 of alpha
-        ''',
-        expect_regex='[a-zA-Z]{,3}+')
-
-        self.given(u'''
-            0.. of alpha
-        ''',
-        expect_regex='[a-zA-Z]*+')
 
 
 class TestMatches(unittest.TestCase):
