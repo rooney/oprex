@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = '\xe5\xec\xd6\xa1\xbd(&\xbf8]\xea_\x07\xed\x07\x0c'
+_lr_signature = 'p\xb8z\xd2\xf1\x10:\x8a\xa5\x890\xfa5*\x7f\xca'
     
-_lr_action_items = {'QUESTMARK':([3,6,22,23,37,39,56,79,86,],[22,22,42,22,22,22,22,22,22,]),'DEDENT':([5,9,25,31,32,44,51,52,55,58,60,64,65,68,71,74,76,77,80,81,83,85,87,88,],[-6,-8,-7,-42,-42,61,-12,-11,-42,-10,-9,-45,-47,81,-13,-42,-46,-48,-41,-44,-52,-51,-49,-50,]),'INDENT':([3,31,32,55,74,],[23,50,50,50,50,]),'STRING':([3,23,39,79,],[15,15,15,15,]),'BACKTRACK':([27,33,],[45,53,]),'VARNAME':([3,5,9,18,19,23,25,27,31,32,33,39,41,49,50,51,52,54,55,58,60,64,65,66,71,74,77,79,80,81,83,85,87,88,],[6,-6,-8,6,37,6,-7,46,-42,-42,46,6,46,67,-43,-12,-11,6,-42,-10,-9,67,-47,67,-13,-42,-48,86,-41,-44,-52,-51,-49,-50,]),'NEWLINE':([0,6,12,13,14,15,16,22,26,36,42,43,54,56,59,70,72,73,86,],[3,-33,-32,31,-31,32,-30,-38,-34,55,-39,-40,-28,-35,74,-29,-36,-37,-33,]),'GLOBALMARK':([5,9,25,31,32,49,50,51,52,55,58,60,64,65,71,74,77,80,81,83,85,87,88,],[-6,-8,-7,-42,-42,66,-43,-12,-11,-42,-10,-9,66,-47,-13,-42,-48,-41,-44,-52,-51,-49,-50,]),'NUMBER':([3,23,30,39,47,79,84,],[8,8,48,8,63,8,90,]),'PLUS':([45,],[62,]),'EXCLAMARK':([22,],[43,]),'COLON':([4,7,11,20,28,34,40,46,67,82,86,89,91,],[-14,-15,-16,38,-17,-18,-22,-27,78,-19,78,-20,-21,]),'CHARCLASS':([38,78,],[59,59,]),'SLASH':([3,6,12,14,16,22,23,26,35,39,42,43,56,72,73,79,],[18,-33,-32,-31,-30,-38,18,-34,54,18,-39,-40,-35,-36,-37,18,]),'LPAREN':([3,18,23,39,54,79,],[19,19,19,19,19,19,]),'RPAREN':([22,37,42,43,57,],[-38,56,-39,-40,73,]),'EQUALSIGN':([67,86,],[79,79,]),'$end':([0,1,2,3,5,9,24,25,31,32,51,52,55,58,60,61,71,74,80,81,83,],[-1,0,-2,-3,-6,-8,-4,-7,-42,-42,-12,-11,-42,-10,-9,-5,-13,-42,-41,-44,-52,]),'MINUS':([53,],[69,]),'DOT':([3,8,10,23,29,39,62,75,79,],[10,29,30,10,47,10,75,84,10,]),'WHITESPACE':([0,4,7,8,11,17,20,21,22,28,30,34,40,42,43,46,47,48,63,69,82,84,89,90,91,],[2,-14,-15,27,-16,33,39,41,-38,-17,-23,-18,-22,-39,-40,-27,-24,-25,-26,41,-19,41,-20,41,-21,]),}
+_lr_action_items = {'QUESTMARK':([3,6,18,19,34,73,81,],[18,18,37,18,18,18,18,]),'DEDENT':([5,9,21,27,28,39,46,47,50,51,53,57,58,63,66,67,69,70,74,75,77,80,82,83,],[-6,-8,-7,-36,-36,54,-12,-11,-36,-10,-9,-39,-41,75,-13,-36,-40,-42,-35,-38,-48,-45,-43,-44,]),'INDENT':([3,27,28,50,67,],[19,45,45,45,45,]),'STRING':([3,19,34,73,],[13,13,13,13,]),'BACKTRACK':([23,29,],[40,48,]),'VARNAME':([3,5,9,15,19,21,23,27,28,29,34,36,44,45,46,47,49,50,51,53,57,58,59,61,66,67,70,73,74,75,77,80,82,83,],[6,-6,-8,6,6,-7,41,-36,-36,41,6,41,60,-37,-12,-11,6,-36,-10,-9,60,-41,60,71,-13,-36,-42,81,-35,-38,-48,-45,-43,-44,]),'NEWLINE':([0,6,12,13,18,22,32,37,38,49,52,65,81,],[3,-30,27,28,-32,-31,50,-33,-34,-28,67,-29,-30,]),'GLOBALMARK':([5,9,21,27,28,44,45,46,47,50,51,53,57,58,66,67,70,74,75,77,80,82,83,],[-6,-8,-7,-36,-36,59,-37,-12,-11,-36,-10,-9,59,-41,-13,-36,-42,-35,-38,-48,-45,-43,-44,]),'NUMBER':([3,19,26,34,42,73,78,],[8,8,43,8,56,8,85,]),'RPAREN':([71,],[79,]),'EXCLAMARK':([18,],[38,]),'COLON':([4,7,11,16,24,30,35,41,60,62,76,79,81,84,86,],[-14,-15,-16,33,-17,-18,-22,-27,-46,72,-19,-47,-46,-20,-21,]),'CHARCLASS':([33,72,],[52,52,]),'SLASH':([3,6,18,19,22,31,34,37,38,73,],[15,-30,-32,15,-31,49,15,-33,-34,15,]),'LPAREN':([5,9,21,27,28,44,45,46,47,50,51,53,57,58,59,66,67,70,73,74,75,77,80,82,83,],[-6,-8,-7,-36,-36,61,-37,-12,-11,-36,-10,-9,61,-41,61,-13,-36,-42,61,-35,-38,-48,-45,-43,-44,]),'PLUS':([40,],[55,]),'EQUALSIGN':([60,62,79,81,],[-46,73,-47,-46,]),'$end':([0,1,2,3,5,9,20,21,27,28,46,47,50,51,53,54,66,67,74,75,77,],[-1,0,-2,-3,-6,-8,-4,-7,-36,-36,-12,-11,-36,-10,-9,-5,-13,-36,-35,-38,-48,]),'MINUS':([48,],[64,]),'DOT':([3,8,10,19,25,34,55,68,73,],[10,25,26,10,42,10,68,78,10,]),'WHITESPACE':([0,4,7,8,11,14,16,17,18,24,26,30,35,37,38,41,42,43,56,64,76,78,84,85,86,],[2,-14,-15,23,-16,29,34,36,-32,-17,-23,-18,-22,-33,-34,-27,-24,-25,-26,36,-19,36,-20,36,-21,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'repeat_N_times':([3,23,39,79,],[4,4,4,4,]),'repeat_range':([3,23,39,79,],[7,7,7,7,]),'optional_block':([31,32,55,74,],[51,52,71,83,]),'charclass':([38,78,],[58,85,]),'lookup_expr':([3,23,39,79,],[9,9,9,9,]),'optionalize':([3,23,39,79,],[11,11,11,11,]),'begin_block':([31,32,55,74,],[49,49,49,49,]),'string_expr':([3,23,39,79,],[25,25,25,25,]),'captured_optional_lookup':([3,18,23,39,54,79,],[12,12,12,12,12,12,]),'lookup':([3,18,23,39,54,79,],[13,35,13,13,35,13,]),'end_block':([68,],[80,]),'oprex':([0,],[1,]),'captured_lookup':([3,18,23,39,54,79,],[14,14,14,14,14,14,]),'assignment':([49,64,66,79,],[65,65,77,87,]),'simple_lookup':([3,18,23,39,54,79,],[16,16,16,16,16,16,]),'numrange':([3,23,39,79,],[17,17,17,17,]),'repeat_expr':([3,23,39,79,],[5,5,5,5,]),'quantifier':([3,23,39,79,],[20,20,20,20,]),'optional':([3,6,23,37,39,56,79,86,],[21,26,21,57,21,72,21,26,]),'definition':([49,64,],[64,64,]),'expression':([3,23,39,79,],[24,44,60,88,]),'of':([8,17,21,69,84,90,],[28,34,40,82,89,91,]),'definitions':([49,64,],[68,76,]),'lookup_chain':([18,54,],[36,70,]),}
+_lr_goto_items = {'repeat_N_times':([3,19,34,73,],[4,4,4,4,]),'repeat_range':([3,19,34,73,],[7,7,7,7,]),'optional_block':([27,28,50,67,],[46,47,66,77,]),'charclass':([33,72,],[51,80,]),'lookup_expr':([3,19,34,73,],[9,9,9,9,]),'optionalize':([3,19,34,73,],[11,11,11,11,]),'begin_block':([27,28,50,67,],[44,44,44,44,]),'string_expr':([3,19,34,73,],[21,21,21,21,]),'lookup':([3,15,19,34,49,73,],[12,31,12,12,31,12,]),'end_block':([63,],[74,]),'oprex':([0,],[1,]),'assignment':([44,57,59,73,],[58,58,70,82,]),'numrange':([3,19,34,73,],[14,14,14,14,]),'repeat_expr':([3,19,34,73,],[5,5,5,5,]),'declaration':([44,57,59,73,],[62,62,62,62,]),'quantifier':([3,19,34,73,],[16,16,16,16,]),'optional':([3,6,19,34,73,81,],[17,22,17,17,17,22,]),'definition':([44,57,],[57,57,]),'expression':([3,19,34,73,],[20,39,53,83,]),'of':([8,14,17,64,78,85,],[24,30,35,76,84,86,]),'definitions':([44,57,],[63,69,]),'lookup_chain':([15,49,],[32,65,]),}
 
 _lr_goto = { }
 for _k, _v in _lr_goto_items.items():
@@ -26,56 +26,52 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> oprex","S'",1,None,None,None),
-  ('oprex -> <empty>','oprex',0,'p_oprex','oprex.py',367),
-  ('oprex -> WHITESPACE','oprex',1,'p_oprex','oprex.py',368),
-  ('oprex -> NEWLINE','oprex',1,'p_oprex','oprex.py',369),
-  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','oprex.py',370),
-  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','oprex.py',371),
-  ('expression -> repeat_expr','expression',1,'p_expression','oprex.py',382),
-  ('expression -> string_expr','expression',1,'p_expression','oprex.py',383),
-  ('expression -> lookup_expr','expression',1,'p_expression','oprex.py',384),
-  ('repeat_expr -> quantifier WHITESPACE expression','repeat_expr',3,'p_repeat_expr','oprex.py',389),
-  ('repeat_expr -> quantifier COLON charclass','repeat_expr',3,'p_repeat_expr','oprex.py',390),
-  ('string_expr -> STRING NEWLINE optional_block','string_expr',3,'p_string_expr','oprex.py',395),
-  ('lookup_expr -> lookup NEWLINE optional_block','lookup_expr',3,'p_lookup_expr','oprex.py',401),
-  ('lookup_expr -> SLASH lookup_chain NEWLINE optional_block','lookup_expr',4,'p_lookup_expr','oprex.py',402),
-  ('quantifier -> repeat_N_times','quantifier',1,'p_quantifier','oprex.py',444),
-  ('quantifier -> repeat_range','quantifier',1,'p_quantifier','oprex.py',445),
-  ('quantifier -> optionalize','quantifier',1,'p_quantifier','oprex.py',446),
-  ('repeat_N_times -> NUMBER of','repeat_N_times',2,'p_repeat_N_times','oprex.py',458),
-  ('repeat_range -> numrange of','repeat_range',2,'p_repeat_range','oprex.py',463),
-  ('repeat_range -> numrange WHITESPACE BACKTRACK MINUS of','repeat_range',5,'p_repeat_range','oprex.py',464),
-  ('repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of','repeat_range',7,'p_repeat_range','oprex.py',465),
-  ('repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of','repeat_range',8,'p_repeat_range','oprex.py',466),
-  ('optionalize -> optional of','optionalize',2,'p_optionalize','oprex.py',483),
-  ('numrange -> DOT DOT','numrange',2,'p_numrange','oprex.py',489),
-  ('numrange -> NUMBER DOT DOT','numrange',3,'p_numrange','oprex.py',490),
-  ('numrange -> DOT DOT NUMBER','numrange',3,'p_numrange','oprex.py',491),
-  ('numrange -> NUMBER DOT DOT NUMBER','numrange',4,'p_numrange','oprex.py',492),
-  ('of -> WHITESPACE VARNAME','of',2,'p_of','oprex.py',501),
-  ('lookup_chain -> lookup SLASH','lookup_chain',2,'p_lookup_chain','oprex.py',507),
-  ('lookup_chain -> lookup SLASH lookup_chain','lookup_chain',3,'p_lookup_chain','oprex.py',508),
-  ('lookup -> simple_lookup','lookup',1,'p_lookup','oprex.py',517),
-  ('lookup -> captured_lookup','lookup',1,'p_lookup','oprex.py',518),
-  ('lookup -> captured_optional_lookup','lookup',1,'p_lookup','oprex.py',519),
-  ('simple_lookup -> VARNAME','simple_lookup',1,'p_simple_lookup','oprex.py',524),
-  ('simple_lookup -> VARNAME optional','simple_lookup',2,'p_simple_lookup','oprex.py',525),
-  ('captured_lookup -> LPAREN VARNAME RPAREN','captured_lookup',3,'p_captured_lookup','oprex.py',534),
-  ('captured_lookup -> LPAREN VARNAME RPAREN optional','captured_lookup',4,'p_captured_lookup','oprex.py',535),
-  ('captured_optional_lookup -> LPAREN VARNAME optional RPAREN','captured_optional_lookup',4,'p_captured_optional_lookup','oprex.py',544),
-  ('optional -> QUESTMARK','optional',1,'p_optional','oprex.py',552),
-  ('optional -> QUESTMARK QUESTMARK','optional',2,'p_optional','oprex.py',553),
-  ('optional -> QUESTMARK EXCLAMARK','optional',2,'p_optional','oprex.py',554),
-  ('optional_block -> begin_block definitions end_block','optional_block',3,'p_optional_block','oprex.py',562),
-  ('optional_block -> <empty>','optional_block',0,'p_optional_block','oprex.py',563),
-  ('begin_block -> INDENT','begin_block',1,'p_begin_block','oprex.py',569),
-  ('end_block -> DEDENT','end_block',1,'p_end_block','oprex.py',575),
-  ('definitions -> definition','definitions',1,'p_definitions','oprex.py',579),
-  ('definitions -> definition definitions','definitions',2,'p_definitions','oprex.py',580),
-  ('definition -> assignment','definition',1,'p_definition','oprex.py',588),
-  ('definition -> GLOBALMARK assignment','definition',2,'p_definition','oprex.py',589),
-  ('assignment -> VARNAME EQUALSIGN assignment','assignment',3,'p_assignment','oprex.py',615),
-  ('assignment -> VARNAME EQUALSIGN expression','assignment',3,'p_assignment','oprex.py',616),
-  ('assignment -> VARNAME COLON charclass','assignment',3,'p_assignment','oprex.py',617),
-  ('charclass -> CHARCLASS NEWLINE optional_block','charclass',3,'p_charclass','oprex.py',630),
+  ('oprex -> <empty>','oprex',0,'p_oprex','oprex.py',370),
+  ('oprex -> WHITESPACE','oprex',1,'p_oprex','oprex.py',371),
+  ('oprex -> NEWLINE','oprex',1,'p_oprex','oprex.py',372),
+  ('oprex -> NEWLINE expression','oprex',2,'p_oprex','oprex.py',373),
+  ('oprex -> NEWLINE INDENT expression DEDENT','oprex',4,'p_oprex','oprex.py',374),
+  ('expression -> repeat_expr','expression',1,'p_expression','oprex.py',385),
+  ('expression -> string_expr','expression',1,'p_expression','oprex.py',386),
+  ('expression -> lookup_expr','expression',1,'p_expression','oprex.py',387),
+  ('repeat_expr -> quantifier WHITESPACE expression','repeat_expr',3,'p_repeat_expr','oprex.py',392),
+  ('repeat_expr -> quantifier COLON charclass','repeat_expr',3,'p_repeat_expr','oprex.py',393),
+  ('string_expr -> STRING NEWLINE optional_block','string_expr',3,'p_string_expr','oprex.py',398),
+  ('lookup_expr -> lookup NEWLINE optional_block','lookup_expr',3,'p_lookup_expr','oprex.py',404),
+  ('lookup_expr -> SLASH lookup_chain NEWLINE optional_block','lookup_expr',4,'p_lookup_expr','oprex.py',405),
+  ('quantifier -> repeat_N_times','quantifier',1,'p_quantifier','oprex.py',450),
+  ('quantifier -> repeat_range','quantifier',1,'p_quantifier','oprex.py',451),
+  ('quantifier -> optionalize','quantifier',1,'p_quantifier','oprex.py',452),
+  ('repeat_N_times -> NUMBER of','repeat_N_times',2,'p_repeat_N_times','oprex.py',467),
+  ('repeat_range -> numrange of','repeat_range',2,'p_repeat_range','oprex.py',473),
+  ('repeat_range -> numrange WHITESPACE BACKTRACK MINUS of','repeat_range',5,'p_repeat_range','oprex.py',474),
+  ('repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of','repeat_range',7,'p_repeat_range','oprex.py',475),
+  ('repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of','repeat_range',8,'p_repeat_range','oprex.py',476),
+  ('optionalize -> optional of','optionalize',2,'p_optionalize','oprex.py',499),
+  ('numrange -> DOT DOT','numrange',2,'p_numrange','oprex.py',505),
+  ('numrange -> NUMBER DOT DOT','numrange',3,'p_numrange','oprex.py',506),
+  ('numrange -> DOT DOT NUMBER','numrange',3,'p_numrange','oprex.py',507),
+  ('numrange -> NUMBER DOT DOT NUMBER','numrange',4,'p_numrange','oprex.py',508),
+  ('of -> WHITESPACE VARNAME','of',2,'p_of','oprex.py',517),
+  ('lookup_chain -> lookup SLASH','lookup_chain',2,'p_lookup_chain','oprex.py',523),
+  ('lookup_chain -> lookup SLASH lookup_chain','lookup_chain',3,'p_lookup_chain','oprex.py',524),
+  ('lookup -> VARNAME','lookup',1,'p_lookup','oprex.py',533),
+  ('lookup -> VARNAME optional','lookup',2,'p_lookup','oprex.py',534),
+  ('optional -> QUESTMARK','optional',1,'p_optional','oprex.py',543),
+  ('optional -> QUESTMARK QUESTMARK','optional',2,'p_optional','oprex.py',544),
+  ('optional -> QUESTMARK EXCLAMARK','optional',2,'p_optional','oprex.py',545),
+  ('optional_block -> begin_block definitions end_block','optional_block',3,'p_optional_block','oprex.py',553),
+  ('optional_block -> <empty>','optional_block',0,'p_optional_block','oprex.py',554),
+  ('begin_block -> INDENT','begin_block',1,'p_begin_block','oprex.py',560),
+  ('end_block -> DEDENT','end_block',1,'p_end_block','oprex.py',566),
+  ('definitions -> definition','definitions',1,'p_definitions','oprex.py',570),
+  ('definitions -> definition definitions','definitions',2,'p_definitions','oprex.py',571),
+  ('definition -> assignment','definition',1,'p_definition','oprex.py',579),
+  ('definition -> GLOBALMARK assignment','definition',2,'p_definition','oprex.py',580),
+  ('assignment -> declaration EQUALSIGN assignment','assignment',3,'p_assignment','oprex.py',611),
+  ('assignment -> declaration EQUALSIGN expression','assignment',3,'p_assignment','oprex.py',612),
+  ('assignment -> declaration COLON charclass','assignment',3,'p_assignment','oprex.py',613),
+  ('declaration -> VARNAME','declaration',1,'p_declaration','oprex.py',626),
+  ('declaration -> LPAREN VARNAME RPAREN','declaration',3,'p_declaration','oprex.py',627),
+  ('charclass -> CHARCLASS NEWLINE optional_block','charclass',3,'p_charclass','oprex.py',635),
 ]

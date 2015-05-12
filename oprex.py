@@ -72,16 +72,19 @@ t_SLASH      = r'\/'
 t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 
 
-class Assignment(namedtuple('Assignment', 'varnames value lineno')):
+class Assignment(namedtuple('Assignment', 'declarations value lineno')):
     __slots__ = ()
 
-class Lookup(namedtuple('Lookup', 'varname optional capture')):
+class Lookup(namedtuple('Lookup', 'varname optional')):
     __slots__ = ()
 
-class Variable(namedtuple('Variable', 'name value lineno')):
+class Variable(namedtuple('Variable', 'name value lineno capture')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
+
+class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture')):   
+    __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
     __slots__ = ()
@@ -403,25 +406,23 @@ def p_lookup_expr(t):
 
     referenced_vars = set()
     current_scope = t.lexer.scopes[-1]
-    def resolve_variable(varname):
-        referenced_vars.add(varname)
+    def resolve(lookup):
+        referenced_vars.add(lookup.varname)
         try:
-            return current_scope[varname].value
+            var = current_scope[lookup.varname]
         except KeyError as e:
             raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
-
-    def resolve_lookup(lookup):
-        value = resolve_variable(lookup.varname)
-        if lookup.optional:
-            value = quantify(value, lookup.optional)
-        if lookup.capture:
-            value = lookup.capture % value
-        return value
+        if not lookup.optional:
+            return var.value
+        elif var.capture: # quantify() will extraneously put the value inside a group, so we skip it
+            return Quantification(var.value, lookup.optional) # and build the Quantification directly
+        else: # quantify() performs extra checks and optimizations (captures don't need that, so it's OK to skip it)
+            return quantify(var.value, lookup.optional)
 
     if t[1] == '/': # lookup chain
-        t[0] = ''.join(map(resolve_lookup, t[2]))
+        t[0] = ''.join(map(resolve, t[2]))
     else: # single lookup
-        t[0] = resolve_lookup(t[1])
+        t[0] = resolve(t[1])
     check_unused_vars(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
@@ -431,13 +432,13 @@ def quantify(expr, quantifier):
     if quantifier == '{1}' or quantifier == '':
         return expr
     try: # maybe expr is already a Quantification? merge the quantifiers
-        return expr.quantified + {
-             '? of +'  : '*' ,
-            '?+ of ++' : '*+',
-            '?? of +?' : '*?',
+        return expr.quantified + { # The purpose of this is so we can have something super-readable e.g.
+             '? of +'  : '*' ,     #     digits?
+            '?+ of ++' : '*+',     #         digits = 1.. of digit
+            '?? of +?' : '*?',     # without making the regex output suboptimal
         }[quantifier + ' of ' + expr.quantifier]
     except KeyError: # expr is a Quantification, but this is not a "? of +" operation
-        try: # merge repeats (e.g colorhex = 3 of byte; byte = 2 of hex) -- "hex{2}{3}" to "hex{6}"
+        try: # merge repeats (e.g. colorhex = 3 of byte; byte = 2 of hex) --> optimize "hex{2}{3}" into "hex{6}"
             n1 = int(regex.match(r'{(\d+)}', expr.quantifier).group(1))
             n2 = int(regex.match(r'{(\d+)}',      quantifier).group(1))
             return Quantification(expr.quantified, '{%d}' % (n1 * n2))
@@ -533,38 +534,12 @@ def p_lookup_chain(t):
 
 
 def p_lookup(t):
-    '''lookup : simple_lookup
-              | captured_lookup
-              | captured_optional_lookup'''
-    t[0] = t[1]
-
-
-def p_simple_lookup(t):
-    '''simple_lookup : VARNAME
-                     | VARNAME optional'''
+    '''lookup : VARNAME
+              | VARNAME optional'''
     try:
-        optional = t[2]
+        t[0] = Lookup(varname=t[1], optional=t[2])
     except IndexError:
-        optional = ''
-    t[0] = Lookup(varname=t[1], optional=optional, capture=False)
-
-
-def p_captured_lookup(t):
-    '''captured_lookup : LPAREN VARNAME RPAREN
-                       | LPAREN VARNAME RPAREN optional'''
-    varname = t[2]
-    capture = '(?<' + varname + '>%s)'
-    if len(t) > 4:
-        capture += t[4]
-    t[0] = Lookup(varname, optional=False, capture=capture)
-
-
-def p_captured_optional_lookup(t):
-    '''captured_optional_lookup : LPAREN VARNAME optional RPAREN'''
-    varname = t[2]
-    optional = t[3]
-    capture = '(?<' + varname + '>%s)'
-    t[0] = Lookup(varname, optional, capture)
+        t[0] = Lookup(varname=t[1], optional='')
 
 
 def p_optional(t):
@@ -613,8 +588,12 @@ def p_definition(t):
         assignment = t[1]
         scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
 
-    def define(varname):
-        var = Variable(varname, assignment.value, assignment.lineno)
+    def define(declaration):
+        varname = declaration.varname
+        value = assignment.value
+        if declaration.capture:
+            value = '(?<%s>%s)' % (varname, value)
+        var = Variable(varname, value, assignment.lineno, declaration.capture)
         try: # check the deepest scope for varname (every scope supersets its parent scope, so...
             already_defined = scopes[-1][varname] # ...checking only the deepeset is sufficient)
         except KeyError: # not already defined, OK to define it
@@ -627,22 +606,31 @@ def p_definition(t):
                 "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
                     % (varname, already_defined.lineno))
         return var
-    t[0] = map(define, assignment.varnames)
+    t[0] = map(define, assignment.declarations)
 
 
 def p_assignment(t):
-    '''assignment : VARNAME EQUALSIGN assignment
-                  | VARNAME EQUALSIGN expression
-                  | VARNAME COLON     charclass'''
-    varname = t[1]
+    '''assignment : declaration EQUALSIGN assignment
+                  | declaration EQUALSIGN expression
+                  | declaration COLON     charclass'''
+    declaration = t[1]
     lineno = t.lineno(1)
     if isinstance(t[3], Assignment):
         assignment = t[3]
-        assignment.varnames.append(varname)
+        assignment.declarations.append(declaration)
     else:
         value = t[3]
-        assignment = Assignment([varname], value, lineno)
+        assignment = Assignment([declaration], value, lineno)
     t[0] = assignment
+
+
+def p_declaration(t):
+    '''declaration :        VARNAME
+                   | LPAREN VARNAME RPAREN'''
+    if len(t) == 2:
+        t[0] = VariableDeclaration(varname=t[1], capture=False)
+    else:
+        t[0] = VariableDeclaration(varname=t[2], capture=True)
 
 
 def p_charclass(t):
@@ -737,11 +725,11 @@ def build_lexer(source_lines):
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
     lexer.scopes = [{ # built-in variables                                     # lineno=0 --> builtin
-        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z',    True), lineno=0),
-        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z',       True), lineno=0),
-        'lower' : Variable('lower', CharClass('[a-z]',       'a-z',       True), lineno=0),
-        'digit' : Variable('digit', CharClass('[0-9]',       '0-9',       True), lineno=0),
-        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9', True), lineno=0),
+        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z',    True), lineno=0, capture=False),
+        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z',       True), lineno=0, capture=False),
+        'lower' : Variable('lower', CharClass('[a-z]',       'a-z',       True), lineno=0, capture=False),
+        'digit' : Variable('digit', CharClass('[0-9]',       '0-9',       True), lineno=0, capture=False),
+        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9', True), lineno=0, capture=False),
     }]
     return CustomLexer(lexer)
 

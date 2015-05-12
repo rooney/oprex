@@ -1,4 +1,5 @@
 
-            css_color
-                css_color = 2..4 of 3 of hex
-                    hex: 0..9 a..f
+x?
+	(x) = /y?/z/
+		(y) = '1'
+		(z) = '2'

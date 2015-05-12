@@ -1154,23 +1154,21 @@ class TestOutput(unittest.TestCase):
 
 
     def test_string_interpolation(self):
-        # the implementation of chain-of-cells parsing uses string interpolation to translate variable names into values
-        # these tests prove that it won't cause troubles with "%(something)s" strings since it'll be on the value part
         self.given('''
             /p/pXs/s/
                 p = '%'
                 s = 's'
-                pXs = /p/(X)/s/
-                    X = 'X'
+                pXs = /p/X/s/
+                    (X) = 'X'
         ''',
         expect_regex='%%(?<X>X)ss')
 
         self.given('''
-            /p/(pXs)/s/
+            /p/pXs/s/
                 p = '%'
                 s = 's'
-                pXs = /p/(X)/s/
-                    X = 'X'
+                (pXs) = /p/X/s/
+                    (X) = 'X'
         ''',
         expect_regex='%(?<pXs>%(?<X>X)s)s')
 
@@ -1185,8 +1183,8 @@ class TestOutput(unittest.TestCase):
             message
                 message = /greeting/name/
                     greeting = 'Hello%'
-                    name = /(salutation)/first/last/
-                        salutation = 'Sir/Madam'
+                    name = /salutation/first/last/
+                        (salutation) = 'Sir/Madam'
                         first = 's%(first)s'
                         last  = '%(last)s'
         ''',
@@ -1301,15 +1299,15 @@ class TestOutput(unittest.TestCase):
 
     def test_captures_output(self):
         self.given('''
-            /extra/(extra)/(extra?)/(extra)?/
-                extra = 'icing'
+            /extra/extra?/
+                (extra) = 'icing'
         ''',
-        expect_regex='icing(?<extra>icing)(?<extra>(?:icing)?+)(?<extra>icing)?+')
+        expect_regex='(?<extra>icing)(?<extra>icing)?+')
 
         self.given('''
-            /defcon/(level)/
+            /defcon/level/
                 defcon = 'DEFCON'
-                level: 1 2 3 4 5
+                (level): 1 2 3 4 5
         ''',
         expect_regex=r'DEFCON(?<level>[12345])')
 
