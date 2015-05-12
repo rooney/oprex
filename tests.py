@@ -1494,19 +1494,19 @@ class TestOutput(unittest.TestCase):
             alphas?
                 alphas = .. of alpha
         ''',
-        expect_regex='[a-zA-Z]*+')
+        expect_regex='(?:[a-zA-Z]*+)?+')
 
         self.given('''
             alphas?!
                 alphas = 0.. <<- of alpha
         ''',
-        expect_regex='[a-zA-Z]*')
+        expect_regex='(?:[a-zA-Z]*)?')
 
         self.given('''
             alphas??
                 alphas = 0 <<+.. of alpha
         ''',
-        expect_regex='[a-zA-Z]*?')
+        expect_regex='(?:[a-zA-Z]*?)??')
 
         self.given('''
             opt_alpha?

@@ -430,24 +430,20 @@ def quantify(expr, quantifier):
         return ''
     if quantifier == '{1}' or quantifier == '':
         return expr
-    try: # assume expr is already a Quantification, merge the quantifiers
+    try: # maybe expr is already a Quantification? merge the quantifiers
         return expr.quantified + {
-            '++ ?+' : '*+',
-            '*+ ?+' : '*+',
-            '+? ??' : '*?',
-            '*? ??' : '*?',
-            '+ ?'   : '*' ,
-            '* ?'   : '*' ,
-        }[expr.quantifier + ' ' + quantifier]
-    except KeyError: # expr is a Quantification, but the quantifiers combination is not in the merge dict
-        repeat_N_times = regex.compile(r'{(\d+)}')
-        try: # assume both quantifiers are in the form of {N}, merge by multipling the Ns
-            N1 = int(repeat_N_times.match(expr.quantifier).group(1))
-            N2 = int(repeat_N_times.match(quantifier).group(1))
-            return Quantification(expr.quantified, quantifier='{%d}' % (N1 * N2))
-        except AttributeError: # one or both of the quantifiers are not in the form of {N}
+             '? of +'  : '*' ,
+            '?+ of ++' : '*+',
+            '?? of +?' : '*?',
+        }[quantifier + ' of ' + expr.quantifier]
+    except KeyError: # expr is a Quantification, but this is not a "? of +" operation
+        try: # merge repeats (e.g colorhex = 3 of byte; byte = 2 of hex) -- "hex{2}{3}" to "hex{6}"
+            n1 = int(regex.match(r'{(\d+)}', expr.quantifier).group(1))
+            n2 = int(regex.match(r'{(\d+)}',      quantifier).group(1))
+            return Quantification(expr.quantified, '{%d}' % (n1 * n2))
+        except AttributeError: # not "repeat a repeat" operation, simply put expr in a group
             return Quantification('(?:%s)' % expr, quantifier)
-    except AttributeError: # expr is a plain string (not a Quantification)
+    except AttributeError: # expr is a plain string, not a Quantification
         if len(expr) > 1 and not isinstance(expr, CharClass): # needs grouping
             expr = '(?:%s)' % expr
         return Quantification(expr, quantifier)
