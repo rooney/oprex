@@ -78,12 +78,12 @@ class Assignment(namedtuple('Assignment', 'declarations value lineno')):
 class Lookup(namedtuple('Lookup', 'varname optional')):
     __slots__ = ()
 
-class Variable(namedtuple('Variable', 'name value lineno capture')):
+class Variable(namedtuple('Variable', 'name lineno value already_grouped')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
 
-class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture')):   
+class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture atomic')):   
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
@@ -412,12 +412,10 @@ def p_lookup_expr(t):
             var = current_scope[lookup.varname]
         except KeyError as e:
             raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
-        if not lookup.optional:
+        if lookup.optional:
+            return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
+        else:
             return var.value
-        elif var.capture: # quantify() will extraneously put the value inside a group, so we skip it
-            return Quantification(var.value, lookup.optional) # and build the Quantification directly
-        else: # quantify() performs extra checks and optimizations (captures don't need that, so it's OK to skip it)
-            return quantify(var.value, lookup.optional)
 
     if t[1] == '/': # lookup chain
         t[0] = ''.join(map(resolve, t[2]))
@@ -426,7 +424,7 @@ def p_lookup_expr(t):
     check_unused_vars(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
-def quantify(expr, quantifier):
+def quantify(expr, quantifier, already_grouped=False):
     if quantifier == '{0}' or expr == '':
         return ''
     if quantifier == '{1}' or quantifier == '':
@@ -445,7 +443,7 @@ def quantify(expr, quantifier):
         except AttributeError: # not "repeat a repeat" operation, simply put expr in a group
             return Quantification('(?:%s)' % expr, quantifier)
     except AttributeError: # expr is a plain string, not a Quantification
-        if len(expr) > 1 and not isinstance(expr, CharClass): # needs grouping
+        if len(expr) > 1 and not isinstance(expr, CharClass) and not already_grouped: # needs grouping
             expr = '(?:%s)' % expr
         return Quantification(expr, quantifier)
 
@@ -591,21 +589,24 @@ def p_definition(t):
     def define(declaration):
         varname = declaration.varname
         value = assignment.value
+        if declaration.atomic:
+            value = '(?>%s)' % value
         if declaration.capture:
             value = '(?<%s>%s)' % (varname, value)
-        var = Variable(varname, value, assignment.lineno, declaration.capture)
+
+        var = Variable(varname, assignment.lineno, value, already_grouped=declaration.capture or declaration.atomic)
         try: # check the deepest scope for varname (every scope supersets its parent scope, so...
             already_defined = scopes[-1][varname] # ...checking only the deepeset is sufficient)
         except KeyError: # not already defined, OK to define it
             for scope in scopes:
                 scope[varname] = var
+            return var
         else: # already defined
             raise OprexSyntaxError(t.lineno(1),
                 "'%s' is a built-in variable and cannot be redefined" % var.name
                 if already_defined.is_builtin() else
                 "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
                     % (varname, already_defined.lineno))
-        return var
     t[0] = map(define, assignment.declarations)
 
 
@@ -626,11 +627,13 @@ def p_assignment(t):
 
 def p_declaration(t):
     '''declaration :        VARNAME
-                   | LPAREN VARNAME RPAREN'''
-    if len(t) == 2:
-        t[0] = VariableDeclaration(varname=t[1], capture=False)
-    else:
-        t[0] = VariableDeclaration(varname=t[2], capture=True)
+                   |        VARNAME        DOT
+                   | LPAREN VARNAME RPAREN
+                   | LPAREN VARNAME RPAREN DOT'''
+    capture = t[1] == '('
+    varname = t[2] if capture else t[1]
+    atomic  = t[len(t)-1] == '.'
+    t[0] = VariableDeclaration(varname, capture, atomic)
 
 
 def p_charclass(t):
@@ -721,16 +724,23 @@ class CustomLexer:
 lexer0 = lex.lex()
 def build_lexer(source_lines):
     lexer = lexer0.clone()
-    lexer.indent_stack = [0]  # for keeping track of indentation levels
+    lexer.indent_stack = [0] # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.scopes = [{ # built-in variables                                     # lineno=0 --> builtin
-        'alpha' : Variable('alpha', CharClass('[a-zA-Z]',    'a-zA-Z',    True), lineno=0, capture=False),
-        'upper' : Variable('upper', CharClass('[A-Z]',       'A-Z',       True), lineno=0, capture=False),
-        'lower' : Variable('lower', CharClass('[a-z]',       'a-z',       True), lineno=0, capture=False),
-        'digit' : Variable('digit', CharClass('[0-9]',       '0-9',       True), lineno=0, capture=False),
-        'alnum' : Variable('alnum', CharClass('[a-zA-Z0-9]', 'a-zA-Z0-9', True), lineno=0, capture=False),
-    }]
+    lexer.scopes = [{}]
+
+    def define_builtin_var(varname, value):        # lineno=0 --> builtin
+        lexer.scopes[0][varname] = Variable(varname, lineno=0, value=value, already_grouped=False)
+
+    def define_builtin_charclass(varname, value):  # for import = value without brackets
+        define_builtin_var(varname, CharClass(value, for_import=value[1:-1], need_brackets=True))
+
+    define_builtin_charclass('alpha', '[a-zA-Z]')
+    define_builtin_charclass('upper', '[A-Z]')
+    define_builtin_charclass('lower', '[a-z]')
+    define_builtin_charclass('digit', '[0-9]')
+    define_builtin_charclass('alnum', '[a-zA-Z0-9]')
+
     return CustomLexer(lexer)
 
 
