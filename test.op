@@ -1,5 +1,5 @@
 
-x
-	x = /y?/z/
-		(y). = '1'
-		z. = '(?>)'
+nonatomic?
+	nonatomic = /L?/R/
+		.(L) = 1.. <- of: L E F T
+		.R = 'Right'

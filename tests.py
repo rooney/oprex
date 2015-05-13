@@ -1311,6 +1311,48 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'DEFCON(?<level>[12345])')
 
+        self.given('''
+            captured?
+                (captured) = /L/R/
+                    (L) = 'Left'
+                    (R) = 'Right'
+        ''',
+        expect_regex=r'(?<captured>(?<L>Left)(?<R>Right))?+')
+
+        self.given('''
+            uncaptured?
+                uncaptured = /L?/R/
+                    (L) = 'Left'
+                    (R) = 'Right'
+        ''',
+        expect_regex=r'(?:(?<L>Left)?+(?<R>Right))?+')
+
+
+    def test_atomic_grouping_output(self):
+        self.given('''
+            /bomb?/clock/mass/number?/
+                .bomb = 'bomb'
+                .(clock) = 'clock'
+                .mass: M A S s
+                .(number): n u m b e r
+        ''',
+        expect_regex=r'(?>bomb)?+(?<clock>(?>clock))(?>[MASs])(?<number>(?>[number]))?+')
+
+        self.given('''
+            nonatomic?
+                nonatomic = /L?/R/
+                    .L = 'Left'
+                    .R = 'Right'
+        ''',
+        expect_regex=r'(?:(?>Left)?+(?>Right))?+')
+
+        self.given('''
+            /yadda/ditto/
+                .(yadda) = 'yadda'
+                ditto = yadda
+        ''',
+        expect_regex=r'(?<yadda>(?>yadda))(?<yadda>(?>yadda))')
+
 
     def test_builtin_output(self):
         self.given('''
