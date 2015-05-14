@@ -274,18 +274,13 @@ def t_VARNAME(t):
 # Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
 
 
-def t_COMMENTS(t):
-    r'[ \t]*\#\#.*'
-    # comments are ignored
-
-
 def t_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'
     return t
 
 
 def t_linemark(t):
-    r'[ \t\n]+(\*\)[ \t]*)*'
+    r'(([ \t\n])|([#][#].*))+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if num_newlines == 0:

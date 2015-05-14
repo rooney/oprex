@@ -1,5 +1,2 @@
 
-nonatomic? ## comments 1
-	nonatomic = /L?/R/ ## comments 2
-		.(L) = 1.. <<- of: L E F T ## comments 3
-		.R = "Mc\tDonald\n\"s" ## comments 4
+## comments should be ignored
