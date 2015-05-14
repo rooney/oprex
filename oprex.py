@@ -117,7 +117,8 @@ class CharClass(unicode):
 
 def t_character_class(t):
     ''':.*'''
-    chardefs = t.value.strip().split(' ')
+    value = t.value.split('##')[0] # parts after "##" are comments, ignore them 
+    chardefs = value.strip().split(' ')
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
 
@@ -250,15 +251,11 @@ def t_character_class(t):
 
 
 def t_STRING(t):
-    r"""('|")(.*)"""
-    value = t.value.strip()
-    if len(value) < 2 or value[0] != value[-1]:
-        raise OprexSyntaxError(t.lineno, 'Missing closing quote: ' + value)
-
-    t.value = regex.escape(
-        value[1:-1], # remove the surrounding quotes
-        special_only=True,
-    )
+    r'''("(\\.|[^"\\])*")|('(\\.|[^'\\])*')''' # single- or double-quoted string, with escape-quote support
+    value = t.value[1:-1] # remove the surrounding quotes
+    value = value.replace('\\"', '"').replace("\\'", "'") # apply (unescape) escaped quotes
+    value = regex.escape(value, special_only=True) # this will unnecessarily turn \ into \\
+    t.value = value.replace('\\\\', '\\') # ...so, restore 
     return t
 
 
@@ -275,6 +272,12 @@ def t_VARNAME(t):
 # Rules that contain space/tab should be written in function form and be put 
 # before the t_linemark rule to make PLY calls them first.
 # Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
+
+
+def t_COMMENTS(t):
+    r'[ \t]*\#\#.*'
+    # comments are ignored
+
 
 def t_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'

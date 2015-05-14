@@ -262,13 +262,14 @@ class TestErrorHandling(unittest.TestCase):
             mcd
                 mcd = 'McDonald's
         ''',
-        expect_error="Line 3: Missing closing quote: 'McDonald's")
-
+        expect_error='''Line 3: Unexpected VARNAME
+                mcd = 'McDonald's
+                                ^''')
         self.given('''
             quotes_mismatch
                 quotes_mismatch = "'
         ''',
-        expect_error="""Line 3: Missing closing quote: "'""")
+        expect_error="""Line 3: Syntax error at or near: "'""")
 
 
     def test_invalid_global_mark(self):
