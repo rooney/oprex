@@ -265,6 +265,12 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 3: Unexpected VARNAME
                 mcd = 'McDonald's
                                 ^''')
+        
+        self.given('''
+            "she said \\"Hi\\"
+        ''',
+        expect_error='Line 2: Syntax error at or near: "she said \\"Hi\\"')
+        
         self.given('''
             quotes_mismatch
                 quotes_mismatch = "'
@@ -1152,6 +1158,43 @@ class TestOutput(unittest.TestCase):
                     nonz: not: z
         ''',
         expect_regex='[^z]')
+
+
+    def test_string_literal(self):
+        self.given(u'''
+            'security'
+        ''',
+        expect_regex='security')
+
+        self.given(u'''
+            "security"
+        ''',
+        expect_regex='security')
+
+        self.given(u'''
+            "Ron's"
+        ''',
+        expect_regex="Ron's")
+
+        self.given(u'''
+            'Ron\\'s'
+        ''',
+        expect_regex="Ron's")
+
+        self.given(u'''
+            'said "Hi"'
+        ''',
+        expect_regex='said "Hi"')
+
+        self.given(u'''
+            "said \\"Hi\\""
+        ''',
+        expect_regex='said "Hi"')
+
+        self.given(u'''
+            "name:\\toprex\\nawesome:\\tyes"
+        ''',
+        expect_regex='name:\\toprex\\nawesome:\\tyes')
 
 
     def test_string_interpolation(self):
