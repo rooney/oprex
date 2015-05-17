@@ -98,45 +98,39 @@ class Quantification(unicode):
         return quantification
 
 class CharClass(unicode):
-    __slots__ = ('for_import', 'need_brackets')
+    __slots__ = ('is_set_op',)
     escapes = {
         '['  : '\\[',
         ']'  : '\\]',
         '^'  : '\\^',
         '-'  : '\\-',
         '\\' : '\\\\',
-        '{'  : '{{',
-        '}'  : '}}',
     }
-    def __new__(cls, value, for_import, need_brackets):
+    def __new__(cls, value, is_set_op):
         charclass = unicode.__new__(cls, value)
-        charclass.for_import = for_import
-        charclass.need_brackets = need_brackets
+        charclass.is_set_op = is_set_op
         return charclass
 
 
-def t_character_class(t):
+def t_charclass(t):
     ''':.*'''
     value = t.value.split('##')[0] # parts after "##" are comments, ignore them 
-    chardefs = value.strip().split(' ')
+    chardefs = filter(lambda chardef: chardef != '', value.split(' '))
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
-
     del chardefs[0] # no need to process the colon
     if not chardefs:
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
-    includes = set()
-    t.contains_setop = False
-    t.need_brackets = len(chardefs) > 1 # single-membered? brackets not needed
     t.counter = 0
+    seen = set()
+    includes = set()
 
-    def try_parse(chardef, *functions):
+    def try_compile(chardef, *functions):
         for fn in functions:
             result = fn(chardef)
             if result:
-                return result, fn
-        return None, None
+                return result, fn.__name__
 
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
@@ -161,27 +155,26 @@ def t_character_class(t):
         if regex.match('\\+[a-zA-Z]\\w*+(?<!_)$', chardef):
             varname = chardef[1:]
             includes.add(varname)
-            return '{%s.value.for_import}' % varname
+            return Lookup(varname, optional=False)
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
         if regex.match('/\\w+', chardef):
             prop = chardef[1:]
-            return '\\p{{%s}}' % prop
+            return '\\p{%s}' % prop
 
     def by_name(chardef):           # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
         if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
             if not chardef.isupper(): 
                 raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
             name = chardef[1:].replace('_', ' ')
-            return '\\N{{%s}}' % name
+            return '\\N{%s}' % name
 
     def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
         if '..' in chardef:
-            t.need_brackets = True
             try:
                 range_from, range_to = chardef.split('..')
-                from_val, _ = try_parse(range_from, single, uhex, by_name)
-                to_val, _   = try_parse(range_to, single, uhex, by_name)
+                from_val, _ = try_compile(range_from, single, uhex, by_name)
+                to_val, _   = try_compile(range_to, single, uhex, by_name)
                 return from_val + '-' + to_val
             except (TypeError, ValueError):
                 raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
@@ -203,50 +196,34 @@ def t_character_class(t):
             else:
                 raise OprexSyntaxError(t.lineno, "Incorrect use of %s '%s' operator" % (type, chardef))
 
-    seen = set()
-    def compilable(chardef):
-        t.counter += 1
-        if chardef == '':
-            return False
+    def compile(chardef):
         if chardef in seen:
             raise OprexSyntaxError(t.lineno, 'Duplicate item in character class definition: ' + chardef)
-        else:
-            seen.add(chardef)
-            return True
-
-    def compile(chardef):
-        compiled, type = try_parse(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
-        if not compiled:
+        seen.add(chardef)
+        t.counter += 1
+        result = try_compile(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
+        if not result:
             raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
-        test(compiled, type)
-        return compiled
+        test(chardef, result)
+        return result
 
-    def test(result, type):
-        if type in (include, set_operation): # includes are variable names -- not testable at this point
-            return                           # set operators (e.g. and, not) are not testable by itself
-                                             # so just skip test for those cases
-        test = curlies_escaped = result.replace('{{', '{').replace('}}', '}')
-        if type != by_prop:
-            test = '[' + test + ']' 
+    def test(chardef, result):
+        value, type = result
+        if type in ('include', 'set_operation'): # - includes are not testable at this point
+            return                               # - set operators are not testable by itself
+                                                 # --> so just skip test for those cases
+        test = value
+        if type != 'by_prop': # for some reason the regex library will not catch some errors if unicode property...
+            test = '[' + test + ']' # ...is put inside brackets, so in that case we'll just skip bracketing it
         try:
             regex.compile(test)
         except Exception as e:
             msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
-            raise OprexSyntaxError(t.lineno, msg % (chardef, curlies_escaped, e.msg if hasattr(e, 'msg') else e.message))
+            raise OprexSyntaxError(t.lineno, msg % (chardef, value, e.msg if hasattr(e, 'msg') else e.message))
 
-    value = ''.join([
-        compile(chardef)
-        for chardef in chardefs
-        if compilable(chardef)
-    ])
-    if len(chardefs) == 2 and value.startswith('^\\p{'): # convert ^\p{something} to \P{something}
-        value = value.replace('^\\p{', '\\P{', 1)
-        t.need_brackets = t.contains_setop = False
-    if t.contains_setop: # set operation must be bracketed even when nested
-        value = '[' + value + ']'
-
+    results = map(compile, chardefs)
     t.type = 'COLON'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (value, includes, t.need_brackets))]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (chardefs, results, includes))]
     return t
 
 
@@ -394,7 +371,7 @@ def p_repeat_expr(t):
 
 def p_string_expr(t):
     '''string_expr : STRING NEWLINE optional_block'''
-    check_unused_vars(t, optional_block=t[3], referenced_vars=())
+    check_scope_usage(t, optional_block=t[3], referenced_vars=())
     t[0] = t[1]
 
 
@@ -419,7 +396,7 @@ def p_lookup_expr(t):
         t[0] = ''.join(map(resolve, t[2]))
     else: # single lookup
         t[0] = resolve(t[1])
-    check_unused_vars(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
+    check_scope_usage(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
 def quantify(expr, quantifier, already_grouped=False):
@@ -636,31 +613,40 @@ def p_declaration(t):
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE optional_block'''
-    value, includes, t.need_brackets = t[1]
-    current_scope = t.lexer.scopes[-1]
-    optional_block = t[3]
-    if optional_block:
-        for var in optional_block:
-            if var.name not in includes:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent character class definition)" % var.name)
-            if not isinstance(var.value, CharClass):
-                raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % var.name)
-            if var.value.need_brackets and not var.value.for_import.startswith('['):
-                t.need_brackets = True
-        t.lexer.scopes.pop()
+    chardefs, results, includes = t[1]
+    values, types = zip(*results)
+    current_scope = check_scope_usage(t, optional_block=t[3], referenced_vars=includes)
 
-    try:
-        value = value.format(**current_scope)
-    except KeyError as e:
-        raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
+    def lookup(varname):
+        try:
+            var = current_scope[varname]
+        except KeyError as e:
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
+        if not isinstance(var.value, CharClass):
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
+        else:
+            return var.value
 
-    for_import = value
-    if t.need_brackets and not value.startswith('['):
-        value = '[' + value + ']'
-    if len(value) == 1:
-        value = regex.escape(value, special_only=True)
+    def value_or_lookup(value):
+        if isinstance(value, Lookup):
+            value = lookup(value.varname)
+            if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
+                value = value[1:-1]
+            elif len(value) == 2 and value[0] == '\\' and value[1] not in CharClass.escapes:
+                value = value[1] # remove unnecessary escape
+        return value
 
-    t[0] = CharClass(value, for_import, t.need_brackets)
+    if len(chardefs) == 1 and 'include' in types: # simple aliasing
+        t[0] = lookup(values[0].varname)
+    else:
+        result = ''.join(map(value_or_lookup, values))
+        if len(result) == 1:
+            result = regex.escape(result, special_only=True)
+        elif len(chardefs) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
+            result = result.replace(r'^\p{', r'\P{', 1)
+        elif len(chardefs) > 1 or 'range' in types:
+            result = '[' + result + ']'
+        t[0] = CharClass(result, is_set_op='set_operation' in types)
 
 
 def p_error(t):
@@ -675,12 +661,14 @@ def p_error(t):
     raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
 
 
-def check_unused_vars(t, optional_block, referenced_vars):
+def check_scope_usage(t, optional_block, referenced_vars):
+    current_scope = t.lexer.scopes[-1]
     if optional_block:
         for var in optional_block:
             if var.name not in referenced_vars:
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
         t.lexer.scopes.pop()
+    return current_scope
 
 
 def find_column(t):
@@ -730,14 +718,11 @@ def build_lexer(source_lines):
     def define_builtin_var(varname, value):        # lineno=0 --> builtin
         lexer.scopes[0][varname] = Variable(varname, lineno=0, value=value, already_grouped=False)
 
-    def define_builtin_charclass(varname, value):  # for import = value without brackets
-        define_builtin_var(varname, CharClass(value, for_import=value[1:-1], need_brackets=True))
-
-    define_builtin_charclass('alpha', '[a-zA-Z]')
-    define_builtin_charclass('upper', '[A-Z]')
-    define_builtin_charclass('lower', '[a-z]')
-    define_builtin_charclass('digit', '[0-9]')
-    define_builtin_charclass('alnum', '[a-zA-Z0-9]')
+    define_builtin_var('alpha', CharClass('[a-zA-Z]',    is_set_op=False))
+    define_builtin_var('upper', CharClass('[A-Z]',       is_set_op=False))
+    define_builtin_var('lower', CharClass('[a-z]',       is_set_op=False))
+    define_builtin_var('digit', CharClass('[0-9]',       is_set_op=False))
+    define_builtin_var('alnum', CharClass('[a-zA-Z0-9]', is_set_op=False))
 
     return CustomLexer(lexer)
 

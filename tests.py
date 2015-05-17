@@ -695,7 +695,7 @@ class TestErrorHandling(unittest.TestCase):
                 x: y
                     y: m i s n g +
         ''',
-        expect_error="Line 4: 'y' is defined but not used (by its parent character class definition)")
+        expect_error="Line 4: 'y' is defined but not used (by its parent expression)")
 
         self.given('''
             x
@@ -711,6 +711,13 @@ class TestErrorHandling(unittest.TestCase):
                     hex: 0..9 a..f A..F
         ''',
         expect_error='Line 3: Not a valid character class keyword: +!vowel')
+
+        self.given(u'''
+            /x/y/
+                x = 'x'
+                y: +x
+        ''',
+        expect_error="Line 4: Cannot include 'x': not a character class")
 
 
     def test_invalid_charclass_operation(self):
@@ -1134,6 +1141,63 @@ class TestOutput(unittest.TestCase):
                         hexalpha: a..f A..F
         ''',
         expect_regex='[0-9a-fA-Fa-fA-F]')
+
+        self.given(u'''
+            /xx/dup/
+                xx: x X
+                dup: +xx
+        ''',
+        expect_regex='[xX][xX]')
+
+        self.given(u'''
+            /cc/
+                cc: +yy a
+                    yy: y not Y
+        ''',
+        expect_regex='[[y--Y]a]')
+
+        self.given(u'''
+            /cc/
+                cc: a +yy
+                    yy: y not Y
+        ''',
+        expect_regex='[a[y--Y]]')
+
+        self.given(u'''
+            /cc/
+                cc: +xx +yy
+                    xx: x not X
+                    yy: y not Y
+        ''',
+        expect_regex='[[x--X][y--Y]]')
+
+        self.given(u'''
+            /cc/
+                cc: +xx a +yy
+                    xx: x not X
+                    yy: y not Y
+        ''',
+        expect_regex='[[x--X]a[y--Y]]')
+
+        self.given(u'''
+            /notX/
+                notX:  not: X
+        ''',
+        expect_regex='[^X]')
+
+        self.given(u'''
+            /not_X/
+                not_X: +notX
+                    notX:  not: X
+        ''',
+        expect_regex='[^X]')
+
+        self.given(u'''
+            /notNotX/
+                notNotX: not: +notX
+                    notX:  not: X
+        ''',
+        expect_regex='[^[^X]]')
 
 
     def test_nested_charclass_output(self):
