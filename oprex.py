@@ -473,9 +473,8 @@ def p_repeat_range(t):
 
 
 def p_optionalize(t):
-    '''optionalize : optional of'''
-    opt = t[1]
-    t[0] = Quantifier(base=opt[0], modifier=opt[1:])
+    '''optionalize : QUESTMARK of'''
+    t[0] = Quantifier(base='?', modifier='+')
 
 
 def p_numrange(t):
@@ -508,21 +507,11 @@ def p_lookup_chain(t):
 
 def p_lookup(t):
     '''lookup : VARNAME
-              | VARNAME optional'''
-    try:
-        t[0] = Lookup(varname=t[1], optional=t[2])
-    except IndexError:
-        t[0] = Lookup(varname=t[1], optional='')
-
-
-def p_optional(t):
-    '''optional : QUESTMARK
-                | QUESTMARK QUESTMARK
-                | QUESTMARK EXCLAMARK'''
-    possessive = len(t) == 2
-    lazy = not possessive and t[2] == '?'
-    greedy = not possessive and t[2] == '!'
-    t[0] = '?+' if possessive else '??' if lazy else '?'
+              | VARNAME QUESTMARK'''
+    if len(t) == 3:
+        t[0] = Lookup(varname=t[1], optional='?+')
+    else:
+        t[0] = Lookup(varname=t[1], optional=False)
 
 
 def p_optional_block(t):

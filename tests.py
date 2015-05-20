@@ -904,6 +904,13 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
+        self.given(u'''
+            ? <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected BACKTRACK
+            ? <<- of alpha
+              ^''')
+
 
     def test_commenting_error(self):
         self.given(u'''
@@ -1604,6 +1611,11 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]?')
 
         self.given('''
+            0 <<+..1 of alpha
+        ''',
+        expect_regex='[a-zA-Z]??')
+
+        self.given('''
             3..4 <<- of alpha
         ''',
         expect_regex='[a-zA-Z]{3,4}')
@@ -1644,32 +1656,10 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]?+')
 
         self.given('''
-            ?? of alpha
-        ''',
-        expect_regex='[a-zA-Z]??')
-
-        self.given('''
-            ?! of alpha
-        ''',
-        expect_regex='[a-zA-Z]?')
-
-        self.given('''
             alphas?
                 alphas = 1.. of alpha
         ''',
         expect_regex='[a-zA-Z]*+')
-
-        self.given('''
-            alphas?!
-                alphas = 1.. <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]*')
-
-        self.given('''
-            alphas??
-                alphas = 1 <<+.. of alpha
-        ''',
-        expect_regex='[a-zA-Z]*?')
 
         self.given('''
             alphas?
@@ -1678,34 +1668,28 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]*+)?+')
 
         self.given('''
-            alphas?!
-                alphas = 0.. <<- of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]*)?')
-
-        self.given('''
-            alphas??
-                alphas = 0 <<+.. of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]*?)??')
-
-        self.given('''
             opt_alpha?
                 opt_alpha = ? of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            opt_alpha??
-                opt_alpha = 0 <<+..1 of alpha
+            opt_alpha?
+                opt_alpha = 0..1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]??)??')
+        expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            opt_alpha?!
-                opt_alpha = ..1 <<- of alpha
+            opt_alpha?
+                opt_alpha = 0..1 <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?)?')
+        expect_regex='(?:[a-zA-Z]?)?+')
+
+        self.given('''
+            opt_alpha?
+                opt_alpha = 0 <<+..1 of alpha
+        ''',
+        expect_regex='(?:[a-zA-Z]??)?+')
 
         self.given('''
             ? of ? of alpha
@@ -1713,44 +1697,29 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            ?! of ?! of alpha
+            ? of 0..1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?)?')
+        expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            ?? of ?? of alpha
+            0..1 of ? of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]??)??')
+        expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            ?? of ?! of alpha
+            ? of 0..1 <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?)??')
+        expect_regex='(?:[a-zA-Z]?)?+')
 
         self.given('''
-            ?! of ?? of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]??)?')
-
-        self.given('''
-            ?? of ? of alpha
+            0 <<+..1 of ? of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)??')
 
         self.given('''
-            ? of ?? of alpha
+            0..1 <<- of 0 <<+..1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]??)?+')
-
-        self.given('''
-            ?! of ? of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]?+)?')
-
-        self.given('''
-            ? of ?! of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]?)?+')
+        expect_regex='(?:[a-zA-Z]??)?')
 
         self.given('''
             2 of ? of alpha

@@ -1,12 +1,3 @@
 
-            AZ
-                AZ: U+41..Z
-
-
-## - include sibling but not charclass
-## - include sibling makes need brackets
-## - [x]y
-## - x[y]
-## - [x][y]
-## - [x]a[y]
-## - x:  not: x
+            alphas?
+                alphas = ? <<- of alpha
