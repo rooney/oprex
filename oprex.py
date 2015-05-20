@@ -75,15 +75,15 @@ t_ignore     = '' # oprex is whitespace-significant, no ignored characters
 class Assignment(namedtuple('Assignment', 'declarations value lineno')):
     __slots__ = ()
 
-class Lookup(namedtuple('Lookup', 'varname optional')):
-    __slots__ = ()
-
 class Variable(namedtuple('Variable', 'name lineno value already_grouped')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
 
 class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture atomic')):   
+    __slots__ = ()
+
+class VariableLookup(namedtuple('VariableLookup', 'varname optional')):
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
@@ -155,7 +155,7 @@ def t_charclass(t):
         if regex.match('\\+[a-zA-Z]\\w*+(?<!_)$', chardef):
             varname = chardef[1:]
             includes.add(varname)
-            return Lookup(varname, optional=False)
+            return VariableLookup(varname, optional=False)
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
         if regex.match('/\\w+', chardef):
@@ -509,9 +509,9 @@ def p_lookup(t):
     '''lookup : VARNAME
               | VARNAME QUESTMARK'''
     if len(t) == 3:
-        t[0] = Lookup(varname=t[1], optional='?+')
+        t[0] = VariableLookup(varname=t[1], optional='?+')
     else:
-        t[0] = Lookup(varname=t[1], optional=False)
+        t[0] = VariableLookup(varname=t[1], optional=False)
 
 
 def p_optional_block(t):
@@ -617,7 +617,7 @@ def p_charclass(t):
             return var.value
 
     def value_or_lookup(value):
-        if isinstance(value, Lookup):
+        if isinstance(value, VariableLookup):
             value = lookup(value.varname)
             if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
                 value = value[1:-1]
