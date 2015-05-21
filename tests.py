@@ -945,6 +945,57 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 3: Not a valid character class keyword: o#')
 
 
+    def test_invalid_reference(self):
+        self.given(u'''
+            missing()
+        ''',
+        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            missing()?
+        ''',
+        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            &missing
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            /&missing/
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            &invalid_mix()
+        ''',
+        expect_error='''Line 2: Unexpected LPAREN
+            &invalid_mix()
+                        ^''')
+
+        self.given(u'''
+            alpha()
+        ''',
+        expect_error="Line 2: Invalid backreference: 'alpha' is not defined/not a capture")
+
+        self.given(u'''
+            /alpha/&alpha/
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'alpha' is not defined/not a capture")
+
+        self.given(u'''
+            /alpha/&alpha/
+                alpha: a..z A..Z
+        ''',
+        expect_error="Line 3: 'alpha' is a built-in variable and cannot be redefined")
+
+        self.given(u'''
+            /bang/bang()/
+                bang: b a n g !
+        ''',
+        expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         alwayson_flags = '(?umV1)'
@@ -1309,7 +1360,7 @@ class TestOutput(unittest.TestCase):
                 pXs = /p/X/s/
                     (X) = 'X'
         ''',
-        expect_regex='%%(?<X>X)ss')
+        expect_regex='%%(?P<X>X)ss')
 
         self.given('''
             /p/pXs/s/
@@ -1318,7 +1369,7 @@ class TestOutput(unittest.TestCase):
                 (pXs) = /p/X/s/
                     (X) = 'X'
         ''',
-        expect_regex='%(?<pXs>%(?<X>X)s)s')
+        expect_regex='%(?P<pXs>%(?P<X>X)s)s')
 
         self.given('''
             greeting
@@ -1336,7 +1387,7 @@ class TestOutput(unittest.TestCase):
                         first = 's%(first)s'
                         last  = '%(last)s'
         ''',
-        expect_regex='Hello%(?<salutation>Sir/Madam)s%\(first\)s%\(last\)s')
+        expect_regex='Hello%(?P<salutation>Sir/Madam)s%\(first\)s%\(last\)s')
 
 
     def test_scoping(self):
@@ -1450,14 +1501,14 @@ class TestOutput(unittest.TestCase):
             /extra/extra?/
                 (extra) = 'icing'
         ''',
-        expect_regex='(?<extra>icing)(?<extra>icing)?+')
+        expect_regex='(?P<extra>icing)(?P<extra>icing)?+')
 
         self.given('''
             /defcon/level/
                 defcon = 'DEFCON'
                 (level): 1 2 3 4 5
         ''',
-        expect_regex=r'DEFCON(?<level>[12345])')
+        expect_regex=r'DEFCON(?P<level>[12345])')
 
         self.given('''
             captured?
@@ -1465,7 +1516,7 @@ class TestOutput(unittest.TestCase):
                     (L) = 'Left'
                     (R) = 'Right'
         ''',
-        expect_regex=r'(?<captured>(?<L>Left)(?<R>Right))?+')
+        expect_regex=r'(?P<captured>(?P<L>Left)(?P<R>Right))?+')
 
         self.given('''
             uncaptured?
@@ -1473,7 +1524,7 @@ class TestOutput(unittest.TestCase):
                     (L) = 'Left'
                     (R) = 'Right'
         ''',
-        expect_regex=r'(?:(?<L>Left)?+(?<R>Right))?+')
+        expect_regex=r'(?:(?P<L>Left)?+(?P<R>Right))?+')
 
 
     def test_atomic_grouping_output(self):
@@ -1484,7 +1535,7 @@ class TestOutput(unittest.TestCase):
                 .mass: M A S s
                 .(number): n u m b e r
         ''',
-        expect_regex=r'(?>bomb)?+(?<clock>(?>clock))(?>[MASs])(?<number>(?>[number]))?+')
+        expect_regex=r'(?>bomb)?+(?P<clock>(?>clock))(?>[MASs])(?P<number>(?>[number]))?+')
 
         self.given('''
             nonatomic?
@@ -1499,7 +1550,7 @@ class TestOutput(unittest.TestCase):
                 .(yadda) = 'yadda'
                 ditto = yadda
         ''',
-        expect_regex=r'(?<yadda>(?>yadda))(?<yadda>(?>yadda))')
+        expect_regex=r'(?P<yadda>(?>yadda))(?P<yadda>(?>yadda))')
 
 
     def test_builtin_output(self):
@@ -1892,6 +1943,38 @@ class TestOutput(unittest.TestCase):
 
 
 class TestMatches(unittest.TestCase):
+    def test_reference_output(self):
+        self.given(u'''
+            /bang/bang()/
+                (bang): b a n g !
+        ''',
+        expect_regex='(?P<bang>[bang!])(?P=bang)')
+        
+        self.given(u'''
+            /bang()/bang/
+                (bang): b a n g !
+        ''',
+        expect_regex='(?P=bang)(?P<bang>[bang!])')
+        
+        self.given(u'''
+            /bang/bang()?/
+                (bang): b a n g !
+        ''',
+        expect_regex='(?P<bang>[bang!])(?P=bang)?+')
+        
+        self.given(u'''
+            /bang()?/bang/
+                (bang): b a n g !
+        ''',
+        expect_regex='(?P=bang)?+(?P<bang>[bang!])')
+
+        self.given(u'''
+            /bang/&bang/
+                (bang): b a n g !
+        ''',
+        expect_regex='(?P<bang>[bang!])(?&bang)')
+
+
     def given(self, oprex_source, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
         for text in expect_full_match:
@@ -2348,6 +2431,47 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['CAFEBABE', 'DEADBEEF', '0FF1CE95'],
         no_match=['', 'YIKE'])
+
+
+    def test_reference_output(self):
+        self.given(u'''
+            /bang/bang()/
+                (bang): b a n g !
+        ''',
+        expect_full_match=['bb', 'aa', 'nn', 'gg', '!!'],
+        no_match=['', 'a', 'ba'])
+        
+        self.given(u'''
+            /bang()/bang/
+                (bang): b a n g !
+        ''',
+        no_match=['', 'a', 'ba', 'bb', 'aa', 'nn', 'gg', '!!'])
+        
+        self.given(u'''
+            /bang/bang()?/
+                (bang): b a n g !
+        ''',
+        expect_full_match=['a', 'bb', 'aa', 'nn', 'gg', '!!'],
+        no_match=['', 'clang!'],
+        partial_match={
+            'ba'    : 'b',
+            'bang!' : 'b',
+        })
+        
+        self.given(u'''
+            /bang()?/bang/
+                (bang): b a n g !
+        ''',
+        expect_full_match=['b', 'a', 'n', 'g', '!'],
+        no_match=['', 'clang!'],
+        partial_match={'ba' : 'b', 'bb' : 'b', 'aa' : 'a', 'nn' : 'n', 'gg' : 'g', '!!' : '!', 'bang!' : 'b'})
+
+        self.given(u'''
+            /bang/&bang/
+                (bang): b a n g !
+        ''',
+        expect_full_match=['bb', 'aa', 'nn', 'gg', '!!', 'ba', 'ng', 'b!', '!g'],
+        no_match=['', 'b', 'a'])
 
 
 if __name__ == '__main__':

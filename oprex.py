@@ -9,6 +9,7 @@ def oprex(source_code):
     source_lines = sanitize(source_code)
     lexer = build_lexer(source_lines)
     result = parse(lexer=lexer)
+    check_captures(lexer=lexer)
     return result
 
 
@@ -36,13 +37,13 @@ def sanitize(source_code):
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
 tokens = (
+    'AMPERSAND',
     'BACKTRACK',
     'CHARCLASS',
     'COLON',
     'DEDENT',
     'DOT',
     'EQUALSIGN',
-    'EXCLAMARK',
     'GLOBALMARK',
     'INDENT',
     'NUMBER',
@@ -59,9 +60,9 @@ tokens = (
 )
 
 GLOBALMARK   = '*)'
+t_AMPERSAND  = r'\&'
 t_BACKTRACK  = r'\<\<'
 t_DOT        = r'\.'
-t_EXCLAMARK  = r'\!'
 t_LPAREN     = r'\('
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
@@ -83,7 +84,13 @@ class Variable(namedtuple('Variable', 'name lineno value already_grouped')):
 class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture atomic')):   
     __slots__ = ()
 
-class VariableLookup(namedtuple('VariableLookup', 'varname optional')):
+class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
+    __slots__ = ()
+
+class SubroutineCall(namedtuple('SubroutineCall', 'varname lineno optional')):
+    __slots__ = ()
+
+class Backreference(namedtuple('Backreference', 'varname lineno optional')):
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
@@ -152,10 +159,10 @@ def t_charclass(t):
                 return unicode('\\U' + ('0' * (8-hexlen) + hexnum))
 
     def include(chardef): # example: +alpha +digit
-        if regex.match('\\+[a-zA-Z]\\w*+(?<!_)$', chardef):
+        if regex.match('\\+[a-zA-Z]\\w*+$', chardef):
             varname = chardef[1:]
             includes.add(varname)
-            return VariableLookup(varname, optional=False)
+            return VariableLookup(varname, t.lineno, optional=False)
 
     def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
         if regex.match('/\\w+', chardef):
@@ -381,7 +388,7 @@ def p_lookup_expr(t):
 
     referenced_vars = set()
     current_scope = t.lexer.scopes[-1]
-    def resolve(lookup):
+    def resolve_var(lookup):
         referenced_vars.add(lookup.varname)
         try:
             var = current_scope[lookup.varname]
@@ -391,6 +398,16 @@ def p_lookup_expr(t):
             return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
         else:
             return var.value
+
+    def resolve(lookup):
+        if isinstance(lookup, VariableLookup):
+            return resolve_var(lookup)
+        elif isinstance(lookup, Backreference): 
+            t.lexer.backreferences.add(lookup)
+            return '(?P=%s)%s' % (lookup.varname, lookup.optional)
+        elif isinstance(lookup, SubroutineCall): 
+            t.lexer.subroutine_calls.add(lookup)
+            return '(?&%s)%s' % (lookup.varname, lookup.optional)
 
     if t[1] == '/': # lookup chain
         t[0] = ''.join(map(resolve, t[2]))
@@ -491,8 +508,9 @@ def p_numrange(t):
 
 def p_of(t):
     '''of : WHITESPACE VARNAME'''
-    if t[2] != 'of': # we do this (rather than defining OF token/reserving 'of' as keyword) to allow having variable named 'of'
+    if t[2] != 'of':
         raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + t[2])
+        # we do this (rather than defining OF token/reserving 'of' as keyword) to allow having variable named 'of'
 
 
 def p_lookup_chain(t):
@@ -506,12 +524,32 @@ def p_lookup_chain(t):
 
 
 def p_lookup(t):
-    '''lookup : VARNAME
-              | VARNAME QUESTMARK'''
-    if len(t) == 3:
-        t[0] = VariableLookup(varname=t[1], optional='?+')
-    else:
-        t[0] = VariableLookup(varname=t[1], optional=False)
+    '''lookup : lookup_type
+              | lookup_type QUESTMARK'''
+    has_questmark = len(t) == 3
+    lookup_type, varname = t[1]
+    t[0] = lookup_type(varname, t.lineno(1), optional='?+' if has_questmark else '')
+
+
+def p_lookup_type(t):
+    '''lookup_type : variable_lookup
+                   | backreference
+                   | subroutine_call'''
+    t[0] = t[1]
+
+def p_variable_lookup(t):
+    '''variable_lookup : VARNAME'''
+    t[0] = VariableLookup, t[1]
+
+
+def p_backreference(t):
+    '''backreference : VARNAME LPAREN RPAREN'''
+    t[0] = Backreference, t[1]
+
+
+def p_subroutine_call(t):
+    '''subroutine_call : AMPERSAND VARNAME'''
+    t[0] = SubroutineCall, t[2]
 
 
 def p_optional_block(t):
@@ -556,7 +594,8 @@ def p_definition(t):
         if declaration.atomic:
             value = '(?>%s)' % value
         if declaration.capture:
-            value = '(?<%s>%s)' % (varname, value)
+            value = '(?P<%s>%s)' % (varname, value)
+            t.lexer.captures.add(varname)
 
         var = Variable(varname, assignment.lineno, value, already_grouped=declaration.capture or declaration.atomic)
         try: # check the deepest scope for varname (every scope supersets its parent scope, so...
@@ -699,9 +738,12 @@ class CustomLexer:
 lexer0 = lex.lex()
 def build_lexer(source_lines):
     lexer = lexer0.clone()
-    lexer.indent_stack = [0] # for keeping track of indentation levels
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
+    lexer.indent_stack = [0] # for keeping track of indentation levels
+    lexer.captures = set()
+    lexer.backreferences = set()
+    lexer.subroutine_calls = set()
     lexer.scopes = [{}]
 
     def define_builtin_var(varname, value):        # lineno=0 --> builtin
@@ -720,6 +762,16 @@ parser = yacc.yacc()
 def parse(lexer):
     # always use V1, UNICODE, and MULTILINE
     return '(?umV1)' + unicode(parser.parse(lexer=lexer, tracking=True))
+
+
+def check_captures(lexer):
+    def check(type, lookups):
+        for lookup in lookups:
+            if lookup.varname not in lexer.captures:
+                errmsg = "Invalid %s: '%s' is not defined/not a capture" % (type, lookup.varname)
+                raise OprexSyntaxError(lookup.lineno, errmsg)
+    check('subroutine call', lexer.subroutine_calls)
+    check('backreference', lexer.backreferences)
 
 
 if __name__ == "__main__":
