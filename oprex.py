@@ -36,7 +36,10 @@ def sanitize(source_code):
 
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
-tokens = (
+reserved = {
+    '_' : 'UNDERSCORE',
+}
+tokens = [
     'AMPERSAND',
     'BACKTRACK',
     'CHARCLASS',
@@ -57,7 +60,7 @@ tokens = (
     'STRING',
     'VARNAME',
     'WHITESPACE',
-)
+] + reserved.values()
 
 GLOBALMARK   = '*)'
 t_AMPERSAND  = r'\&'
@@ -117,7 +120,6 @@ class CharClass(unicode):
         charclass = unicode.__new__(cls, value)
         charclass.is_set_op = is_set_op
         return charclass
-
 
 def t_charclass(t):
     ''':.*'''
@@ -245,11 +247,7 @@ def t_STRING(t):
 
 def t_VARNAME(t):
     r'[A-Za-z_][A-Za-z0-9_]*'
-    name = t.value
-    if name.startswith('_'):
-        raise OprexSyntaxError(t.lineno, 'Illegal name (must start with a letter): ' + name)
-    if name.endswith('_'):
-        raise OprexSyntaxError(t.lineno, 'Illegal name (must not end with underscore): ' + name)
+    t.type = reserved.get(t.value, 'VARNAME')
     return t
 
 
@@ -377,9 +375,25 @@ def p_repeat_expr(t):
 
 
 def p_string_expr(t):
-    '''string_expr : STRING NEWLINE optional_block'''
+    '''string_expr : string NEWLINE optional_block'''
     check_scope_usage(t, optional_block=t[3], referenced_vars=())
     t[0] = t[1]
+
+
+def p_string(t):
+    '''string : str_bound STRING str_bound'''
+    t[0] = t[1] + t[2] + t[3]
+
+
+def p_str_bound(t):
+    '''str_bound :
+                 | DOT
+                 | UNDERSCORE'''
+    t[0] = {
+        None : '',
+        '.'  : '\\b',
+        '_'  : '\\B',
+    }[t[len(t)-1]]
 
 
 def p_lookup_expr(t):
@@ -538,7 +552,9 @@ def p_lookup_type(t):
     t[0] = t[1]
 
 def p_variable_lookup(t):
-    '''variable_lookup : VARNAME'''
+    '''variable_lookup : VARNAME
+                       | UNDERSCORE
+                       | DOT'''
     t[0] = VariableLookup, t[1]
 
 
@@ -660,15 +676,19 @@ def p_charclass(t):
             value = lookup(value.varname)
             if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
                 value = value[1:-1]
-            elif len(value) == 2 and value[0] == '\\' and value[1] not in CharClass.escapes:
-                value = value[1] # remove unnecessary escape
+            elif value == '-': # inside character class, dash needs to be escaped
+                value = r'\-'
+            elif len(value) == 2 and value[0] == '\\' and value[1] in '$.|?*+(){}': # remove unnecessary escape
+                value = value[1]
         return value
 
     if len(chardefs) == 1 and 'include' in types: # simple aliasing
         t[0] = lookup(values[0].varname)
     else:
         result = ''.join(map(value_or_lookup, values))
-        if len(result) == 1:
+        if result == '\\-': # no need to escape dash outside of character class
+            result = '-'
+        elif len(result) == 1:
             result = regex.escape(result, special_only=True)
         elif len(chardefs) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
             result = result.replace(r'^\p{', r'\P{', 1)
@@ -749,11 +769,14 @@ def build_lexer(source_lines):
     def define_builtin_var(varname, value):        # lineno=0 --> builtin
         lexer.scopes[0][varname] = Variable(varname, lineno=0, value=value, already_grouped=False)
 
-    define_builtin_var('alpha', CharClass('[a-zA-Z]',    is_set_op=False))
-    define_builtin_var('upper', CharClass('[A-Z]',       is_set_op=False))
-    define_builtin_var('lower', CharClass('[a-z]',       is_set_op=False))
-    define_builtin_var('digit', CharClass('[0-9]',       is_set_op=False))
-    define_builtin_var('alnum', CharClass('[a-zA-Z0-9]', is_set_op=False))
+    define_builtin_var('alpha',    CharClass('[a-zA-Z]',    is_set_op=False))
+    define_builtin_var('upper',    CharClass('[A-Z]',       is_set_op=False))
+    define_builtin_var('lower',    CharClass('[a-z]',       is_set_op=False))
+    define_builtin_var('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False))
+    define_builtin_var('digit',    CharClass('[0-9]',       is_set_op=False))
+    define_builtin_var('wordchar', CharClass('\\w',         is_set_op=False))
+    define_builtin_var('.',        CharClass('\\b',         is_set_op=False))
+    define_builtin_var('_',        CharClass('\\B',         is_set_op=False))
 
     return CustomLexer(lexer)
 

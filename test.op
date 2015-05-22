@@ -1,3 +1,7 @@
 
-            /cap()/&cap/cap/
-                (cap): c a p
+/plus/minus/pmz/
+    plus: +
+    minus: -
+    pmz: +plus +dash z
+        dash: +minus
+

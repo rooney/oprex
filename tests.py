@@ -191,20 +191,27 @@ class TestErrorHandling(unittest.TestCase):
     def test_illegal_variable_name(self):
         self.given('''
             101dalmatians
+                101dalmatians = 101 of 'dalmatians'
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             101dalmatians
                ^''')
-
+        
         self.given('''
-            _this_
+            /101dalmatians/
+                101dalmatians = 101 of 'dalmatians'
         ''',
-        expect_error='Line 2: Illegal name (must start with a letter): _this_')
-
+        expect_error='''Line 2: Unexpected NUMBER
+            /101dalmatians/
+             ^''')
+        
         self.given('''
-            etc_
+            /_/
+                _ = 'underscore'
         ''',
-        expect_error='Line 2: Illegal name (must not end with underscore): etc_')
+        expect_error='''Line 3: Unexpected UNDERSCORE
+                _ = 'underscore'
+                ^''')
 
 
     def test_duplicate_variable(self):
@@ -719,6 +726,23 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error="Line 4: Cannot include 'x': not a character class")
 
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus = '-' ## gotcha: exactly-same output with "minus: -" but not includable 
+                pmz: +plus +minus z
+        ''',
+        expect_error="Line 5: Cannot include 'minus': not a character class")
+
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus = '-'
+                pmz: +plus +dash z
+                    dash: +minus
+        ''',
+        expect_error="Line 6: Cannot include 'minus': not a character class")
+
 
     def test_invalid_charclass_operation(self):
         self.given(u'''
@@ -996,6 +1020,61 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
 
 
+    def test_invalid_boundaries(self):
+        self.given(u'''
+            /cat./
+                cat = 'cat'
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /cat./
+                ^''')
+
+        self.given(u'''
+            /.cat/
+                cat = 'cat'
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            /.cat/
+              ^''')
+
+        self.given(u'''
+            /cat_/
+                cat = 'cat'
+        ''',
+        expect_error="Line 2: 'cat_' is not defined")
+
+        self.given(u'''
+            /cat/
+                cat = 'cat' .
+        ''',
+        expect_error='''Line 3: Unexpected WHITESPACE
+                cat = 'cat' .
+                           ^''')
+
+        self.given(u'''
+            /cat/
+                cat = 'cat'__
+        ''',
+        expect_error='''Line 3: Unexpected VARNAME
+                cat = 'cat'__
+                           ^''')
+
+        self.given(u'''
+            /_/
+                _ = 'underscore'
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+                _ = 'underscore'
+                ^''')
+
+        self.given(u'''
+            /_./
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /_./
+              ^''')
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         alwayson_flags = '(?umV1)'
@@ -1257,8 +1336,14 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[^[^X]]')
 
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus: -
+                pmz: +plus +minus z
+        ''',
+        expect_regex='\+-[+\-z]')
 
-    def test_nested_charclass_output(self):
         self.given(u'''
             vowhex
                 vowhex: +vowel +hex
@@ -1942,7 +2027,6 @@ class TestOutput(unittest.TestCase):
         expect_regex='[@#]literallyliterally')
 
 
-class TestMatches(unittest.TestCase):
     def test_reference_output(self):
         self.given(u'''
             /bang/bang()/
@@ -1975,10 +2059,60 @@ class TestMatches(unittest.TestCase):
         expect_regex='(?P<bang>[bang!])(?&bang)')
 
 
-    def given(self, oprex_source, expect_full_match=[], no_match=[], partial_match={}):
+    def test_wordchar_boundary_output(self):
+        self.given('''
+            /wordchar/./_/
+        ''',
+        expect_regex=r'\w\b\B')
+
+        self.given('''
+            realworld_wordchar
+                realworld_wordchar: +wordchar - not +digit _
+        ''',
+        expect_regex=r'[\w\---0-9_]')
+
+        self.given('''
+            cat
+                cat = .'cat'.
+        ''',
+        expect_regex=r'\bcat\b')
+
+        self.given('''
+            /./cat/./
+                cat = 'cat'
+        ''',
+        expect_regex=r'\bcat\b')
+
+        self.given('''
+            /./cat/./
+                cat = .'cat'.
+        ''',
+        expect_regex=r'\b\bcat\b\b')
+
+        self.given('''
+            /anti/_/
+                anti = 'anti'
+        ''',
+        expect_regex=r'anti\B')
+
+        self.given('''
+            somethingtastic
+                somethingtastic = _'tastic'
+        ''',
+        expect_regex=r'\Btastic')
+
+        self.given('''
+            expletification
+                expletification = _'bloody'_
+        ''',
+        expect_regex=r'\Bbloody\B')
+
+
+class TestMatches(unittest.TestCase):
+    def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
         for text in expect_full_match:
-            match = regex.match(regex_source, text)
+            match = fn(regex_source, text)
             partial = match and match.group(0) != text
             if not match or partial:
                 raise AssertionError('%s\nis expected to fully match: %s\n%s\nThe regex is: %s' % (
@@ -1989,7 +2123,7 @@ class TestMatches(unittest.TestCase):
                 ))
 
         for text in no_match:
-            match = regex.match(regex_source, text)
+            match = fn(regex_source, text)
             if match:
                 raise AssertionError('%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
                     oprex_source or '(empty string)', 
@@ -1999,7 +2133,7 @@ class TestMatches(unittest.TestCase):
                 ))
 
         for text, partmatch in partial_match.iteritems():
-            match = regex.match(regex_source, text)
+            match = fn(regex_source, text)
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
                 if match and match.group(0) == text:
@@ -2052,7 +2186,7 @@ class TestMatches(unittest.TestCase):
                 nagog = 'nagog'
         ''',
         expect_full_match=['ultranagog', 'nagog'],
-        no_match=['ultrnagog'])
+        no_match=['ultra'])
 
         self.given('''
             /cat?/fish?/
@@ -2270,6 +2404,15 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['a', 'b', 'f', 'A', 'B', 'F', '0', '1', '9'],
         no_match=['z', 'Z', u'ä', '$'])
 
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus: -
+                pmz: +plus +minus z
+        ''',
+        expect_full_match=['+-+', '+--', '+-z'],
+        no_match=['+-a'])
+
 
     def test_nested_charclass(self):
         self.given(u'''
@@ -2433,7 +2576,7 @@ class TestMatches(unittest.TestCase):
         no_match=['', 'YIKE'])
 
 
-    def test_reference_output(self):
+    def test_reference(self):
         self.given(u'''
             /bang/bang()/
                 (bang): b a n g !
@@ -2472,6 +2615,129 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['bb', 'aa', 'nn', 'gg', '!!', 'ba', 'ng', 'b!', '!g'],
         no_match=['', 'b', 'a'])
+
+
+    def test_wordchar_boundary(self):
+        self.given('''
+            /wordchar/./_/
+        ''',
+        expect_full_match=[],
+        no_match=['a', 'b', 'Z', '_'])
+
+        self.given('''
+            realworld_wordchar
+                realworld_wordchar: +wordchar - not +digit _
+        ''',
+        expect_full_match=['a', 'Z', '-'],
+        no_match=['0', '9', '_'])
+
+        self.given('''
+            cat
+                cat = 'cat'
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['garfield'],
+        partial_match={'tomcat' : 'cat', 'catasthrope' : 'cat', 'complicated' : 'cat', 'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            cat
+                cat = 'cat'_
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['cat', 'cat videos','grumpy cat', 'tomcat', 'garfield'],
+        partial_match={'catasthrope' : 'cat', 'complicated' : 'cat'})
+
+        self.given('''
+            cat
+                cat = 'cat'.
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['catasthrope', 'complicated', 'garfield'],
+        partial_match={'tomcat' : 'cat', 'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            cat
+                cat = _'cat'
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['cat', 'catasthrope', 'cat videos', 'grumpy cat', 'garfield'],
+        partial_match={'tomcat' : 'cat', 'complicated' : 'cat'})
+
+        self.given('''
+            cat
+                cat = .'cat'
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'complicated', 'garfield'],
+        partial_match={'catasthrope' : 'cat', 'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            cat
+                cat = _'cat'_
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['cat', 'catasthrope', 'cat videos', 'tomcat', 'grumpy cat', 'garfield'],
+        partial_match={'complicated' : 'cat'})
+
+        self.given('''
+            cat
+                cat = .'cat'.
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'catasthrope', 'complicated', 'garfield'],
+        partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            /./cat/./
+                cat = 'cat'
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'catasthrope', 'complicated', 'garfield'],
+        partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            /./cat/./
+                cat = .'cat'.
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'catasthrope', 'complicated', 'garfield'],
+        partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            /anti/_/
+                anti = 'anti'
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['anti', 'anti-virus', 'rianti cartwright'],
+        partial_match={'antivirus' : 'anti', 'meantime' : 'anti'})
+
+        self.given('''
+            somethingtastic
+                somethingtastic = _'tastic'
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['tastic', 'tasticism'],
+        partial_match={'fantastic' : 'tastic', 'fantastico' : 'tastic'})
+
+        self.given('''
+            expletification
+                expletification = _'bloody'_
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['bloody', 'bloody hell'],
+        partial_match={'absobloodylutely' : 'bloody'})
 
 
 if __name__ == '__main__':
