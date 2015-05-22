@@ -1388,7 +1388,7 @@ class TestOutput(unittest.TestCase):
                         hex: +digit a..f A..F 
                         vowel: a i u e o A I U E O
         ''',
-        expect_regex='[m[aiueoAIUEO&&0-9a-fA-F--A-Z]stro]')
+        expect_regex=r'[m[aiueoAIUEO&&\da-fA-F--A-Z]stro]')
 
 
     def test_negated_charclass_output(self):
@@ -1642,7 +1642,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
             /alpha/upper/lower/digit/alnum/
         ''',
-        expect_regex='[a-zA-Z][A-Z][a-z][0-9][a-zA-Z0-9]')
+        expect_regex=r'[a-zA-Z][A-Z][a-z]\d[a-zA-Z0-9]')
 
 
     def test_quantifier_output(self):
@@ -2069,7 +2069,7 @@ class TestOutput(unittest.TestCase):
             realworld_wordchar
                 realworld_wordchar: +wordchar - not +digit _
         ''',
-        expect_regex=r'[\w\---0-9_]')
+        expect_regex=r'[\w\---\d_]')
 
         self.given('''
             cat

@@ -773,7 +773,7 @@ def build_lexer(source_lines):
     define_builtin_var('upper',    CharClass('[A-Z]',       is_set_op=False))
     define_builtin_var('lower',    CharClass('[a-z]',       is_set_op=False))
     define_builtin_var('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False))
-    define_builtin_var('digit',    CharClass('[0-9]',       is_set_op=False))
+    define_builtin_var('digit',    CharClass('\\d',         is_set_op=False))
     define_builtin_var('wordchar', CharClass('\\w',         is_set_op=False))
     define_builtin_var('.',        CharClass('\\b',         is_set_op=False))
     define_builtin_var('_',        CharClass('\\B',         is_set_op=False))
