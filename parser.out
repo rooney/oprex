@@ -14,10 +14,10 @@ Rule 8     expression -> lookup_expr
 Rule 9     repeat_expr -> quantifier WHITESPACE expression
 Rule 10    repeat_expr -> quantifier COLON charclass
 Rule 11    string_expr -> string NEWLINE optional_block
-Rule 12    string -> str_bound STRING str_bound
-Rule 13    str_bound -> <empty>
-Rule 14    str_bound -> DOT
-Rule 15    str_bound -> UNDERSCORE
+Rule 12    string -> str_affix STRING str_affix
+Rule 13    str_affix -> <empty>
+Rule 14    str_affix -> DOT
+Rule 15    str_affix -> UNDERSCORE
 Rule 16    lookup_expr -> lookup NEWLINE optional_block
 Rule 17    lookup_expr -> SLASH lookup_chain NEWLINE optional_block
 Rule 18    quantifier -> repeat_N_times
@@ -112,7 +112,7 @@ quantifier           : 9 10
 repeat_N_times       : 18
 repeat_expr          : 6
 repeat_range         : 19
-str_bound            : 12 12
+str_affix            : 12 12
 string               : 11
 string_expr          : 7
 subroutine_call      : 38
@@ -164,7 +164,7 @@ state 3
     (18) quantifier -> . repeat_N_times
     (19) quantifier -> . repeat_range
     (20) quantifier -> . optionalize
-    (12) string -> . str_bound STRING str_bound
+    (12) string -> . str_affix STRING str_affix
     (34) lookup -> . lookup_type
     (35) lookup -> . lookup_type QUESTMARK
     (21) repeat_N_times -> . NUMBER of
@@ -173,9 +173,9 @@ state 3
     (24) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (25) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
     (26) optionalize -> . QUESTMARK of
-    (13) str_bound -> .
-    (14) str_bound -> . DOT
-    (15) str_bound -> . UNDERSCORE
+    (13) str_affix -> .
+    (14) str_affix -> . DOT
+    (15) str_affix -> . UNDERSCORE
     (36) lookup_type -> . variable_lookup
     (37) lookup_type -> . backreference
     (38) lookup_type -> . subroutine_call
@@ -194,7 +194,7 @@ state 3
     SLASH           shift and go to state 20
     NUMBER          shift and go to state 9
     QUESTMARK       shift and go to state 22
-    STRING          reduce using rule 13 (str_bound -> .)
+    STRING          reduce using rule 13 (str_affix -> .)
     DOT             shift and go to state 12
     UNDERSCORE      shift and go to state 10
     VARNAME         shift and go to state 6
@@ -203,7 +203,7 @@ state 3
     optionalize                    shift and go to state 14
     repeat_N_times                 shift and go to state 4
     string                         shift and go to state 13
-    str_bound                      shift and go to state 17
+    str_affix                      shift and go to state 17
     expression                     shift and go to state 25
     lookup_type                    shift and go to state 24
     repeat_range                   shift and go to state 7
@@ -281,10 +281,10 @@ state 9
 
 state 10
 
-    (15) str_bound -> UNDERSCORE .
+    (15) str_affix -> UNDERSCORE .
     (40) variable_lookup -> UNDERSCORE .
 
-    STRING          reduce using rule 15 (str_bound -> UNDERSCORE .)
+    STRING          reduce using rule 15 (str_affix -> UNDERSCORE .)
     QUESTMARK       reduce using rule 40 (variable_lookup -> UNDERSCORE .)
     NEWLINE         reduce using rule 40 (variable_lookup -> UNDERSCORE .)
 
@@ -303,12 +303,12 @@ state 11
 
 state 12
 
-    (14) str_bound -> DOT .
+    (14) str_affix -> DOT .
     (27) numrange -> DOT . DOT
     (29) numrange -> DOT . DOT NUMBER
     (41) variable_lookup -> DOT .
 
-    STRING          reduce using rule 14 (str_bound -> DOT .)
+    STRING          reduce using rule 14 (str_affix -> DOT .)
     DOT             shift and go to state 32
     QUESTMARK       reduce using rule 41 (variable_lookup -> DOT .)
     NEWLINE         reduce using rule 41 (variable_lookup -> DOT .)
@@ -347,7 +347,7 @@ state 16
 
 state 17
 
-    (12) string -> str_bound . STRING str_bound
+    (12) string -> str_affix . STRING str_affix
 
     STRING          shift and go to state 35
 
@@ -429,7 +429,7 @@ state 23
     (18) quantifier -> . repeat_N_times
     (19) quantifier -> . repeat_range
     (20) quantifier -> . optionalize
-    (12) string -> . str_bound STRING str_bound
+    (12) string -> . str_affix STRING str_affix
     (34) lookup -> . lookup_type
     (35) lookup -> . lookup_type QUESTMARK
     (21) repeat_N_times -> . NUMBER of
@@ -438,9 +438,9 @@ state 23
     (24) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (25) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
     (26) optionalize -> . QUESTMARK of
-    (13) str_bound -> .
-    (14) str_bound -> . DOT
-    (15) str_bound -> . UNDERSCORE
+    (13) str_affix -> .
+    (14) str_affix -> . DOT
+    (15) str_affix -> . UNDERSCORE
     (36) lookup_type -> . variable_lookup
     (37) lookup_type -> . backreference
     (38) lookup_type -> . subroutine_call
@@ -457,7 +457,7 @@ state 23
     SLASH           shift and go to state 20
     NUMBER          shift and go to state 9
     QUESTMARK       shift and go to state 22
-    STRING          reduce using rule 13 (str_bound -> .)
+    STRING          reduce using rule 13 (str_affix -> .)
     DOT             shift and go to state 12
     UNDERSCORE      shift and go to state 10
     VARNAME         shift and go to state 6
@@ -466,7 +466,7 @@ state 23
     optionalize                    shift and go to state 14
     repeat_N_times                 shift and go to state 4
     string                         shift and go to state 13
-    str_bound                      shift and go to state 17
+    str_affix                      shift and go to state 17
     expression                     shift and go to state 47
     lookup_type                    shift and go to state 24
     repeat_range                   shift and go to state 7
@@ -598,16 +598,16 @@ state 34
 
 state 35
 
-    (12) string -> str_bound STRING . str_bound
-    (13) str_bound -> .
-    (14) str_bound -> . DOT
-    (15) str_bound -> . UNDERSCORE
+    (12) string -> str_affix STRING . str_affix
+    (13) str_affix -> .
+    (14) str_affix -> . DOT
+    (15) str_affix -> . UNDERSCORE
 
-    NEWLINE         reduce using rule 13 (str_bound -> .)
+    NEWLINE         reduce using rule 13 (str_affix -> .)
     DOT             shift and go to state 59
-    UNDERSCORE      shift and go to state 60
+    UNDERSCORE      shift and go to state 58
 
-    str_bound                      shift and go to state 58
+    str_affix                      shift and go to state 60
 
 state 36
 
@@ -689,7 +689,7 @@ state 44
     (18) quantifier -> . repeat_N_times
     (19) quantifier -> . repeat_range
     (20) quantifier -> . optionalize
-    (12) string -> . str_bound STRING str_bound
+    (12) string -> . str_affix STRING str_affix
     (34) lookup -> . lookup_type
     (35) lookup -> . lookup_type QUESTMARK
     (21) repeat_N_times -> . NUMBER of
@@ -698,9 +698,9 @@ state 44
     (24) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (25) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
     (26) optionalize -> . QUESTMARK of
-    (13) str_bound -> .
-    (14) str_bound -> . DOT
-    (15) str_bound -> . UNDERSCORE
+    (13) str_affix -> .
+    (14) str_affix -> . DOT
+    (15) str_affix -> . UNDERSCORE
     (36) lookup_type -> . variable_lookup
     (37) lookup_type -> . backreference
     (38) lookup_type -> . subroutine_call
@@ -717,7 +717,7 @@ state 44
     SLASH           shift and go to state 20
     NUMBER          shift and go to state 9
     QUESTMARK       shift and go to state 22
-    STRING          reduce using rule 13 (str_bound -> .)
+    STRING          reduce using rule 13 (str_affix -> .)
     DOT             shift and go to state 12
     UNDERSCORE      shift and go to state 10
     VARNAME         shift and go to state 6
@@ -726,7 +726,7 @@ state 44
     optionalize                    shift and go to state 14
     repeat_N_times                 shift and go to state 4
     string                         shift and go to state 13
-    str_bound                      shift and go to state 17
+    str_affix                      shift and go to state 17
     expression                     shift and go to state 66
     lookup_type                    shift and go to state 24
     repeat_range                   shift and go to state 7
@@ -872,23 +872,23 @@ state 57
 
 state 58
 
-    (12) string -> str_bound STRING str_bound .
+    (15) str_affix -> UNDERSCORE .
 
-    NEWLINE         reduce using rule 12 (string -> str_bound STRING str_bound .)
+    NEWLINE         reduce using rule 15 (str_affix -> UNDERSCORE .)
 
 
 state 59
 
-    (14) str_bound -> DOT .
+    (14) str_affix -> DOT .
 
-    NEWLINE         reduce using rule 14 (str_bound -> DOT .)
+    NEWLINE         reduce using rule 14 (str_affix -> DOT .)
 
 
 state 60
 
-    (15) str_bound -> UNDERSCORE .
+    (12) string -> str_affix STRING str_affix .
 
-    NEWLINE         reduce using rule 15 (str_bound -> UNDERSCORE .)
+    NEWLINE         reduce using rule 12 (string -> str_affix STRING str_affix .)
 
 
 state 61
@@ -1208,7 +1208,7 @@ state 87
     (18) quantifier -> . repeat_N_times
     (19) quantifier -> . repeat_range
     (20) quantifier -> . optionalize
-    (12) string -> . str_bound STRING str_bound
+    (12) string -> . str_affix STRING str_affix
     (34) lookup -> . lookup_type
     (35) lookup -> . lookup_type QUESTMARK
     (21) repeat_N_times -> . NUMBER of
@@ -1217,9 +1217,9 @@ state 87
     (24) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (25) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
     (26) optionalize -> . QUESTMARK of
-    (13) str_bound -> .
-    (14) str_bound -> . DOT
-    (15) str_bound -> . UNDERSCORE
+    (13) str_affix -> .
+    (14) str_affix -> . DOT
+    (15) str_affix -> . UNDERSCORE
     (36) lookup_type -> . variable_lookup
     (37) lookup_type -> . backreference
     (38) lookup_type -> . subroutine_call
@@ -1239,7 +1239,7 @@ state 87
     SLASH           shift and go to state 20
     NUMBER          shift and go to state 9
     QUESTMARK       shift and go to state 22
-    STRING          reduce using rule 13 (str_bound -> .)
+    STRING          reduce using rule 13 (str_affix -> .)
     UNDERSCORE      shift and go to state 10
     AMPERSAND       shift and go to state 19
 
@@ -1251,8 +1251,8 @@ state 87
     string_expr                    shift and go to state 26
     lookup                         shift and go to state 15
     subroutine_call                shift and go to state 16
-    str_bound                      shift and go to state 17
     string                         shift and go to state 13
+    str_affix                      shift and go to state 17
     assignment                     shift and go to state 99
     numrange                       shift and go to state 18
     repeat_expr                    shift and go to state 5
@@ -1368,14 +1368,14 @@ state 98
 
     (56) declaration -> DOT . VARNAME
     (58) declaration -> DOT . LPAREN VARNAME RPAREN
-    (14) str_bound -> DOT .
+    (14) str_affix -> DOT .
     (27) numrange -> DOT . DOT
     (29) numrange -> DOT . DOT NUMBER
     (41) variable_lookup -> DOT .
 
     VARNAME         shift and go to state 90
     LPAREN          shift and go to state 91
-    STRING          reduce using rule 14 (str_bound -> DOT .)
+    STRING          reduce using rule 14 (str_affix -> DOT .)
     DOT             shift and go to state 32
     QUESTMARK       reduce using rule 41 (variable_lookup -> DOT .)
     NEWLINE         reduce using rule 41 (variable_lookup -> DOT .)

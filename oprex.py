@@ -376,17 +376,16 @@ def p_repeat_expr(t):
 
 def p_string_expr(t):
     '''string_expr : string NEWLINE optional_block'''
-    check_scope_usage(t, optional_block=t[3], referenced_vars=())
-    t[0] = t[1]
+    t[0] = process_subblock(t, t[1], optional_block=t[3], referenced_vars=())
 
 
 def p_string(t):
-    '''string : str_bound STRING str_bound'''
+    '''string : str_affix STRING str_affix'''
     t[0] = t[1] + t[2] + t[3]
 
 
-def p_str_bound(t):
-    '''str_bound :
+def p_str_affix(t):
+    '''str_affix :
                  | DOT
                  | UNDERSCORE'''
     t[0] = {
@@ -399,15 +398,14 @@ def p_str_bound(t):
 def p_lookup_expr(t):
     '''lookup_expr : lookup             NEWLINE optional_block
                    | SLASH lookup_chain NEWLINE optional_block'''
-
     referenced_vars = set()
     current_scope = t.lexer.scopes[-1]
     def resolve_var(lookup):
         referenced_vars.add(lookup.varname)
         try:
             var = current_scope[lookup.varname]
-        except KeyError as e:
-            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % e.message)
+        except KeyError:
+            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % lookup.varname)
         if lookup.optional:
             return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
         else:
@@ -423,11 +421,19 @@ def p_lookup_expr(t):
             t.lexer.subroutine_calls.add(lookup)
             return '(?&%s)%s' % (lookup.varname, lookup.optional)
 
-    if t[1] == '/': # lookup chain
-        t[0] = ''.join(map(resolve, t[2]))
-    else: # single lookup
-        t[0] = resolve(t[1])
-    check_scope_usage(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
+    def chain(lookups):
+        try:
+            return ''.join(map(resolve, lookups))
+        except TypeError as e:
+            chaining = '/'.join(lookup.varname for lookup in lookups)
+            raise OprexSyntaxError(t.lineno(0), "Bad chaining: /%s/: %s" % (chaining, e.message))
+
+    if t[1] == '/':
+        result = chain(t[2])
+    else:
+        result = resolve(t[1])
+
+    t[0] = process_subblock(t, result, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
 def quantify(expr, quantifier, already_grouped=False):
@@ -572,7 +578,11 @@ def p_optional_block(t):
     '''optional_block : begin_block definitions end_block
                       |'''
     if len(t) > 1:
-        t[0] = t[2]
+        t[0] = definitions = t[2]
+        for i, var in enumerate(definitions[1:], start=1):
+            preceding_def = definitions[i-1]
+            if var.name in redefinables and preceding_def.name not in redefinables:
+                raise OprexSyntaxError(var.lineno, "'%s' must be defined at the beginning of a block" % var.name)
 
 
 def p_begin_block(t):
@@ -604,28 +614,32 @@ def p_definition(t):
         assignment = t[1]
         scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
 
-    def define(declaration):
+    def make_var(declaration, value):
         varname = declaration.varname
-        value = assignment.value
         if declaration.atomic:
             value = '(?>%s)' % value
         if declaration.capture:
             value = '(?P<%s>%s)' % (varname, value)
             t.lexer.captures.add(varname)
+        return Variable(varname, assignment.lineno, value, already_grouped=declaration.capture or declaration.atomic)
 
-        var = Variable(varname, assignment.lineno, value, already_grouped=declaration.capture or declaration.atomic)
-        try: # check the deepest scope for varname (every scope supersets its parent scope, so...
-            already_defined = scopes[-1][varname] # ...checking only the deepeset is sufficient)
+    def define(declaration):
+        var = make_var(declaration, assignment.value)
+        try: # check the deepest scope for varname (every scope supersets its parent, so checking only the deepeset is sufficient)
+            prev_def = scopes[-1][var.name]
         except KeyError: # not already defined, OK to define it
             for scope in scopes:
-                scope[varname] = var
-            return var
+                scope[var.name] = var
         else: # already defined
-            raise OprexSyntaxError(t.lineno(1),
-                "'%s' is a built-in variable and cannot be redefined" % var.name
-                if already_defined.is_builtin() else
-                "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
-                    % (varname, already_defined.lineno))
+            try: # redefine
+                redefinables[var.name](var.value, scopes)
+            except KeyError:
+                raise OprexSyntaxError(t.lineno(1),
+                    "'%s' is a built-in variable and cannot be redefined" % var.name
+                    if prev_def.is_builtin() else
+                        "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
+                            % (var.name, prev_def.lineno))
+        return var
     t[0] = map(define, assignment.declarations)
 
 
@@ -659,7 +673,7 @@ def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE optional_block'''
     chardefs, results, includes = t[1]
     values, types = zip(*results)
-    current_scope = check_scope_usage(t, optional_block=t[3], referenced_vars=includes)
+    current_scope = t.lexer.scopes[-1]
 
     def lookup(varname):
         try:
@@ -683,7 +697,7 @@ def p_charclass(t):
         return value
 
     if len(chardefs) == 1 and 'include' in types: # simple aliasing
-        t[0] = lookup(values[0].varname)
+        result = lookup(values[0].varname)
     else:
         result = ''.join(map(value_or_lookup, values))
         if result == '\\-': # no need to escape dash outside of character class
@@ -694,7 +708,9 @@ def p_charclass(t):
             result = result.replace(r'^\p{', r'\P{', 1)
         elif len(chardefs) > 1 or 'range' in types:
             result = '[' + result + ']'
-        t[0] = CharClass(result, is_set_op='set_operation' in types)
+        result = CharClass(result, is_set_op='set_operation' in types)
+
+    t[0] = process_subblock(t, result, optional_block=t[3], referenced_vars=includes)
 
 
 def p_error(t):
@@ -709,21 +725,71 @@ def p_error(t):
     raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
 
 
-def check_scope_usage(t, optional_block, referenced_vars):
-    current_scope = t.lexer.scopes[-1]
-    if optional_block:
-        for var in optional_block:
-            if var.name not in referenced_vars:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
-    return current_scope
-
-
 def find_column(t):
     last_newline = t.lexer.lexdata.rfind('\n', 0, t.lexpos)
     if last_newline < 0:
         last_newline = 0
     return t.lexpos - last_newline
+
+
+def process_subblock(t, result, optional_block, referenced_vars):
+    if optional_block:
+        t.lexer.scopes.pop()
+        flags = ''
+        for var in optional_block:
+            if var.name not in referenced_vars and var.name not in redefinables:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+            if var.name in ('unicode',):
+                flag = var.name[0]
+                flags += flag if var.value else '-' + flag
+        if flags:
+            result = '(?%s:%s)' % (flags, result)
+    return result
+
+
+def apply_flags(expr, scope):
+    flags = {
+        'unicode' : 'u',
+    }
+    print [varname for varname in scope]
+    return expr
+
+
+def make_builtin_var(varname, value): # lineno=0 --> built-in
+    return Variable(varname, lineno=0, value=value, already_grouped=False) # we don't have any built-in grouped expr
+
+
+def make_builtin_charclass(varname, value):
+    return make_builtin_var(varname, CharClass(value, is_set_op=False)) # we don't have any built-in set-op charclass
+
+
+unicode_dependent_builtins = {
+    True : [
+        make_builtin_var('unicode', True),
+        make_builtin_charclass('alpha', '\\p{Alphabetic}'),
+        make_builtin_charclass('upper', '\\p{Uppercase}'),
+        make_builtin_charclass('lower', '\\p{Lowercase}'),
+        make_builtin_charclass('alnum', '\\p{Alphanumeric}'),
+    ],
+    False : [
+        make_builtin_var('unicode', False),
+        make_builtin_charclass('alpha', '[a-zA-Z]'),
+        make_builtin_charclass('upper', '[A-Z]'),
+        make_builtin_charclass('lower', '[a-z]'),
+        make_builtin_charclass('alnum', '[a-zA-Z0-9]'),
+    ],
+}
+
+
+def set_unicode_flag(status, scopes):
+    for var in unicode_dependent_builtins[status]:
+        for scope in scopes:
+            scope[var.name] = var
+
+
+redefinables = {
+    'unicode' : set_unicode_flag,
+}
 
 
 class CustomLexer:
@@ -766,25 +832,25 @@ def build_lexer(source_lines):
     lexer.subroutine_calls = set()
     lexer.scopes = [{}]
 
-    def define_builtin_var(varname, value):        # lineno=0 --> builtin
-        lexer.scopes[0][varname] = Variable(varname, lineno=0, value=value, already_grouped=False)
+    set_unicode_flag(False, lexer.scopes)
 
-    define_builtin_var('alpha',    CharClass('[a-zA-Z]',    is_set_op=False))
-    define_builtin_var('upper',    CharClass('[A-Z]',       is_set_op=False))
-    define_builtin_var('lower',    CharClass('[a-z]',       is_set_op=False))
-    define_builtin_var('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False))
-    define_builtin_var('digit',    CharClass('\\d',         is_set_op=False))
-    define_builtin_var('wordchar', CharClass('\\w',         is_set_op=False))
-    define_builtin_var('.',        CharClass('\\b',         is_set_op=False))
-    define_builtin_var('_',        CharClass('\\B',         is_set_op=False))
+    def define(varname, fn, value):
+        lexer.scopes[0][varname] = fn(varname, value)
+
+    define('digit',    make_builtin_charclass, '\\d')
+    define('wordchar', make_builtin_charclass, '\\w')
+    define('.',        make_builtin_charclass, '\\b')
+    define('_',        make_builtin_charclass, '\\B')
+    define('True',     make_builtin_var, value=True )
+    define('False',    make_builtin_var, value=False)
 
     return CustomLexer(lexer)
 
 
 parser = yacc.yacc()
 def parse(lexer):
-    # always use V1, UNICODE, and MULTILINE
-    return '(?umV1)' + unicode(parser.parse(lexer=lexer, tracking=True))
+    # always turn V1 and MULTILINE on
+    return '(?mV1)' + unicode(parser.parse(lexer=lexer, tracking=True))
 
 
 def check_captures(lexer):

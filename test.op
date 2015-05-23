@@ -1,7 +1,5 @@
 
-/plus/minus/pmz/
-    plus: +
-    minus: -
-    pmz: +plus +dash z
-        dash: +minus
-
+/alphas/non_ascii_alphas?/
+    alphas = 1.. of alpha
+    non_ascii_alphas = 1.. of: +ualpha not +alpha
+        ualpha = (set -unicode) of: +alpha
