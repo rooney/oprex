@@ -370,17 +370,22 @@ def p_oprex(t):
 
 
 def p_expression(t):
-    '''expression : repeat_expr
-                  | string_expr
+    '''expression : string_expr
                   | lookup_expr
-                  | enflag_expr'''
+                  | mod_of_expr'''
     t[0] = t[1]
 
 
-def p_repeat_expr(t):
-    '''repeat_expr : quantifier WHITESPACE expression
-                   | quantifier COLON      charclass'''
-    t[0] = quantify(t[3], quantifier=t[1])
+def p_mod_of_expr(t):
+    '''mod_of_expr : modifier WHITESPACE expression
+                   | modifier COLON      charclass'''
+    modifier = t[1]
+    t[0] = modifier(t[3])
+
+
+def p_modifier(t):
+    '''modifier : quantifier'''
+    t[0] = t[1]
 
 
 def p_string_expr(t):
@@ -483,7 +488,7 @@ def p_quantifier(t):
         '{0,1}' : '?',
     }.get(quant.base, quant.base)
     modifier = quant.modifier if base else ''
-    t[0] = base + modifier
+    t[0] = lambda expr: quantify(expr, quantifier=base + modifier)
 
 
 def p_repeat_N_times(t):
@@ -494,16 +499,16 @@ def p_repeat_N_times(t):
 
 def p_repeat_range(t):
     '''repeat_range : numrange of
-                    | numrange backtrack MINUS of
-                    | NUMBER   backtrack PLUS  DOT DOT of
-                    | NUMBER   backtrack PLUS  DOT DOT NUMBER of'''
+                    | numrange WHITESPACE BACKTRACK MINUS of
+                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT of
+                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT NUMBER of'''
     possessive = len(t) == 3 # the first form above
-    greedy     = len(t) == 5 # the second form
+    greedy     = len(t) == 6 # the second form
     lazy       = not possessive and not greedy # third & fourth forms
 
     if lazy:
         min = t[1]
-        max = t[6] if len(t) == 8 else ''
+        max = t[7] if len(t) == 9 else ''
     else:
         min, max = t[1]
 
@@ -523,10 +528,6 @@ def p_optionalize(t):
     t[0] = Quantifier(base='?', modifier='+')
 
 
-def p_backtrack(t):
-    '''backtrack : WHITESPACE BACKTRACK'''
-
-
 def p_of(t):
     '''of : WHITESPACE OF'''
 
@@ -541,10 +542,6 @@ def p_numrange(t):
     min = number_or_empty(t[1])
     max = number_or_empty(t[len(t)-1])
     t[0] = min, max
-
-
-def p_enflag_expr(t):
-    '''enflag_expr : LPAREN VARNAME WHITESPACE RPAREN OF'''
 
 
 def p_lookup_chain(t):
