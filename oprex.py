@@ -35,7 +35,7 @@ def sanitize(source_code):
 
 
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
-ExtraToken = lambda t, type, value=None: LexToken(type, value or t.value, t.lexer.lineno, t.lexpos, t.lexer)
+ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
 reserved = {
     '_' : 'UNDERSCORE',
 }
@@ -53,6 +53,7 @@ tokens = [
     'LPAREN',
     'MINUS',
     'NEWLINE',
+    'OF',
     'PLUS',
     'QUESTMARK',
     'RPAREN',
@@ -261,6 +262,13 @@ def t_EQUALSIGN(t):
     return t
 
 
+def t_OF(t):
+    r'[ \t]+of(?=:|[ \t]+[^ \t\n])'
+    t.type = 'WHITESPACE'
+    t.extra_tokens = [ExtraToken(t, 'OF', lexpos=t.lexpos + t.value.index('of'))]
+    return t
+
+
 def t_linemark(t):
     r'(([ \t\n])|([#][#].*))+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
@@ -364,7 +372,8 @@ def p_oprex(t):
 def p_expression(t):
     '''expression : repeat_expr
                   | string_expr
-                  | lookup_expr'''
+                  | lookup_expr
+                  | enflag_expr'''
     t[0] = t[1]
 
 
@@ -485,16 +494,16 @@ def p_repeat_N_times(t):
 
 def p_repeat_range(t):
     '''repeat_range : numrange of
-                    | numrange WHITESPACE BACKTRACK MINUS of
-                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT of
-                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT NUMBER of'''
+                    | numrange backtrack MINUS of
+                    | NUMBER   backtrack PLUS  DOT DOT of
+                    | NUMBER   backtrack PLUS  DOT DOT NUMBER of'''
     possessive = len(t) == 3 # the first form above
-    greedy     = len(t) == 6 # the second form
+    greedy     = len(t) == 5 # the second form
     lazy       = not possessive and not greedy # third & fourth forms
 
     if lazy:
         min = t[1]
-        max = t[7] if len(t) == 9 else ''
+        max = t[6] if len(t) == 8 else ''
     else:
         min, max = t[1]
 
@@ -514,6 +523,14 @@ def p_optionalize(t):
     t[0] = Quantifier(base='?', modifier='+')
 
 
+def p_backtrack(t):
+    '''backtrack : WHITESPACE BACKTRACK'''
+
+
+def p_of(t):
+    '''of : WHITESPACE OF'''
+
+
 def p_numrange(t):
     '''numrange :        DOT DOT
                 | NUMBER DOT DOT
@@ -526,11 +543,8 @@ def p_numrange(t):
     t[0] = min, max
 
 
-def p_of(t):
-    '''of : WHITESPACE VARNAME'''
-    if t[2] != 'of':
-        raise OprexSyntaxError(t.lineno(0), "Expected 'of' but instead got: " + t[2])
-        # we do this (rather than defining OF token/reserving 'of' as keyword) to allow having variable named 'of'
+def p_enflag_expr(t):
+    '''enflag_expr : LPAREN VARNAME WHITESPACE RPAREN OF'''
 
 
 def p_lookup_chain(t):
@@ -765,14 +779,12 @@ def make_builtin_charclass(varname, value):
 
 unicode_dependent_builtins = {
     True : [
-        make_builtin_var('unicode', True),
         make_builtin_charclass('alpha', '\\p{Alphabetic}'),
         make_builtin_charclass('upper', '\\p{Uppercase}'),
         make_builtin_charclass('lower', '\\p{Lowercase}'),
         make_builtin_charclass('alnum', '\\p{Alphanumeric}'),
     ],
     False : [
-        make_builtin_var('unicode', False),
         make_builtin_charclass('alpha', '[a-zA-Z]'),
         make_builtin_charclass('upper', '[A-Z]'),
         make_builtin_charclass('lower', '[a-z]'),
@@ -790,6 +802,30 @@ def set_unicode_flag(status, scopes):
 redefinables = {
     'unicode' : set_unicode_flag,
 }
+
+
+lexer0 = lex.lex()
+def build_lexer(source_lines):
+    lexer = lexer0.clone()
+    lexer.source_lines = source_lines
+    lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
+    lexer.indent_stack = [0] # for keeping track of indentation levels
+    lexer.captures = set()
+    lexer.backreferences = set()
+    lexer.subroutine_calls = set()
+    lexer.scopes = [{}]
+
+    set_unicode_flag(False, lexer.scopes)
+
+    def define(varname, fn, value):
+        lexer.scopes[0][varname] = fn(varname, value)
+
+    define('digit',    make_builtin_charclass, '\\d')
+    define('wordchar', make_builtin_charclass, '\\w')
+    define('.',        make_builtin_var,       '\\b')
+    define('_',        make_builtin_var,       '\\B')
+
+    return CustomLexer(lexer)
 
 
 class CustomLexer:
@@ -819,32 +855,6 @@ class CustomLexer:
         token = self.get_next_token()
         # print token
         return token
-
-
-lexer0 = lex.lex()
-def build_lexer(source_lines):
-    lexer = lexer0.clone()
-    lexer.source_lines = source_lines
-    lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.indent_stack = [0] # for keeping track of indentation levels
-    lexer.captures = set()
-    lexer.backreferences = set()
-    lexer.subroutine_calls = set()
-    lexer.scopes = [{}]
-
-    set_unicode_flag(False, lexer.scopes)
-
-    def define(varname, fn, value):
-        lexer.scopes[0][varname] = fn(varname, value)
-
-    define('digit',    make_builtin_charclass, '\\d')
-    define('wordchar', make_builtin_charclass, '\\w')
-    define('.',        make_builtin_charclass, '\\b')
-    define('_',        make_builtin_charclass, '\\B')
-    define('True',     make_builtin_var, value=True )
-    define('False',    make_builtin_var, value=False)
-
-    return CustomLexer(lexer)
 
 
 parser = yacc.yacc()

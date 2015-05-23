@@ -792,16 +792,16 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             3 alpha
         ''',
-        expect_error='''Line 2: Unexpected NEWLINE
+        expect_error='''Line 2: Unexpected VARNAME
             3 alpha
-                   ^''')
+              ^''')
 
         self.given(u'''
             3 ofalpha
         ''',
-        expect_error='''Line 2: Unexpected NEWLINE
+        expect_error='''Line 2: Unexpected VARNAME
             3 ofalpha
-                     ^''')
+              ^''')
 
         self.given(u'''
             3of alpha
@@ -813,12 +813,16 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             3 o falpha
         ''',
-        expect_error="Line 2: Expected 'of' but instead got: o")
+        expect_error='''Line 2: Unexpected VARNAME
+            3 o falpha
+              ^''')
 
         self.given(u'''
             3 office alpha
         ''',
-        expect_error="Line 2: Expected 'of' but instead got: office")
+        expect_error='''Line 2: Unexpected VARNAME
+            3 office alpha
+              ^''')
 
         self.given(u'''
             3. of alpha
@@ -1077,7 +1081,7 @@ class TestErrorHandling(unittest.TestCase):
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
-        alwayson_flags = '(?umV1)'
+        alwayson_flags = '(?mV1)'
         regex_source = oprex(oprex_source)
         regex_source = regex_source.replace(alwayson_flags, '', 1)
         if regex_source != expect_regex:
