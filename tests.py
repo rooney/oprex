@@ -475,7 +475,7 @@ class TestErrorHandling(unittest.TestCase):
             miscolon
                 miscolon: /colon/should/be/equal/sign/
         ''',
-        expect_error='Line 3: /colon/should/be/equal/sign/ compiles to \p{colon/should/be/equal/sign/} which is rejected by the regex module with error message: bad fuzzy constraint')
+        expect_error='Line 3: /colon/should/be/equal/sign/ compiles to \p{colon/should/be/equal/sign/} which is rejected by the regex engine with error message: bad fuzzy constraint')
 
         self.given('''
             miscolon
@@ -535,7 +535,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: /IsAwesome
         ''',
-        expect_error='Line 3: /IsAwesome compiles to \p{IsAwesome} which is rejected by the regex module with error message: unknown property')
+        expect_error='Line 3: /IsAwesome compiles to \p{IsAwesome} which is rejected by the regex engine with error message: unknown property')
 
 
     def test_invalid_char(self):
@@ -579,7 +579,7 @@ class TestErrorHandling(unittest.TestCase):
             x
                 x: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
         ''',
-        expect_error='Line 3: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex module with error message: undefined character name')
+        expect_error='Line 3: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex engine with error message: undefined character name')
 
         # unicode character name should be in uppercase
         self.given('''
@@ -801,7 +801,7 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 ofalpha
-              ^''')
+                ^''')
 
         self.given(u'''
             3of alpha
@@ -822,7 +822,7 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 office alpha
-              ^''')
+                ^''')
 
         self.given(u'''
             3. of alpha
@@ -1077,6 +1077,87 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected DOT
             /_./
               ^''')
+
+
+    def test_invalid_flags(self):
+        self.given(u'''
+            (pirate) 'carribean'
+        ''',
+        expect_error='Line 2: Invalid flag: pirate')
+ 
+        self.given(u'''
+            (-pirate) 'carribean'
+        ''',
+        expect_error='Line 2: Invalid flag: -pirate')
+ 
+        self.given(u'''
+            (--ignorecase) 'carribean'
+        ''',
+        expect_error='Line 2: Invalid flag: --ignorecase')
+ 
+        self.given(u'''
+            (unicode-ignorecase)
+            alpha
+        ''',
+        expect_error='Line 2: Invalid flag: unicode-ignorecase')
+
+        self.given(u'''
+            (unicode) alpha
+        ''',
+        expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not inline.")
+
+        self.given(u'''
+            (ignorecase)alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            (ignorecase)alpha
+                        ^''')
+
+        self.given(u'''
+            (ignorecase)
+             alpha
+        ''',
+        expect_error='Line 3: Unexpected INDENT')
+
+        self.given(u'''
+            (ignorecase -ignorecase) alpha
+        ''',
+        expect_error='Line 2: (ignorecase -ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
+ 
+        self.given(u'''
+            (-ignorecase ignorecase) alpha
+        ''',
+        expect_error='Line 2: (-ignorecase ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
+ 
+        self.given(u'''
+            (-ignorecase ignorecase unicode)
+            alpha
+        ''',
+        expect_error='Line 2: (-ignorecase ignorecase unicode) compiles to (?iu-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
+ 
+        self.given(u'''
+            (-ignorecase unicode ignorecase)
+            alpha
+        ''',
+        expect_error='Line 2: (-ignorecase unicode ignorecase) compiles to (?ui-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
+ 
+        self.given(u'''
+            (-unicode)
+            alpha
+        ''',
+        expect_error='Line 2: (-unicode) compiles to (?-u) which is rejected by the regex engine with error message: bad inline flags: cannot turn off global flag at position 9')
+ 
+        self.given(u'''
+            (ignorecase)
+            (-ignorecase)
+        ''',
+        expect_error='Line 2: Bad starting flags: bad inline flags: flag turned on and off at position 8')
+ 
+        self.given(u'''
+            (unicode ignorecase)
+            (-ignorecase)
+        ''',
+        expect_error='Line 2: Bad starting flags: bad inline flags: flag turned on and off at position 9')
 
 
 class TestOutput(unittest.TestCase):
@@ -2112,6 +2193,58 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\Bbloody\B')
 
 
+    def test_flagging_output(self):
+        self.given('''
+            (unicode)
+        ''',
+        expect_regex='(?mV1u)')
+
+        self.given('''
+            (ignorecase)
+        ''',
+        expect_regex='(?mV1i)')
+
+        self.given('''
+            (-ignorecase)
+        ''',
+        expect_regex='(?mV1-i)')
+
+        self.given('''
+            (unicode ignorecase)
+        ''',
+        expect_regex='(?mV1ui)')
+
+        self.given('''
+            (unicode)
+            (ignorecase)
+        ''',
+        expect_regex='(?mV1ui)')
+
+        self.given('''
+            (unicode ignorecase)
+            (-ignorecase) lower
+        ''',
+        expect_regex='(?mV1ui)(?-i:\p{Lowercase})')
+
+        self.given('''
+            (ignorecase) .'giga'_
+        ''',
+        expect_regex=r'(?i:\bgiga\B)')
+
+        self.given('''
+            (ignorecase) /super/uppers/
+                super = 'super'
+                uppers = (-ignorecase) 1.. of upper
+        ''',
+        expect_regex='(?i:super(?-i:[A-Z]++))')
+
+        self.given('''
+            hex?
+                hex = (ignorecase) 1 of: +digit a..f
+        ''',
+        expect_regex=r'(?:(?i:[\da-f]))?+')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -2119,21 +2252,21 @@ class TestMatches(unittest.TestCase):
             match = fn(regex_source, text)
             partial = match and match.group(0) != text
             if not match or partial:
-                raise AssertionError('%s\nis expected to fully match: %s\n%s\nThe regex is: %s' % (
-                    oprex_source or '(empty string)', 
-                    text or '(empty string)', 
-                    'It does match, but only partially. The match is: ' + (match.group(0) or '(empty string)') if partial else "But it doesn't match at all.",
-                    regex_source or '(empty string)',
+                raise AssertionError(u'%s\nis expected to fully match: %s\n%s\nThe regex is: %s' % (
+                    oprex_source or u'(empty string)', 
+                    text or u'(empty string)', 
+                    u'It does match, but only partially. The match is: ' + (match.group(0) or u'(empty string)') if partial else u"But it doesn't match at all.",
+                    regex_source or u'(empty string)',
                 ))
 
         for text in no_match:
             match = fn(regex_source, text)
             if match:
-                raise AssertionError('%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
-                    oprex_source or '(empty string)', 
-                    text or '(empty string)', 
-                    'But it does match. The match is: ' + (match.group(0) or '(empty string)'),
-                    regex_source or '(empty string)',
+                raise AssertionError(u'%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
+                    oprex_source or u'(empty string)', 
+                    text or u'(empty string)', 
+                    u'But it does match. The match is: ' + (match.group(0) or u'(empty string)'),
+                    regex_source or u'(empty string)',
                 ))
 
         for text, partmatch in partial_match.iteritems():
@@ -2141,20 +2274,20 @@ class TestMatches(unittest.TestCase):
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
                 if match and match.group(0) == text:
-                    raise AssertionError("%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
-                        oprex_source or '(empty string)', 
-                        text or '(empty string)', 
-                        regex_source or '(empty string)',
+                    raise AssertionError(u"%s\nis expected to partially match: %s\nBut instead it's a full-match.\nThe regex is: %s" % (
+                        oprex_source or u'(empty string)', 
+                        text or u'(empty string)', 
+                        regex_source or u'(empty string)',
                     ))
                 else:
-                    raise AssertionError('%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
-                        oprex_source or '(empty string)', 
-                        text or '(empty string)', 
-                        "But it doesn't match at all." if not match else 'The expected partial match is: %s\nBut the resulting match is: %s' % (
-                            partmatch or '(empty string)', 
-                            match.group(0) or '(empty string)'
+                    raise AssertionError(u'%s\nis expected to partially match: %s\n%s\nThe regex is: %s' % (
+                        oprex_source or u'(empty string)', 
+                        text or u'(empty string)', 
+                        u"But it doesn't match at all." if not match else u'The expected partial match is: %s\nBut the resulting match is: %s' % (
+                            partmatch or u'(empty string)', 
+                            match.group(0) or u'(empty string)'
                         ),
-                        regex_source or '(empty string)',
+                        regex_source or u'(empty string)',
                     ))
 
 
@@ -2742,6 +2875,66 @@ class TestMatches(unittest.TestCase):
         expect_full_match=[],
         no_match=['bloody', 'bloody hell'],
         partial_match={'absobloodylutely' : 'bloody'})
+
+
+    def test_flags(self):
+        self.given('''
+            lower
+        ''',
+        expect_full_match=['a'],
+        no_match=['A', u'ä', u'Ä'])
+
+        self.given('''
+            (unicode)
+            lower
+        ''',
+        expect_full_match=['a', u'ä'],
+        no_match=['A', u'Ä'])
+
+        self.given('''
+            (ignorecase)
+            1 of: a i u e o
+        ''',
+        expect_full_match=['a', 'A'],
+        no_match=[u'Ä', u'ä'])
+
+        self.given('''
+            (ignorecase) 1 of: a i u e o
+        ''',
+        expect_full_match=['a', 'A'],
+        no_match=[u'Ä', u'ä'])
+
+        self.given('''
+            (unicode)
+            (ignorecase) lower
+        ''',
+        expect_full_match=['a', 'A', u'Ä', u'ä'])
+
+        self.given('''
+            (unicode)
+            (ignorecase)
+            lower
+        ''',
+        expect_full_match=['a', 'A', u'Ä', u'ä'])
+
+        self.given('''
+            (unicode ignorecase)
+            lower
+        ''',
+        expect_full_match=['a', 'A', u'Ä', u'ä'])
+
+        self.given('''
+            (ignorecase) 'AAa'
+        ''',
+        expect_full_match=['AAa', 'aAa', 'aaa', 'AAA'])
+
+        self.given('''
+            (ignorecase) /VOWEL/BIGVOWEL/
+                VOWEL: A I U E O
+                BIGVOWEL = (-ignorecase) VOWEL
+        ''',
+        expect_full_match=['AA', 'aA'],
+        no_match=['Aa', 'aa'])
 
 
 if __name__ == '__main__':

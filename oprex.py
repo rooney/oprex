@@ -36,6 +36,10 @@ def sanitize(source_code):
 
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
+states = (
+    ('preamble', 'inclusive'),
+    ('subblock', 'inclusive'),
+)
 reserved = {
     '_' : 'UNDERSCORE',
 }
@@ -47,6 +51,7 @@ tokens = [
     'DEDENT',
     'DOT',
     'EQUALSIGN',
+    'FLAGSET',
     'GLOBALMARK',
     'INDENT',
     'NUMBER',
@@ -74,13 +79,13 @@ t_PLUS       = r'\+'
 t_QUESTMARK  = r'\?'
 t_RPAREN     = r'\)'
 t_SLASH      = r'\/'
-t_ignore     = '' # oprex is whitespace-significant, no ignored characters
+t_ignore = '' # oprex is whitespace-significant, no ignored characters
 
 
 class Assignment(namedtuple('Assignment', 'declarations value lineno')):
     __slots__ = ()
 
-class Variable(namedtuple('Variable', 'name lineno value already_grouped')):
+class Variable(namedtuple('Variable', 'name value lineno already_grouped')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
@@ -107,6 +112,18 @@ class Quantification(unicode):
         quantification.quantified = quantified
         quantification.quantifier = quantifier
         return quantification
+
+class Flagset(unicode):
+    __slots__ = ('turn_ons', 'turn_offs')
+    def __new__(cls, turn_ons, turn_offs):
+        if turn_offs:
+            flags = turn_ons + '-' + turn_offs
+        else:
+            flags = turn_ons
+        flagset = unicode.__new__(cls, flags)
+        flagset.turn_ons = turn_ons
+        flagset.turn_offs = turn_offs
+        return flagset
 
 class CharClass(unicode):
     __slots__ = ('is_set_op',)
@@ -136,7 +153,7 @@ def t_charclass(t):
     seen = set()
     includes = set()
 
-    def try_compile(chardef, *functions):
+    def try_translate(chardef, *functions):
         for fn in functions:
             result = fn(chardef)
             if result:
@@ -183,8 +200,8 @@ def t_charclass(t):
         if '..' in chardef:
             try:
                 range_from, range_to = chardef.split('..')
-                from_val, _ = try_compile(range_from, single, uhex, by_name)
-                to_val, _   = try_compile(range_to, single, uhex, by_name)
+                from_val, _ = try_translate(range_from, single, uhex, by_name)
+                to_val, _   = try_translate(range_to, single, uhex, by_name)
                 return from_val + '-' + to_val
             except (TypeError, ValueError):
                 raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
@@ -206,12 +223,12 @@ def t_charclass(t):
             else:
                 raise OprexSyntaxError(t.lineno, "Incorrect use of %s '%s' operator" % (type, chardef))
 
-    def compile(chardef):
+    def translate(chardef):
         if chardef in seen:
             raise OprexSyntaxError(t.lineno, 'Duplicate item in character class definition: ' + chardef)
         seen.add(chardef)
         t.counter += 1
-        result = try_compile(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
+        result = try_translate(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
         if not result:
             raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
         test(chardef, result)
@@ -227,13 +244,54 @@ def t_charclass(t):
             test = '[' + test + ']' # ...is put inside brackets, so in that case we'll just skip bracketing it
         try:
             regex.compile(test)
-        except Exception as e:
-            msg = '%s compiles to %s which is rejected by the regex module with error message: %s'
+        except regex.error as e:
+            msg = '%s compiles to %s which is rejected by the regex engine with error message: %s'
             raise OprexSyntaxError(t.lineno, msg % (chardef, value, e.msg if hasattr(e, 'msg') else e.message))
 
-    results = map(compile, chardefs)
+    results = map(translate, chardefs)
     t.type = 'COLON'
     t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (chardefs, results, includes))]
+    return t
+
+
+def t_preamble_FLAGSET(t):
+    r'\([- \ta-z]+\)(?=[ \t]*\n)'
+    return t_FLAGSET(t)
+
+
+def t_FLAGSET(t):
+    r'\([- \ta-z]+\)(?=[ \t]*[^ \t\n=:])'
+    flags = t.value[1:-1] # exclude the surrounding ( )
+    flags = flags.split(' ') # will contain empty strings in case of consecutive spaces, so...
+    flags = filter(lambda flag: flag, flags) # ...exclude empty strings
+
+    def translate(flag):
+        return {
+            'unicode'    : 'u',
+            'ignorecase' : 'i',
+        }[flag]
+
+    turn_ons = ''
+    turn_offs = ''
+    for flag in flags:
+        try:
+            if flag.startswith('-'):
+                turn_offs += translate(flag[1:])
+            else:
+                turn_ons += translate(flag)
+        except KeyError:
+            raise OprexSyntaxError(t.lineno, 'Invalid flag: ' + flag)
+
+    flags = Flagset(turn_ons, turn_offs)
+    try:
+        test = '(?%s)' % flags
+        regex.compile('(?V1)' + test)
+    except regex.error as e:
+        raise OprexSyntaxError(t.lineno, '%s compiles to %s which is rejected by the regex engine with error message: %s' % 
+            (t.value, test, e.message))
+    else:
+        t.type = 'LPAREN'
+        t.extra_tokens = [ExtraToken(t, 'FLAGSET', value=flags), ExtraToken(t, 'RPAREN')]
     return t
 
 
@@ -257,13 +315,14 @@ def t_VARNAME(t):
 # Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
 
 
-def t_EQUALSIGN(t):
+def t_subblock_EQUALSIGN(t):
     r'[ \t]*=[ \t]*'
+    t.lexpos += t.value.index('=')
     return t
 
 
 def t_OF(t):
-    r'[ \t]+of(?=:|[ \t]+[^ \t\n])'
+    r'[ \t]+of'
     t.type = 'WHITESPACE'
     t.extra_tokens = [ExtraToken(t, 'OF', lexpos=t.lexpos + t.value.index('of'))]
     return t
@@ -358,50 +417,80 @@ def p_oprex(t):
     '''oprex : 
              | WHITESPACE
              | NEWLINE
-             | NEWLINE        expression
-             | NEWLINE INDENT expression DEDENT'''
+             | NEWLINE        main_expression
+             | NEWLINE INDENT main_expression DEDENT'''
     if len(t) == 3:
-        expression = t[2]
+        flags, expression = t[2]
     elif len(t) == 5:
-        expression = t[3]
+        flags, expression = t[3]
     else:
+        flags = expression = ''
+
+    flags = '(?mV1%s)' % flags # always turn V1 and MULTILINE on
+    try:
+        regex.compile(flags)
+    except regex.error as e:
+        raise OprexSyntaxError(t.lineno(2),  'Bad starting flags: ' + e.message)
+    t[0] = flags + expression
+
+
+def p_main_expression(t):
+    '''main_expression : global_flagging main_expression
+                       | global_flagging
+                       | expression'''
+    if len(t) == 3: # the first form above
+        flags = t[1]
+        more_flags, expression = t[2]
+        flags = Flagset(
+            turn_ons=flags.turn_ons + more_flags.turn_ons,
+            turn_offs=flags.turn_offs + more_flags.turn_offs,
+        )
+    elif isinstance(t[1], Flagset): # second form (flags only)
+        flags = t[1]
         expression = ''
-    t[0] = expression
+    else: # third form (flagless expression)
+        flags = Flagset(turn_ons='', turn_offs='')
+        expression = t[1]
+
+    t[0] = flags, expression
+
+
+def p_global_flagging(t):
+    '''global_flagging : LPAREN FLAGSET RPAREN NEWLINE'''
+    flagset = t[2]
+    if 'u' in flagset.turn_ons: # turning unicode on changes some built-ins
+        t.lexer.scopes[0].update(
+            alpha = Variable('alpha', CharClass('\\p{Alphabetic}',   is_set_op=False), lineno=0, already_grouped=False),
+            upper = Variable('upper', CharClass('\\p{Uppercase}',    is_set_op=False), lineno=0, already_grouped=False),
+            lower = Variable('lower', CharClass('\\p{Lowercase}',    is_set_op=False), lineno=0, already_grouped=False),
+            alnum = Variable('alnum', CharClass('\\p{Alphanumeric}', is_set_op=False), lineno=0, already_grouped=False),
+        )
+    t[0] = flagset
 
 
 def p_expression(t):
     '''expression : string_expr
                   | lookup_expr
-                  | mod_of_expr'''
-    t[0] = t[1]
-
-
-def p_mod_of_expr(t):
-    '''mod_of_expr : modifier WHITESPACE expression
-                   | modifier COLON      charclass'''
-    modifier = t[1]
-    t[0] = modifier(t[3])
-
-
-def p_modifier(t):
-    '''modifier : quantifier'''
+                  | flagged_expr
+                  | quantified_expr'''
     t[0] = t[1]
 
 
 def p_string_expr(t):
     '''string_expr : string NEWLINE optional_block'''
-    t[0] = process_subblock(t, t[1], optional_block=t[3], referenced_vars=())
+    scope_check(t, optional_block=t[3], referenced_vars=())
+    t[0] = t[1]
 
 
 def p_string(t):
-    '''string : str_affix STRING str_affix'''
+    '''string : boundary STRING boundary'''
     t[0] = t[1] + t[2] + t[3]
 
 
-def p_str_affix(t):
-    '''str_affix :
-                 | DOT
-                 | UNDERSCORE'''
+def p_boundary(t):
+    '''boundary :
+                | DOT
+                | UNDERSCORE'''
     t[0] = {
         None : '',
         '.'  : '\\b',
@@ -409,69 +498,10 @@ def p_str_affix(t):
     }[t[len(t)-1]]
 
 
-def p_lookup_expr(t):
-    '''lookup_expr : lookup             NEWLINE optional_block
-                   | SLASH lookup_chain NEWLINE optional_block'''
-    referenced_vars = set()
-    current_scope = t.lexer.scopes[-1]
-    def resolve_var(lookup):
-        referenced_vars.add(lookup.varname)
-        try:
-            var = current_scope[lookup.varname]
-        except KeyError:
-            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % lookup.varname)
-        if lookup.optional:
-            return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
-        else:
-            return var.value
-
-    def resolve(lookup):
-        if isinstance(lookup, VariableLookup):
-            return resolve_var(lookup)
-        elif isinstance(lookup, Backreference): 
-            t.lexer.backreferences.add(lookup)
-            return '(?P=%s)%s' % (lookup.varname, lookup.optional)
-        elif isinstance(lookup, SubroutineCall): 
-            t.lexer.subroutine_calls.add(lookup)
-            return '(?&%s)%s' % (lookup.varname, lookup.optional)
-
-    def chain(lookups):
-        try:
-            return ''.join(map(resolve, lookups))
-        except TypeError as e:
-            chaining = '/'.join(lookup.varname for lookup in lookups)
-            raise OprexSyntaxError(t.lineno(0), "Bad chaining: /%s/: %s" % (chaining, e.message))
-
-    if t[1] == '/':
-        result = chain(t[2])
-    else:
-        result = resolve(t[1])
-
-    t[0] = process_subblock(t, result, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
-
-
-def quantify(expr, quantifier, already_grouped=False):
-    if quantifier == '{0}' or expr == '':
-        return ''
-    if quantifier == '{1}' or quantifier == '':
-        return expr
-    try: # maybe expr is already a Quantification? merge the quantifiers
-        return expr.quantified + { # The purpose of this is so we can have something super-readable e.g.
-             '? of +'  : '*' ,     #     digits?
-            '?+ of ++' : '*+',     #         digits = 1.. of digit
-            '?? of +?' : '*?',     # without making the regex output suboptimal
-        }[quantifier + ' of ' + expr.quantifier]
-    except KeyError: # expr is a Quantification, but this is not a "? of +" operation
-        try: # merge repeats (e.g. colorhex = 3 of byte; byte = 2 of hex) --> optimize "hex{2}{3}" into "hex{6}"
-            n1 = int(regex.match(r'{(\d+)}', expr.quantifier).group(1))
-            n2 = int(regex.match(r'{(\d+)}',      quantifier).group(1))
-            return Quantification(expr.quantified, '{%d}' % (n1 * n2))
-        except AttributeError: # not "repeat a repeat" operation, simply put expr in a group
-            return Quantification('(?:%s)' % expr, quantifier)
-    except AttributeError: # expr is a plain string, not a Quantification
-        if len(expr) > 1 and not isinstance(expr, CharClass) and not already_grouped: # needs grouping
-            expr = '(?:%s)' % expr
-        return Quantification(expr, quantifier)
+def p_quantified_expr(t):
+    '''quantified_expr : quantifier WHITESPACE expression
+                       | quantifier COLON      charclass'''
+    t[0] = quantify(t[3], quantifier=t[1])
 
 
 def p_quantifier(t):
@@ -488,7 +518,7 @@ def p_quantifier(t):
         '{0,1}' : '?',
     }.get(quant.base, quant.base)
     modifier = quant.modifier if base else ''
-    t[0] = lambda expr: quantify(expr, quantifier=base + modifier)
+    t[0] = base + modifier
 
 
 def p_repeat_N_times(t):
@@ -523,15 +553,6 @@ def p_repeat_range(t):
     )
 
 
-def p_optionalize(t):
-    '''optionalize : QUESTMARK of'''
-    t[0] = Quantifier(base='?', modifier='+')
-
-
-def p_of(t):
-    '''of : WHITESPACE OF'''
-
-
 def p_numrange(t):
     '''numrange :        DOT DOT
                 | NUMBER DOT DOT
@@ -542,6 +563,84 @@ def p_numrange(t):
     min = number_or_empty(t[1])
     max = number_or_empty(t[len(t)-1])
     t[0] = min, max
+
+
+def p_optionalize(t):
+    '''optionalize : QUESTMARK of'''
+    t[0] = Quantifier(base='?', modifier='+')
+
+
+def p_of(t):
+    '''of : WHITESPACE OF'''
+
+
+def quantify(expr, quantifier, already_grouped=False):
+    if quantifier == '{0}' or expr == '':
+        return ''
+    if quantifier == '{1}' or quantifier == '':
+        return expr
+    try: # maybe expr is already a Quantification? merge the quantifiers
+        return expr.quantified + { # The purpose of this is so we can have something super-readable e.g.
+             '? of +'  : '*' ,     #     digits?
+            '?+ of ++' : '*+',     #         digits = 1.. of digit
+            '?? of +?' : '*?',     # without making the regex output suboptimal
+        }[quantifier + ' of ' + expr.quantifier]
+    except KeyError: # expr is a Quantification, but this is not a "? of +" operation
+        try: # merge repeats (e.g. colorhex = 3 of byte; byte = 2 of hex) --> optimize "hex{2}{3}" into "hex{6}"
+            n1 = int(regex.match(r'{(\d+)}', expr.quantifier).group(1))
+            n2 = int(regex.match(r'{(\d+)}',      quantifier).group(1))
+            return Quantification(expr.quantified, '{%d}' % (n1 * n2))
+        except AttributeError: # not "repeat a repeat" operation, simply put expr in a group
+            return Quantification('(?:%s)' % expr, quantifier)
+    except AttributeError: # expr is a plain string, not a Quantification
+        if len(expr) > 1 and not isinstance(expr, CharClass) and not already_grouped: # needs grouping
+            expr = '(?:%s)' % expr
+        return Quantification(expr, quantifier)
+
+
+def p_flagged_expr(t):
+    '''flagged_expr : LPAREN FLAGSET RPAREN WHITESPACE expression'''
+    flags = t[2]
+    expression = t[5]
+    for flag in flags.turn_ons:
+        if flag in 'u':
+            raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not inline." % {
+                'u' : 'unicode',
+            }[flag])
+    t[0] = '(?%s:%s)' % (flags, expression)
+
+
+def p_lookup_expr(t):
+    '''lookup_expr : lookup             NEWLINE optional_block
+                   | SLASH lookup_chain NEWLINE optional_block'''
+    referenced_vars = set()
+    current_scope = t.lexer.scopes[-1]
+    def resolve_var(lookup):
+        referenced_vars.add(lookup.varname)
+        try:
+            var = current_scope[lookup.varname]
+        except KeyError:
+            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % lookup.varname)
+        if lookup.optional:
+            return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
+        else:
+            return var.value
+
+    def resolve(lookup):
+        if isinstance(lookup, VariableLookup):
+            return resolve_var(lookup)
+        elif isinstance(lookup, Backreference): 
+            t.lexer.backreferences.add(lookup)
+            return '(?P=%s)%s' % (lookup.varname, lookup.optional)
+        elif isinstance(lookup, SubroutineCall): 
+            t.lexer.subroutine_calls.add(lookup)
+            return '(?&%s)%s' % (lookup.varname, lookup.optional)
+
+    if t[1] == '/': # chain of lookups
+        t[0] = ''.join(map(resolve, t[2]))
+    else: # single lookup
+        t[0] = resolve(t[1])
+    scope_check(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
 def p_lookup_chain(t):
@@ -568,6 +667,7 @@ def p_lookup_type(t):
                    | subroutine_call'''
     t[0] = t[1]
 
+
 def p_variable_lookup(t):
     '''variable_lookup : VARNAME
                        | UNDERSCORE
@@ -585,21 +685,62 @@ def p_subroutine_call(t):
     t[0] = SubroutineCall, t[2]
 
 
+def p_charclass(t):
+    '''charclass : CHARCLASS NEWLINE optional_block'''
+    chardefs, results, includes = t[1]
+    values, types = zip(*results)
+    current_scope = t.lexer.scopes[-1]
+
+    def lookup(varname):
+        try:
+            var = current_scope[varname]
+        except KeyError as e:
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
+        if not isinstance(var.value, CharClass):
+            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
+        else:
+            return var.value
+
+    def value_or_lookup(value):
+        if isinstance(value, VariableLookup):
+            value = lookup(value.varname)
+            if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
+                value = value[1:-1]
+            elif value == '-': # inside character class, dash needs to be escaped
+                value = r'\-'
+            elif len(value) == 2 and value[0] == '\\' and value[1] in '$.|?*+(){}': # remove unnecessary escape
+                value = value[1]
+        return value
+
+    if len(chardefs) == 1 and 'include' in types: # simple aliasing
+        t[0] = lookup(values[0].varname)
+    else:
+        result = ''.join(map(value_or_lookup, values))
+        if result == '\\-': # no need to escape dash outside of character class
+            result = '-'
+        elif len(result) == 1:
+            result = regex.escape(result, special_only=True)
+        elif len(chardefs) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
+            result = result.replace(r'^\p{', r'\P{', 1)
+        elif len(chardefs) > 1 or 'range' in types:
+            result = '[' + result + ']'
+        t[0] = CharClass(result, is_set_op='set_operation' in types)
+
+    scope_check(t, optional_block=t[3], referenced_vars=includes)
+
+
 def p_optional_block(t):
     '''optional_block : begin_block definitions end_block
                       |'''
     if len(t) > 1:
-        t[0] = definitions = t[2]
-        for i, var in enumerate(definitions[1:], start=1):
-            preceding_def = definitions[i-1]
-            if var.name in redefinables and preceding_def.name not in redefinables:
-                raise OprexSyntaxError(var.lineno, "'%s' must be defined at the beginning of a block" % var.name)
+        t[0] = t[2]
 
 
 def p_begin_block(t):
     '''begin_block : INDENT'''
     current_scope = t.lexer.scopes[-1]
     t.lexer.scopes.append(current_scope.copy())
+    t.lexer.real_lexer.begin('subblock')
 
 
 def p_end_block(t):
@@ -632,7 +773,7 @@ def p_definition(t):
         if declaration.capture:
             value = '(?P<%s>%s)' % (varname, value)
             t.lexer.captures.add(varname)
-        return Variable(varname, assignment.lineno, value, already_grouped=declaration.capture or declaration.atomic)
+        return Variable(varname, value, assignment.lineno, already_grouped=declaration.capture or declaration.atomic)
 
     def define(declaration):
         var = make_var(declaration, assignment.value)
@@ -642,14 +783,11 @@ def p_definition(t):
             for scope in scopes:
                 scope[var.name] = var
         else: # already defined
-            try: # redefine
-                redefinables[var.name](var.value, scopes)
-            except KeyError:
-                raise OprexSyntaxError(t.lineno(1),
-                    "'%s' is a built-in variable and cannot be redefined" % var.name
-                    if prev_def.is_builtin() else
-                        "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
-                            % (var.name, prev_def.lineno))
+            raise OprexSyntaxError(t.lineno(1),
+                "'%s' is a built-in variable and cannot be redefined" % var.name
+                if prev_def.is_builtin() else
+                    "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
+                        % (var.name, prev_def.lineno))
         return var
     t[0] = map(define, assignment.declarations)
 
@@ -680,50 +818,6 @@ def p_declaration(t):
     t[0] = VariableDeclaration(varname, capture, atomic)
 
 
-def p_charclass(t):
-    '''charclass : CHARCLASS NEWLINE optional_block'''
-    chardefs, results, includes = t[1]
-    values, types = zip(*results)
-    current_scope = t.lexer.scopes[-1]
-
-    def lookup(varname):
-        try:
-            var = current_scope[varname]
-        except KeyError as e:
-            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not defined" % e.message)
-        if not isinstance(var.value, CharClass):
-            raise OprexSyntaxError(t.lineno(0), "Cannot include '%s': not a character class" % varname)
-        else:
-            return var.value
-
-    def value_or_lookup(value):
-        if isinstance(value, VariableLookup):
-            value = lookup(value.varname)
-            if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
-                value = value[1:-1]
-            elif value == '-': # inside character class, dash needs to be escaped
-                value = r'\-'
-            elif len(value) == 2 and value[0] == '\\' and value[1] in '$.|?*+(){}': # remove unnecessary escape
-                value = value[1]
-        return value
-
-    if len(chardefs) == 1 and 'include' in types: # simple aliasing
-        result = lookup(values[0].varname)
-    else:
-        result = ''.join(map(value_or_lookup, values))
-        if result == '\\-': # no need to escape dash outside of character class
-            result = '-'
-        elif len(result) == 1:
-            result = regex.escape(result, special_only=True)
-        elif len(chardefs) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
-            result = result.replace(r'^\p{', r'\P{', 1)
-        elif len(chardefs) > 1 or 'range' in types:
-            result = '[' + result + ']'
-        result = CharClass(result, is_set_op='set_operation' in types)
-
-    t[0] = process_subblock(t, result, optional_block=t[3], referenced_vars=includes)
-
-
 def p_error(t):
     if t is None:
         raise OprexSyntaxError(None, 'Unexpected end of input')
@@ -743,62 +837,12 @@ def find_column(t):
     return t.lexpos - last_newline
 
 
-def process_subblock(t, result, optional_block, referenced_vars):
+def scope_check(t, optional_block, referenced_vars):
     if optional_block:
-        t.lexer.scopes.pop()
-        flags = ''
         for var in optional_block:
-            if var.name not in referenced_vars and var.name not in redefinables:
+            if var.name not in referenced_vars:
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-            if var.name in ('unicode',):
-                flag = var.name[0]
-                flags += flag if var.value else '-' + flag
-        if flags:
-            result = '(?%s:%s)' % (flags, result)
-    return result
-
-
-def apply_flags(expr, scope):
-    flags = {
-        'unicode' : 'u',
-    }
-    print [varname for varname in scope]
-    return expr
-
-
-def make_builtin_var(varname, value): # lineno=0 --> built-in
-    return Variable(varname, lineno=0, value=value, already_grouped=False) # we don't have any built-in grouped expr
-
-
-def make_builtin_charclass(varname, value):
-    return make_builtin_var(varname, CharClass(value, is_set_op=False)) # we don't have any built-in set-op charclass
-
-
-unicode_dependent_builtins = {
-    True : [
-        make_builtin_charclass('alpha', '\\p{Alphabetic}'),
-        make_builtin_charclass('upper', '\\p{Uppercase}'),
-        make_builtin_charclass('lower', '\\p{Lowercase}'),
-        make_builtin_charclass('alnum', '\\p{Alphanumeric}'),
-    ],
-    False : [
-        make_builtin_charclass('alpha', '[a-zA-Z]'),
-        make_builtin_charclass('upper', '[A-Z]'),
-        make_builtin_charclass('lower', '[a-z]'),
-        make_builtin_charclass('alnum', '[a-zA-Z0-9]'),
-    ],
-}
-
-
-def set_unicode_flag(status, scopes):
-    for var in unicode_dependent_builtins[status]:
-        for scope in scopes:
-            scope[var.name] = var
-
-
-redefinables = {
-    'unicode' : set_unicode_flag,
-}
+        t.lexer.scopes.pop()
 
 
 lexer0 = lex.lex()
@@ -806,22 +850,21 @@ def build_lexer(source_lines):
     lexer = lexer0.clone()
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.indent_stack = [0] # for keeping track of indentation levels
+    lexer.begin('preamble')
+    lexer.indent_stack = [0] # for keeping track of indentation depths
     lexer.captures = set()
     lexer.backreferences = set()
     lexer.subroutine_calls = set()
-    lexer.scopes = [{}]
-
-    set_unicode_flag(False, lexer.scopes)
-
-    def define(varname, fn, value):
-        lexer.scopes[0][varname] = fn(varname, value)
-
-    define('digit',    make_builtin_charclass, '\\d')
-    define('wordchar', make_builtin_charclass, '\\w')
-    define('.',        make_builtin_var,       '\\b')
-    define('_',        make_builtin_var,       '\\B')
-
+    lexer.scopes = [{
+        'alpha'    : Variable('alpha',    CharClass('[a-zA-Z]',    is_set_op=False), lineno=0, already_grouped=False),
+        'upper'    : Variable('upper',    CharClass('[A-Z]',       is_set_op=False), lineno=0, already_grouped=False),
+        'lower'    : Variable('lower',    CharClass('[a-z]',       is_set_op=False), lineno=0, already_grouped=False),
+        'alnum'    : Variable('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False), lineno=0, already_grouped=False),
+        'digit'    : Variable('digit',    CharClass('\\d',         is_set_op=False), lineno=0, already_grouped=False),
+        'wordchar' : Variable('wordchar', CharClass('\\w',         is_set_op=False), lineno=0, already_grouped=False),
+        '.'        : Variable('.',                  '\\b',                           lineno=0, already_grouped=False),
+        '_'        : Variable('_',                  '\\B',                           lineno=0, already_grouped=False),
+    }]
     return CustomLexer(lexer)
 
 
@@ -856,8 +899,7 @@ class CustomLexer:
 
 parser = yacc.yacc()
 def parse(lexer):
-    # always turn V1 and MULTILINE on
-    return '(?mV1)' + unicode(parser.parse(lexer=lexer, tracking=True))
+    return unicode(parser.parse(lexer=lexer, tracking=True))
 
 
 def check_captures(lexer):
