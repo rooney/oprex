@@ -113,18 +113,6 @@ class Quantification(unicode):
         quantification.quantifier = quantifier
         return quantification
 
-class Flagset(unicode):
-    __slots__ = ('turn_ons', 'turn_offs')
-    def __new__(cls, turn_ons, turn_offs):
-        if turn_offs:
-            flags = turn_ons + '-' + turn_offs
-        else:
-            flags = turn_ons
-        flagset = unicode.__new__(cls, flags)
-        flagset.turn_ons = turn_ons
-        flagset.turn_offs = turn_offs
-        return flagset
-
 class CharClass(unicode):
     __slots__ = ('is_set_op',)
     escapes = {
@@ -138,6 +126,41 @@ class CharClass(unicode):
         charclass = unicode.__new__(cls, value)
         charclass.is_set_op = is_set_op
         return charclass
+
+class Flagset(unicode):
+    __slots__ = ('turn_ons', 'turn_offs')
+    support = {}
+    scopeds = {
+        'fullcase'   : 'f',
+        'ignorecase' : 'i',
+        'multiline'  : 'm',
+        'dotall'     : 's',
+        'verbose'    : 'x',
+        'word'       : 'w',
+    }
+    globals = {
+        'ascii'        : 'a',
+        'bestmatch'    : 'b',
+        'enhancematch' : 'e',
+        'locale'       : 'L',
+        'reverse'      : 'r',
+        'unicode'      : 'u',
+        'version0'     : 'V0',
+        'version1'     : 'V1',
+    }
+    def __new__(cls, turn_ons, turn_offs):
+        if turn_offs:
+            flags = turn_ons + '-' + turn_offs
+        else:
+            flags = turn_ons
+        flagset = unicode.__new__(cls, flags)
+        flagset.turn_ons = turn_ons
+        flagset.turn_offs = turn_offs
+        return flagset
+        
+Flagset.support.update(Flagset.scopeds)
+Flagset.support.update(Flagset.globals)
+
 
 def t_charclass(t):
     ''':.*'''
@@ -255,40 +278,36 @@ def t_charclass(t):
 
 
 def t_preamble_FLAGSET(t):
-    r'\([- \ta-z]+\)(?=[ \t]*\n)'
+    r'\([- \t\w]+\)(?=[ \t]*\n)'
     return t_FLAGSET(t)
 
 
 def t_FLAGSET(t):
-    r'\([- \ta-z]+\)(?=[ \t]*[^ \t\n=:])'
+    r'\([- \t\w]+\)(?=[ \t]*[^ \t\n=:])'
     flags = t.value[1:-1] # exclude the surrounding ( )
     flags = flags.split(' ') # will contain empty strings in case of consecutive spaces, so...
     flags = filter(lambda flag: flag, flags) # ...exclude empty strings
-
-    def translate(flag):
-        return {
-            'unicode'    : 'u',
-            'ignorecase' : 'i',
-        }[flag]
-
     turn_ons = ''
     turn_offs = ''
     for flag in flags:
         try:
             if flag.startswith('-'):
-                turn_offs += translate(flag[1:])
+                turn_offs += Flagset.support[flag[1:]]
             else:
-                turn_ons += translate(flag)
+                turn_ons += Flagset.support[flag]
         except KeyError:
-            raise OprexSyntaxError(t.lineno, 'Invalid flag: ' + flag)
+            raise OprexSyntaxError(t.lineno, "Unknown flag '%s'. Supported flags are: %s" % (flag, ' '.join(sorted(Flagset.support.keys()))))
 
     flags = Flagset(turn_ons, turn_offs)
     try:
         test = '(?%s)' % flags
-        regex.compile('(?V1)' + test)
-    except regex.error as e:
+        if 'V' in flags:
+            regex.compile(test)
+        else:
+            regex.compile('(?V1)' + test)
+    except Exception as e:
         raise OprexSyntaxError(t.lineno, '%s compiles to %s which is rejected by the regex engine with error message: %s' % 
-            (t.value, test, e.message))
+            (t.value, test, str(e.message)))
     else:
         t.type = 'LPAREN'
         t.extra_tokens = [ExtraToken(t, 'FLAGSET', value=flags), ExtraToken(t, 'RPAREN')]
@@ -426,11 +445,19 @@ def p_oprex(t):
     else:
         flags = expression = ''
 
-    flags = '(?mV1%s)' % flags # always turn V1 and MULTILINE on
+    if 'm' not in flags: # turn on MULTILINE by default
+        flags = 'm' + flags
+    if 'w' not in flags: # turn on WORD by default
+        flags = 'w'+ flags
+
+    flags = '(?%s)' % flags
+    if 'V' not in flags: # use V1 by default, but put it in its own group, at the front, so we can easily ...
+        flags = '(?V1)' + flags # trim it out of the result if unwanted (e.g. if using re rather than regex)
+
     try:
         regex.compile(flags)
-    except regex.error as e:
-        raise OprexSyntaxError(t.lineno(2),  'Bad starting flags: ' + e.message)
+    except Exception as e:
+        raise OprexSyntaxError(t.lineno(2),  'Starting flags rejected by the regex engine with error message: ' + str(e.message))
     t[0] = flags + expression
 
 
@@ -602,11 +629,9 @@ def p_flagged_expr(t):
     '''flagged_expr : LPAREN FLAGSET RPAREN WHITESPACE expression'''
     flags = t[2]
     expression = t[5]
-    for flag in flags.turn_ons:
-        if flag in 'u':
-            raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not inline." % {
-                'u' : 'unicode',
-            }[flag])
+    for flag_name, global_flag in Flagset.globals.iteritems():
+        if global_flag in flags.turn_ons:
+            raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not scoped." % flag_name)
     t[0] = '(?%s:%s)' % (flags, expression)
 
 

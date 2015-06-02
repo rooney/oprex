@@ -4,4 +4,4 @@
 ##     non_ascii_alphas = 1.. of: /Alphabetic not +alpha
 ##     ualphas = (set unicode) of 1.. of alpha
 
-       (ignorecase) .'yamaha'
+       (locale) alpha

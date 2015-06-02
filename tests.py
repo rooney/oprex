@@ -1083,28 +1083,28 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             (pirate) 'carribean'
         ''',
-        expect_error='Line 2: Invalid flag: pirate')
+        expect_error="Line 2: Unknown flag 'pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
         self.given(u'''
             (-pirate) 'carribean'
         ''',
-        expect_error='Line 2: Invalid flag: -pirate')
+        expect_error="Line 2: Unknown flag '-pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
         self.given(u'''
             (--ignorecase) 'carribean'
         ''',
-        expect_error='Line 2: Invalid flag: --ignorecase')
+        expect_error="Line 2: Unknown flag '--ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
         self.given(u'''
             (unicode-ignorecase)
             alpha
         ''',
-        expect_error='Line 2: Invalid flag: unicode-ignorecase')
+        expect_error="Line 2: Unknown flag 'unicode-ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
 
         self.given(u'''
             (unicode) alpha
         ''',
-        expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not inline.")
+        expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not scoped.")
 
         self.given(u'''
             (ignorecase)alpha
@@ -1151,20 +1151,42 @@ class TestErrorHandling(unittest.TestCase):
             (ignorecase)
             (-ignorecase)
         ''',
-        expect_error='Line 2: Bad starting flags: bad inline flags: flag turned on and off at position 8')
+        expect_error='Line 2: Starting flags rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 12')
  
         self.given(u'''
             (unicode ignorecase)
             (-ignorecase)
         ''',
-        expect_error='Line 2: Bad starting flags: bad inline flags: flag turned on and off at position 9')
+        expect_error='Line 2: Starting flags rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 13')
+
+        self.given(u'''
+            (ascii unicode)
+        ''',
+        expect_error='Line 2: (ascii unicode) compiles to (?au) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+
+        self.given(u'''
+            (ascii)
+            (locale)
+        ''',
+        expect_error='Line 2: Starting flags rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+
+        self.given(u'''
+            (version0 version1)
+        ''',
+        expect_error='Line 2: (version0 version1) compiles to (?V0V1) which is rejected by the regex engine with error message: 8448')
+
+        self.given(u'''
+            (version1)
+            (version0)
+        ''',
+        expect_error='Line 2: Starting flags rejected by the regex engine with error message: 8448')
 
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
-        alwayson_flags = '(?mV1)'
+        default_flags = '(?V1)(?wm)'
         regex_source = oprex(oprex_source)
-        regex_source = regex_source.replace(alwayson_flags, '', 1)
+        regex_source = regex_source.replace(default_flags, '', 1)
         if regex_source != expect_regex:
             msg = 'For input: %s\n---------------------------- Got Output: -----------------------------\n%s\n\n------------------------- Expected Output: ---------------------------\n%s'
             raise AssertionError(msg % (
@@ -2197,34 +2219,54 @@ class TestOutput(unittest.TestCase):
         self.given('''
             (unicode)
         ''',
-        expect_regex='(?mV1u)')
+        expect_regex='(?V1)(?wmu)')
+
+        self.given('''
+            (ascii version0)
+        ''',
+        expect_regex='(?wmaV0)')
+
+        self.given('''
+            (bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse verbose version1 word)
+        ''',
+        expect_regex='(?bsefiLmrxV1w)')
+
+        self.given('''
+            (word)
+        ''',
+        expect_regex='(?V1)(?mw)')
+
+        self.given('''
+            (-multiline)
+        ''',
+        expect_regex='(?V1)(?w-m)')
 
         self.given('''
             (ignorecase)
         ''',
-        expect_regex='(?mV1i)')
+        expect_regex='(?V1)(?wmi)')
 
         self.given('''
             (-ignorecase)
         ''',
-        expect_regex='(?mV1-i)')
+        expect_regex='(?V1)(?wm-i)')
 
         self.given('''
             (unicode ignorecase)
         ''',
-        expect_regex='(?mV1ui)')
+        expect_regex='(?V1)(?wmui)')
 
         self.given('''
             (unicode)
             (ignorecase)
         ''',
-        expect_regex='(?mV1ui)')
+        expect_regex='(?V1)(?wmui)')
 
         self.given('''
             (unicode ignorecase)
             (-ignorecase) lower
         ''',
-        expect_regex='(?mV1ui)(?-i:\p{Lowercase})')
+        expect_regex='(?V1)(?wmui)(?-i:\p{Lowercase})')
 
         self.given('''
             (ignorecase) .'giga'_
