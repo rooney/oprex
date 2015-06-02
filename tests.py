@@ -729,7 +729,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             /plus/minus/pmz/
                 plus: +
-                minus = '-' ## gotcha: exactly-same output with "minus: -" but not includable 
+                minus = '-' -- gotcha: exactly-same output with "minus: -" but not includable 
                 pmz: +plus +minus z
         ''',
         expect_error="Line 5: Cannot include 'minus': not a character class")
@@ -942,35 +942,55 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_commenting_error(self):
         self.given(u'''
-            # this comment is missing another # prefix
+            - this comment is missing another - prefix
         ''',
-        expect_error='Line 2: Syntax error at or near: # this comment is missing another # prefix')
+        expect_error='''Line 2: Unexpected MINUS
+            - this comment is missing another - prefix
+            ^''')
 
         self.given(u'''
-            1 of vowel # this comment is missing another # prefix
+            1 of vowel - this comment is missing another - prefix
                 vowel: a i u e o 
         ''',
         expect_error='''Line 2: Unexpected WHITESPACE
-            1 of vowel # this comment is missing another # prefix
+            1 of vowel - this comment is missing another - prefix
                       ^''')
 
         self.given(u'''
-            1 of vowel# this comment is missing another # prefix
+            1 of vowel- this comment is missing another - prefix
                 vowel: a i u e o 
         ''',
-        expect_error='Line 2: Syntax error at or near: # this comment is missing another # prefix')
+        expect_error='''Line 2: Unexpected MINUS
+            1 of vowel- this comment is missing another - prefix
+                      ^''')
 
         self.given(u'''
             1 of vowel
-                vowel: a i u e o # this comment is missing another # prefix
+                vowel: a i u e o - this comment is missing another - prefix
         ''',
         expect_error='Line 3: Not a valid character class keyword: this')
 
         self.given(u'''
             1 of vowel
-                vowel: a i u e o# this comment is missing another # prefix
+                vowel: a i u e o- this comment is missing another - prefix
         ''',
-        expect_error='Line 3: Not a valid character class keyword: o#')
+        expect_error='Line 3: Not a valid character class keyword: o-')
+
+        self.given('''
+            /comment/-- whitespace required before the "--"
+                comment = 'first'
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            /comment/-- whitespace required before the "--"
+                     ^''')
+
+        self.given('''
+            /comment/--
+                comment = 'first'
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            /comment/--
+                     ^''')
 
 
     def test_invalid_reference(self):
@@ -2075,61 +2095,55 @@ class TestOutput(unittest.TestCase):
 
     def test_commenting(self):
         self.given('''
-            ## comments should be ignored
+            -- comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
-            ## comments should be ignored
-            ## comments should be ignored
+            -- comments should be ignored
+            -- comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
-            ##
+            --
         ''',
         expect_regex='')
 
         self.given('''
-            ###
+            ---
         ''',
         expect_regex='')
 
         self.given('''
-            ##
-            ##
+            --
+            --
         ''',
         expect_regex='')
 
         self.given('''
-            /comment/##should be ignored
+            /comment/ -- should be ignored
                 comment = 'first'
         ''',
         expect_regex='first')
 
         self.given('''
-            /comment/ ## should be ignored
+            /comment/ --should be ignored
                 comment = 'first'
         ''',
         expect_regex='first')
 
         self.given('''
-            /comment/##
+            /comment/ --
                 comment = 'first'
         ''',
         expect_regex='first')
 
         self.given('''
-            /comment/ ##
-                comment = 'first'
-        ''',
-        expect_regex='first')
-
-        self.given('''
-            /social_symbol/literally/literal/ ##comments should be ignored
-                social_symbol: @ #        ## the social media symbols
-                literally = 'literally'## string literal
-                literal = literally##alias
+            /social_symbol/literally/literal/ --comments should be ignored
+                social_symbol: @ #        -- the social media symbols
+                literally = 'literally' -- string literal
+                literal = literally --alias
         ''',
         expect_regex='[@#]literallyliterally')
 

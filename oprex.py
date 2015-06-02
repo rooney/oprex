@@ -164,7 +164,7 @@ Flagset.support.update(Flagset.globals)
 
 def t_charclass(t):
     ''':.*'''
-    value = t.value.split('##')[0] # parts after "##" are comments, ignore them 
+    value = t.value.split('--')[0] # parts after "--" are comments, ignore them 
     chardefs = filter(lambda chardef: chardef != '', value.split(' '))
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
@@ -348,7 +348,7 @@ def t_OF(t):
 
 
 def t_linemark(t):
-    r'(([ \t\n])|([#][#].*))+(\*\)[ \t]*)*' # comments are also captured here
+    r'(([ \t]+--.*\n)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if num_newlines == 0:
