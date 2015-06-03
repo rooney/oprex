@@ -348,7 +348,7 @@ def t_OF(t):
 
 
 def t_linemark(t):
-    r'(([ \t]+--.*\n)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
+    r'(?m)(((^|[ \t]+)--.*\n)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if num_newlines == 0:

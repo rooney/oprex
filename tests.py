@@ -2100,13 +2100,44 @@ class TestOutput(unittest.TestCase):
         expect_regex='')
 
         self.given('''
+-- comments should be ignored
+        ''',
+        expect_regex='')
+
+        self.given('''
             -- comments should be ignored
             -- comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
+-- comments should be ignored
+-- comments should be ignored
+        ''',
+        expect_regex='')
+
+        self.given('''
+            -- comments should be ignored
+-- comments should be ignored
+            -- comments should be ignored
+        ''',
+        expect_regex='')
+
+        self.given('''
+            -- comments should be ignored
+-- comments should be ignored
+            -- comments should be ignored
+-- comments should be ignored
+        ''',
+        expect_regex='')
+
+        self.given('''
             --
+        ''',
+        expect_regex='')
+
+        self.given('''
+--
         ''',
         expect_regex='')
 
@@ -2118,6 +2149,27 @@ class TestOutput(unittest.TestCase):
         self.given('''
             --
             --
+        ''',
+        expect_regex='')
+
+        self.given('''
+--
+--
+        ''',
+        expect_regex='')
+
+        self.given('''
+            --
+--
+            --
+        ''',
+        expect_regex='')
+
+        self.given('''
+            --
+--
+            --
+--
         ''',
         expect_regex='')
 
@@ -2140,10 +2192,12 @@ class TestOutput(unittest.TestCase):
         expect_regex='first')
 
         self.given('''
+-- begin
             /social_symbol/literally/literal/ --comments should be ignored
                 social_symbol: @ #        -- the social media symbols
                 literally = 'literally' -- string literal
                 literal = literally --alias
+--end
         ''',
         expect_regex='[@#]literallyliterally')
 

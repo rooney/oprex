@@ -1,7 +1,9 @@
 
-## /alphas/ualphas/non_ascii_alphas?/
-##     alphas = 1.. of alpha
-##     non_ascii_alphas = 1.. of: /Alphabetic not +alpha
-##     ualphas = (set unicode) of 1.. of alpha
+-- /alphas/ualphas/non_ascii_alphas?/
+--     alphas = 1.. of alpha
+--     non_ascii_alphas = 1.. of: /Alphabetic not +alpha
+--     ualphas = (set unicode) of 1.. of alpha
 
-       (locale) alpha
+       (-word) -- turn off word flag
+       alpha --test commenting
+-- end
