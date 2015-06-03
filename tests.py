@@ -2106,29 +2106,41 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             -- comments should be ignored
-            -- comments should be ignored
+            --comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
 -- comments should be ignored
--- comments should be ignored
+--comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
-            -- comments should be ignored
--- comments should be ignored
+            --comments should be ignored
+--comments should be ignored
             -- comments should be ignored
         ''',
         expect_regex='')
 
         self.given('''
-            -- comments should be ignored
+            --comments should be ignored
 -- comments should be ignored
             -- comments should be ignored
--- comments should be ignored
+--comments should be ignored
         ''',
+        expect_regex='')
+
+        self.given('''-- first line containing comments, and only comments, is OK
+        -- so is last line''',
+        expect_regex='')
+
+        self.given('''--
+--      ''',
+        expect_regex='')
+
+        self.given(''' --
+        --''',
         expect_regex='')
 
         self.given('''

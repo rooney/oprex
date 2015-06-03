@@ -26,9 +26,9 @@ def sanitize(source_code):
     # oprex requires the source code to have leading and trailing blank lines to make
     # "proper look of indentation" when it is a triple-quoted string
     source_lines = regex.split('\r?\n', source_code)
-    if source_lines[0].strip():
+    if source_lines[0].split('--')[0].strip():
         raise OprexSyntaxError(1, 'First line must be blank, not: ' + source_lines[0])
-    if source_lines[-1].strip():
+    if source_lines[-1].split('--')[0].strip():
         numlines = len(source_lines)
         raise OprexSyntaxError(numlines, 'Last line must be blank, not: ' + source_lines[-1])
     return source_lines
@@ -348,7 +348,7 @@ def t_OF(t):
 
 
 def t_linemark(t):
-    r'(?m)(((^|[ \t]+)--.*\n)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
+    r'(?m)(((^|[ \t]+)--.*)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
     if num_newlines == 0:
