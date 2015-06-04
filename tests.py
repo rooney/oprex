@@ -971,7 +971,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             ? <<- of alpha
         ''',
-        expect_error='''Line 2: Unexpected BACKTRACK
+        expect_error='''Line 2: Unexpected LT
             ? <<- of alpha
               ^''')
 

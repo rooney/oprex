@@ -45,7 +45,6 @@ reserved = {
 }
 tokens = [
     'AMPERSAND',
-    'BACKTRACK',
     'CHARCLASS',
     'COLON',
     'DEDENT',
@@ -53,9 +52,11 @@ tokens = [
     'EQUALSIGN',
     'FLAGSET',
     'GLOBALMARK',
+    'GT',
     'INDENT',
     'NUMBER',
     'LPAREN',
+    'LT',
     'MINUS',
     'NEWLINE',
     'OF',
@@ -70,9 +71,10 @@ tokens = [
 
 GLOBALMARK   = '*)'
 t_AMPERSAND  = r'\&'
-t_BACKTRACK  = r'\<\<'
 t_DOT        = r'\.'
+t_GT         = r'\>'
 t_LPAREN     = r'\('
+t_LT         = r'\<'
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
 t_PLUS       = r'\+'
@@ -556,16 +558,16 @@ def p_repeat_N_times(t):
 
 def p_repeat_range(t):
     '''repeat_range : numrange of
-                    | numrange WHITESPACE BACKTRACK MINUS of
-                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT of
-                    | NUMBER   WHITESPACE BACKTRACK PLUS  DOT DOT NUMBER of'''
+                    | numrange backtrack MINUS of
+                    | NUMBER   backtrack PLUS  DOT DOT of
+                    | NUMBER   backtrack PLUS  DOT DOT NUMBER of'''
     possessive = len(t) == 3 # the first form above
-    greedy     = len(t) == 6 # the second form
+    greedy     = len(t) == 5 # the second form
     lazy       = not possessive and not greedy # third & fourth forms
 
     if lazy:
         min = t[1]
-        max = t[7] if len(t) == 9 else ''
+        max = t[6] if len(t) == 8 else ''
     else:
         min, max = t[1]
 
@@ -578,6 +580,10 @@ def p_repeat_range(t):
         base='{%s,%s}' % ('' if min == '0' else min, max),
         modifier='+' if possessive else '?' if lazy else ''
     )
+
+
+def p_backtrack(t):
+    '''backtrack : WHITESPACE LT LT'''
 
 
 def p_of(t):
