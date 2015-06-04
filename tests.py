@@ -790,6 +790,42 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_invalid_quantifier(self):
         self.given(u'''
+            3 of
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of
+              ^''')
+
+        self.given(u'''
+            3 of          
+                of = 'trailing spaces above after the "of"'
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of          
+              ^''')
+
+        self.given(u'''
+            3 of -- 3 of what?
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of -- 3 of what?
+              ^''')
+
+        self.given(u'''
+            3 of-- 3 of what?
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of-- 3 of what?
+              ^''')
+
+        self.given(u'''
+            3 of of--
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            3 of of--
+                   ^''')
+
+        self.given(u'''
             3 alpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
@@ -801,7 +837,7 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 ofalpha
-                ^''')
+              ^''')
 
         self.given(u'''
             3of alpha
@@ -822,7 +858,7 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 office alpha
-                ^''')
+              ^''')
 
         self.given(u'''
             3. of alpha
@@ -2365,6 +2401,37 @@ class TestOutput(unittest.TestCase):
                 hex = (ignorecase) 1 of: +digit a..f
         ''',
         expect_regex=r'(?:(?i:[\da-f]))?+')
+
+
+    def test_variable_named_of(self):
+        self.given('''
+            2 of of -- a variable named "of"
+                of = 'of'
+        ''',
+        expect_regex=r'(?:of){2}')
+
+        self.given('''
+            1 of 2 of of               
+                of = 'of'
+        ''',
+        expect_regex=r'(?:of){2}')
+
+        self.given('''
+            1 of 2 of 3 of of
+                of: o f
+        ''',
+        expect_regex=r'[of]{6}')
+
+        self.given('''
+            2  of  /digit/of/digit/
+                of: o f
+        ''',
+        expect_regex=r'(?:\d[of]\d){2}')
+
+        self.given('''
+            1 of 2 of '3 of alpha'
+        ''',
+        expect_regex=r'(?:3 of alpha){2}')
 
 
 class TestMatches(unittest.TestCase):

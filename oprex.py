@@ -341,7 +341,7 @@ def t_subblock_EQUALSIGN(t):
 
 
 def t_OF(t):
-    r'[ \t]+of'
+    r'[ \t]+of(?=[ \t:])(?![ \t]+(--|\n))' # without this, WHITESPACE VARNAME will be produced instead, requiring making "of" a reserved keyword
     t.type = 'WHITESPACE'
     t.extra_tokens = [ExtraToken(t, 'OF', lexpos=t.lexpos + t.value.index('of'))]
     return t
@@ -580,6 +580,10 @@ def p_repeat_range(t):
     )
 
 
+def p_of(t):
+    '''of : WHITESPACE OF'''
+
+
 def p_numrange(t):
     '''numrange :        DOT DOT
                 | NUMBER DOT DOT
@@ -595,10 +599,6 @@ def p_numrange(t):
 def p_optionalize(t):
     '''optionalize : QUESTMARK of'''
     t[0] = Quantifier(base='?', modifier='+')
-
-
-def p_of(t):
-    '''of : WHITESPACE OF'''
 
 
 def quantify(expr, quantifier, already_grouped=False):

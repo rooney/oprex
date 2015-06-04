@@ -31,12 +31,12 @@ Rule 25    repeat_range -> numrange of
 Rule 26    repeat_range -> numrange WHITESPACE BACKTRACK MINUS of
 Rule 27    repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
 Rule 28    repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-Rule 29    numrange -> DOT DOT
-Rule 30    numrange -> NUMBER DOT DOT
-Rule 31    numrange -> DOT DOT NUMBER
-Rule 32    numrange -> NUMBER DOT DOT NUMBER
-Rule 33    optionalize -> QUESTMARK of
-Rule 34    of -> WHITESPACE OF
+Rule 29    of -> WHITESPACE OF
+Rule 30    numrange -> DOT DOT
+Rule 31    numrange -> NUMBER DOT DOT
+Rule 32    numrange -> DOT DOT NUMBER
+Rule 33    numrange -> NUMBER DOT DOT NUMBER
+Rule 34    optionalize -> QUESTMARK of
 Rule 35    flagged_expr -> LPAREN FLAGSET RPAREN WHITESPACE expression
 Rule 36    lookup_expr -> lookup NEWLINE optional_block
 Rule 37    lookup_expr -> SLASH lookup_chain NEWLINE optional_block
@@ -76,7 +76,7 @@ BACKTRACK            : 26 27 28
 CHARCLASS            : 50
 COLON                : 20 61
 DEDENT               : 5 54
-DOT                  : 17 27 27 28 28 29 29 30 30 31 31 32 32 47 63 65
+DOT                  : 17 27 27 28 28 30 30 31 31 32 32 33 33 47 63 65
 EQUALSIGN            : 59 60
 FLAGSET              : 9 35
 GLOBALMARK           : 58
@@ -84,16 +84,16 @@ INDENT               : 5 53
 LPAREN               : 9 35 48 64 65
 MINUS                : 26
 NEWLINE              : 3 4 5 9 14 36 37 50
-NUMBER               : 24 27 28 28 30 31 32 32
-OF                   : 34
+NUMBER               : 24 27 28 28 31 32 33 33
+OF                   : 29
 PLUS                 : 27 28
-QUESTMARK            : 33 41
+QUESTMARK            : 34 41
 RPAREN               : 9 35 48 64 65
 SLASH                : 37 38 39
 STRING               : 15
 UNDERSCORE           : 18 46
 VARNAME              : 45 48 49 62 63 64 65
-WHITESPACE           : 2 19 26 27 28 34 35
+WHITESPACE           : 2 19 26 27 28 29 35
 error                : 
 
 Nonterminals, with rules where they appear
@@ -116,7 +116,7 @@ lookup_expr          : 11
 lookup_type          : 40 41
 main_expression      : 4 5 6
 numrange             : 25 26
-of                   : 24 25 26 27 28 33
+of                   : 24 25 26 27 28 34
 oprex                : 0
 optional_block       : 14 36 37 50
 optionalize          : 23
@@ -195,16 +195,16 @@ state 3
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     $end            reduce using rule 3 (oprex -> NEWLINE .)
     INDENT          shift and go to state 26
@@ -320,8 +320,8 @@ state 12
 
     (17) boundary -> DOT .
     (47) variable_lookup -> DOT .
-    (29) numrange -> DOT . DOT
-    (31) numrange -> DOT . DOT NUMBER
+    (30) numrange -> DOT . DOT
+    (32) numrange -> DOT . DOT NUMBER
 
     STRING          reduce using rule 17 (boundary -> DOT .)
     QUESTMARK       reduce using rule 47 (variable_lookup -> DOT .)
@@ -370,9 +370,9 @@ state 18
     (24) repeat_N_times -> NUMBER . of
     (27) repeat_range -> NUMBER . WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> NUMBER . WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (30) numrange -> NUMBER . DOT DOT
-    (32) numrange -> NUMBER . DOT DOT NUMBER
-    (34) of -> . WHITESPACE OF
+    (31) numrange -> NUMBER . DOT DOT
+    (33) numrange -> NUMBER . DOT DOT NUMBER
+    (29) of -> . WHITESPACE OF
 
     WHITESPACE      shift and go to state 38
     DOT             shift and go to state 40
@@ -414,16 +414,16 @@ state 19
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     DEDENT          reduce using rule 7 (main_expression -> global_flagging .)
     $end            reduce using rule 7 (main_expression -> global_flagging .)
@@ -498,7 +498,7 @@ state 22
 
     (25) repeat_range -> numrange . of
     (26) repeat_range -> numrange . WHITESPACE BACKTRACK MINUS of
-    (34) of -> . WHITESPACE OF
+    (29) of -> . WHITESPACE OF
 
     WHITESPACE      shift and go to state 48
 
@@ -515,8 +515,8 @@ state 23
 
 state 24
 
-    (33) optionalize -> QUESTMARK . of
-    (34) of -> . WHITESPACE OF
+    (34) optionalize -> QUESTMARK . of
+    (29) of -> . WHITESPACE OF
 
     WHITESPACE      shift and go to state 51
 
@@ -568,16 +568,16 @@ state 26
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     LPAREN          shift and go to state 6
     SLASH           shift and go to state 20
@@ -672,10 +672,10 @@ state 33
 
 state 34
 
-    (29) numrange -> DOT DOT .
-    (31) numrange -> DOT DOT . NUMBER
+    (30) numrange -> DOT DOT .
+    (32) numrange -> DOT DOT . NUMBER
 
-    WHITESPACE      reduce using rule 29 (numrange -> DOT DOT .)
+    WHITESPACE      reduce using rule 30 (numrange -> DOT DOT .)
     NUMBER          shift and go to state 57
 
 
@@ -732,7 +732,7 @@ state 38
 
     (27) repeat_range -> NUMBER WHITESPACE . BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> NUMBER WHITESPACE . BACKTRACK PLUS DOT DOT NUMBER of
-    (34) of -> WHITESPACE . OF
+    (29) of -> WHITESPACE . OF
 
     BACKTRACK       shift and go to state 65
     OF              shift and go to state 66
@@ -748,8 +748,8 @@ state 39
 
 state 40
 
-    (30) numrange -> NUMBER DOT . DOT
-    (32) numrange -> NUMBER DOT . DOT NUMBER
+    (31) numrange -> NUMBER DOT . DOT
+    (33) numrange -> NUMBER DOT . DOT NUMBER
 
     DOT             shift and go to state 67
 
@@ -832,16 +832,16 @@ state 47
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     SLASH           shift and go to state 20
     LPAREN          shift and go to state 72
@@ -874,7 +874,7 @@ state 47
 state 48
 
     (26) repeat_range -> numrange WHITESPACE . BACKTRACK MINUS of
-    (34) of -> WHITESPACE . OF
+    (29) of -> WHITESPACE . OF
 
     BACKTRACK       shift and go to state 74
     OF              shift and go to state 66
@@ -890,15 +890,15 @@ state 49
 
 state 50
 
-    (33) optionalize -> QUESTMARK of .
+    (34) optionalize -> QUESTMARK of .
 
-    WHITESPACE      reduce using rule 33 (optionalize -> QUESTMARK of .)
-    COLON           reduce using rule 33 (optionalize -> QUESTMARK of .)
+    WHITESPACE      reduce using rule 34 (optionalize -> QUESTMARK of .)
+    COLON           reduce using rule 34 (optionalize -> QUESTMARK of .)
 
 
 state 51
 
-    (34) of -> WHITESPACE . OF
+    (29) of -> WHITESPACE . OF
 
     OF              shift and go to state 66
 
@@ -947,9 +947,9 @@ state 56
 
 state 57
 
-    (31) numrange -> DOT DOT NUMBER .
+    (32) numrange -> DOT DOT NUMBER .
 
-    WHITESPACE      reduce using rule 31 (numrange -> DOT DOT NUMBER .)
+    WHITESPACE      reduce using rule 32 (numrange -> DOT DOT NUMBER .)
 
 
 state 58
@@ -1042,18 +1042,18 @@ state 65
 
 state 66
 
-    (34) of -> WHITESPACE OF .
+    (29) of -> WHITESPACE OF .
 
-    WHITESPACE      reduce using rule 34 (of -> WHITESPACE OF .)
-    COLON           reduce using rule 34 (of -> WHITESPACE OF .)
+    WHITESPACE      reduce using rule 29 (of -> WHITESPACE OF .)
+    COLON           reduce using rule 29 (of -> WHITESPACE OF .)
 
 
 state 67
 
-    (30) numrange -> NUMBER DOT DOT .
-    (32) numrange -> NUMBER DOT DOT . NUMBER
+    (31) numrange -> NUMBER DOT DOT .
+    (33) numrange -> NUMBER DOT DOT . NUMBER
 
-    WHITESPACE      reduce using rule 30 (numrange -> NUMBER DOT DOT .)
+    WHITESPACE      reduce using rule 31 (numrange -> NUMBER DOT DOT .)
     NUMBER          shift and go to state 87
 
 
@@ -1187,16 +1187,16 @@ state 76
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     SLASH           shift and go to state 20
     LPAREN          shift and go to state 72
@@ -1352,9 +1352,9 @@ state 86
 
 state 87
 
-    (32) numrange -> NUMBER DOT DOT NUMBER .
+    (33) numrange -> NUMBER DOT DOT NUMBER .
 
-    WHITESPACE      reduce using rule 32 (numrange -> NUMBER DOT DOT NUMBER .)
+    WHITESPACE      reduce using rule 33 (numrange -> NUMBER DOT DOT NUMBER .)
 
 
 state 88
@@ -1404,7 +1404,7 @@ state 91
 state 92
 
     (26) repeat_range -> numrange WHITESPACE BACKTRACK MINUS . of
-    (34) of -> . WHITESPACE OF
+    (29) of -> . WHITESPACE OF
 
     WHITESPACE      shift and go to state 51
 
@@ -1494,16 +1494,16 @@ state 98
     (26) repeat_range -> . numrange WHITESPACE BACKTRACK MINUS of
     (27) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT of
     (28) repeat_range -> . NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER of
-    (33) optionalize -> . QUESTMARK of
+    (34) optionalize -> . QUESTMARK of
     (45) variable_lookup -> . VARNAME
     (46) variable_lookup -> . UNDERSCORE
     (47) variable_lookup -> . DOT
     (48) backreference -> . VARNAME LPAREN RPAREN
     (49) subroutine_call -> . AMPERSAND VARNAME
-    (29) numrange -> . DOT DOT
-    (30) numrange -> . NUMBER DOT DOT
-    (31) numrange -> . DOT DOT NUMBER
-    (32) numrange -> . NUMBER DOT DOT NUMBER
+    (30) numrange -> . DOT DOT
+    (31) numrange -> . NUMBER DOT DOT
+    (32) numrange -> . DOT DOT NUMBER
+    (33) numrange -> . NUMBER DOT DOT NUMBER
 
     VARNAME         shift and go to state 110
     DOT             shift and go to state 111
@@ -1656,8 +1656,8 @@ state 111
     (65) declaration -> DOT . LPAREN VARNAME RPAREN
     (17) boundary -> DOT .
     (47) variable_lookup -> DOT .
-    (29) numrange -> DOT . DOT
-    (31) numrange -> DOT . DOT NUMBER
+    (30) numrange -> DOT . DOT
+    (32) numrange -> DOT . DOT NUMBER
 
     VARNAME         shift and go to state 101
     LPAREN          shift and go to state 102
@@ -1700,7 +1700,7 @@ state 115
 
     (27) repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT . of
     (28) repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT . NUMBER of
-    (34) of -> . WHITESPACE OF
+    (29) of -> . WHITESPACE OF
 
     NUMBER          shift and go to state 118
     WHITESPACE      shift and go to state 51
@@ -1726,7 +1726,7 @@ state 117
 state 118
 
     (28) repeat_range -> NUMBER WHITESPACE BACKTRACK PLUS DOT DOT NUMBER . of
-    (34) of -> . WHITESPACE OF
+    (29) of -> . WHITESPACE OF
 
     WHITESPACE      shift and go to state 51
 
