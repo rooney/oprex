@@ -839,11 +839,11 @@ def p_assignment(t):
 
 
 def p_declaration(t):
-    '''declaration :            VARNAME
-                   | DOT        VARNAME
-                   |     LPAREN VARNAME RPAREN
-                   | DOT LPAREN VARNAME RPAREN'''
-    capture = t[len(t)-1] == ')'
+    '''declaration :        VARNAME
+                   | DOT    VARNAME
+                   |     LT VARNAME GT
+                   | DOT LT VARNAME GT'''
+    capture = t[len(t)-1] == '>'
     varname = t[len(t)-2] if capture else t[len(t)-1]
     atomic  = t[1] == '.'
     t[0] = VariableDeclaration(varname, capture, atomic)

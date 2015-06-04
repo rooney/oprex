@@ -1606,7 +1606,7 @@ class TestOutput(unittest.TestCase):
                 p = '%'
                 s = 's'
                 pXs = /p/X/s/
-                    (X) = 'X'
+                    <X> = 'X'
         ''',
         expect_regex='%%(?P<X>X)ss')
 
@@ -1614,8 +1614,8 @@ class TestOutput(unittest.TestCase):
             /p/pXs/s/
                 p = '%'
                 s = 's'
-                (pXs) = /p/X/s/
-                    (X) = 'X'
+                <pXs> = /p/X/s/
+                    <X> = 'X'
         ''',
         expect_regex='%(?P<pXs>%(?P<X>X)s)s')
 
@@ -1631,7 +1631,7 @@ class TestOutput(unittest.TestCase):
                 message = /greeting/name/
                     greeting = 'Hello%'
                     name = /salutation/first/last/
-                        (salutation) = 'Sir/Madam'
+                        <salutation> = 'Sir/Madam'
                         first = 's%(first)s'
                         last  = '%(last)s'
         ''',
@@ -1747,30 +1747,30 @@ class TestOutput(unittest.TestCase):
     def test_captures_output(self):
         self.given('''
             /extra/extra?/
-                (extra) = 'icing'
+                <extra> = 'icing'
         ''',
         expect_regex='(?P<extra>icing)(?P<extra>icing)?+')
 
         self.given('''
             /defcon/level/
                 defcon = 'DEFCON'
-                (level): 1 2 3 4 5
+                <level>: 1 2 3 4 5
         ''',
         expect_regex=r'DEFCON(?P<level>[12345])')
 
         self.given('''
             captured?
-                (captured) = /L/R/
-                    (L) = 'Left'
-                    (R) = 'Right'
+                <captured> = /L/R/
+                    <L> = 'Left'
+                    <R> = 'Right'
         ''',
         expect_regex=r'(?P<captured>(?P<L>Left)(?P<R>Right))?+')
 
         self.given('''
             uncaptured?
                 uncaptured = /L?/R/
-                    (L) = 'Left'
-                    (R) = 'Right'
+                    <L> = 'Left'
+                    <R> = 'Right'
         ''',
         expect_regex=r'(?:(?P<L>Left)?+(?P<R>Right))?+')
 
@@ -1779,9 +1779,9 @@ class TestOutput(unittest.TestCase):
         self.given('''
             /bomb?/clock/mass/number?/
                 .bomb = 'bomb'
-                .(clock) = 'clock'
+                .<clock> = 'clock'
                 .mass: M A S s
-                .(number): n u m b e r
+                .<number>: n u m b e r
         ''',
         expect_regex=r'(?>bomb)?+(?P<clock>(?>clock))(?>[MASs])(?P<number>(?>[number]))?+')
 
@@ -1795,7 +1795,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             /yadda/ditto/
-                .(yadda) = 'yadda'
+                .<yadda> = 'yadda'
                 ditto = yadda
         ''',
         expect_regex=r'(?P<yadda>(?>yadda))(?P<yadda>(?>yadda))')
@@ -2253,31 +2253,31 @@ class TestOutput(unittest.TestCase):
     def test_reference_output(self):
         self.given(u'''
             /bang/bang()/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_regex='(?P<bang>[bang!])(?P=bang)')
         
         self.given(u'''
             /bang()/bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_regex='(?P=bang)(?P<bang>[bang!])')
         
         self.given(u'''
             /bang/bang()?/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_regex='(?P<bang>[bang!])(?P=bang)?+')
         
         self.given(u'''
             /bang()?/bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_regex='(?P=bang)?+(?P<bang>[bang!])')
 
         self.given(u'''
             /bang/&bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_regex='(?P<bang>[bang!])(?&bang)')
 
@@ -2905,20 +2905,20 @@ class TestMatches(unittest.TestCase):
     def test_reference(self):
         self.given(u'''
             /bang/bang()/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_full_match=['bb', 'aa', 'nn', 'gg', '!!'],
         no_match=['', 'a', 'ba'])
         
         self.given(u'''
             /bang()/bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         no_match=['', 'a', 'ba', 'bb', 'aa', 'nn', 'gg', '!!'])
         
         self.given(u'''
             /bang/bang()?/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_full_match=['a', 'bb', 'aa', 'nn', 'gg', '!!'],
         no_match=['', 'clang!'],
@@ -2929,7 +2929,7 @@ class TestMatches(unittest.TestCase):
         
         self.given(u'''
             /bang()?/bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_full_match=['b', 'a', 'n', 'g', '!'],
         no_match=['', 'clang!'],
@@ -2937,7 +2937,7 @@ class TestMatches(unittest.TestCase):
 
         self.given(u'''
             /bang/&bang/
-                (bang): b a n g !
+                <bang>: b a n g !
         ''',
         expect_full_match=['bb', 'aa', 'nn', 'gg', '!!', 'ba', 'ng', 'b!', '!g'],
         no_match=['', 'b', 'a'])
