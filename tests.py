@@ -339,7 +339,7 @@ class TestErrorHandling(unittest.TestCase):
             warming
                 warming = *) 'global'
         ''',
-        expect_error="Line 3: Syntax error at or near: *) 'global'")
+        expect_error="Line 3: Syntax error:                 warming = *) 'global'")
 
         self.given('''
             warming
@@ -505,13 +505,23 @@ class TestErrorHandling(unittest.TestCase):
             /shouldBeColon/
                 shouldBeColon = A a
         ''',
-        expect_error='Line 3: Unexpected WHITESPACE\n                shouldBeColon = A a\n                                 ^')
+        expect_error='''Line 3: Unexpected VARNAME
+                shouldBeColon = A a
+                                  ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment : = x
+        ''',
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment : = x
+                                ^''')
 
         self.given('''
             mixedAssignment
                 mixedAssignment := x
         ''',
-        expect_error='Line 3: Unexpected WHITESPACE\n                mixedAssignment := x\n                               ^')
+        expect_error='Line 3: Character class definition requires space after the : (colon)')
 
         self.given('''
             mixedAssignment
@@ -523,13 +533,17 @@ class TestErrorHandling(unittest.TestCase):
             mixedAssignment
                 mixedAssignment=: x
         ''',
-        expect_error='Line 3: Unexpected COLON\n                mixedAssignment=: x\n                                ^')
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment=: x
+                                ^''')
 
         self.given('''
             mixedAssignment
                 mixedAssignment =: x
         ''',
-        expect_error='Line 3: Unexpected COLON\n                mixedAssignment =: x\n                                 ^')
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment =: x
+                                 ^''')
 
         self.given('''
             x
@@ -1031,12 +1045,12 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_invalid_reference(self):
         self.given(u'''
-            missing()
+            =missing
         ''',
         expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
 
         self.given(u'''
-            missing()?
+            =missing?
         ''',
         expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
 
@@ -1051,14 +1065,21 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
 
         self.given(u'''
-            &invalid_mix()
+            &=invalid_mix
         ''',
-        expect_error='''Line 2: Unexpected LPAREN
-            &invalid_mix()
-                        ^''')
+        expect_error='''Line 2: Unexpected EQUALSIGN
+            &=invalid_mix
+             ^''')
 
         self.given(u'''
-            alpha()
+            =&invalid_mix
+        ''',
+        expect_error='''Line 2: Unexpected AMPERSAND
+            =&invalid_mix
+             ^''')
+
+        self.given(u'''
+            =alpha
         ''',
         expect_error="Line 2: Invalid backreference: 'alpha' is not defined/not a capture")
 
@@ -1074,7 +1095,7 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 3: 'alpha' is a built-in variable and cannot be redefined")
 
         self.given(u'''
-            /bang/bang()/
+            /bang/=bang/
                 bang: b a n g !
         ''',
         expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
@@ -1295,6 +1316,31 @@ class TestOutput(unittest.TestCase):
                 stars = '***'
         ''',
         expect_regex=r'\*\*\*')
+
+        self.given('''
+            add
+                add: +plus
+                    plus: +
+        ''',
+        expect_regex=r'\+')
+
+
+    def test_assignment_whitespace(self):
+        self.given('''
+        /a/b/c/d/e/f/g/h/i/j/k/l/m/
+            a='a'
+            b= 'b'
+            c ='c'
+            d = 'd'
+            e   ='e'
+            f   = 'f'
+            g   =   'g'
+            h=  'h'
+            i = 'i'
+            j   =    'j'
+            k =     l     =  m  = 'z'
+        ''',
+        expect_regex='abcdefghijzzz')
 
         self.given('''
             add
@@ -2252,25 +2298,25 @@ class TestOutput(unittest.TestCase):
 
     def test_reference_output(self):
         self.given(u'''
-            /bang/bang()/
+            /bang/=bang/
                 <bang>: b a n g !
         ''',
         expect_regex='(?P<bang>[bang!])(?P=bang)')
         
         self.given(u'''
-            /bang()/bang/
+            /=bang/bang/
                 <bang>: b a n g !
         ''',
         expect_regex='(?P=bang)(?P<bang>[bang!])')
         
         self.given(u'''
-            /bang/bang()?/
+            /bang/=bang?/
                 <bang>: b a n g !
         ''',
         expect_regex='(?P<bang>[bang!])(?P=bang)?+')
         
         self.given(u'''
-            /bang()?/bang/
+            /=bang?/bang/
                 <bang>: b a n g !
         ''',
         expect_regex='(?P=bang)?+(?P<bang>[bang!])')
@@ -2904,20 +2950,20 @@ class TestMatches(unittest.TestCase):
 
     def test_reference(self):
         self.given(u'''
-            /bang/bang()/
+            /bang/=bang/
                 <bang>: b a n g !
         ''',
         expect_full_match=['bb', 'aa', 'nn', 'gg', '!!'],
         no_match=['', 'a', 'ba'])
         
         self.given(u'''
-            /bang()/bang/
+            /=bang/bang/
                 <bang>: b a n g !
         ''',
         no_match=['', 'a', 'ba', 'bb', 'aa', 'nn', 'gg', '!!'])
         
         self.given(u'''
-            /bang/bang()?/
+            /bang/=bang?/
                 <bang>: b a n g !
         ''',
         expect_full_match=['a', 'bb', 'aa', 'nn', 'gg', '!!'],
@@ -2928,7 +2974,7 @@ class TestMatches(unittest.TestCase):
         })
         
         self.given(u'''
-            /bang()?/bang/
+            /=bang?/bang/
                 <bang>: b a n g !
         ''',
         expect_full_match=['b', 'a', 'n', 'g', '!'],

@@ -38,7 +38,6 @@ LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
 states = (
     ('preamble', 'inclusive'),
-    ('subblock', 'inclusive'),
 )
 reserved = {
     '_' : 'UNDERSCORE',
@@ -72,6 +71,7 @@ tokens = [
 GLOBALMARK   = '*)'
 t_AMPERSAND  = r'\&'
 t_DOT        = r'\.'
+t_EQUALSIGN  = r'\='
 t_GT         = r'\>'
 t_LPAREN     = r'\('
 t_LT         = r'\<'
@@ -334,12 +334,6 @@ def t_VARNAME(t):
 # Rules that contain space/tab should be written in function form and be put 
 # before the t_linemark rule to make PLY calls them first.
 # Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
-
-
-def t_subblock_EQUALSIGN(t):
-    r'[ \t]*=[ \t]*'
-    t.lexpos += t.value.index('=')
-    return t
 
 
 def t_OF(t):
@@ -707,8 +701,8 @@ def p_variable_lookup(t):
 
 
 def p_backreference(t):
-    '''backreference : VARNAME LPAREN RPAREN'''
-    t[0] = Backreference, t[1]
+    '''backreference : EQUALSIGN VARNAME'''
+    t[0] = Backreference, t[2]
 
 
 def p_subroutine_call(t):
@@ -771,7 +765,6 @@ def p_begin_block(t):
     '''begin_block : INDENT'''
     current_scope = t.lexer.scopes[-1]
     t.lexer.scopes.append(current_scope.copy())
-    t.lexer.real_lexer.begin('subblock')
 
 
 def p_end_block(t):
@@ -824,9 +817,9 @@ def p_definition(t):
 
 
 def p_assignment(t):
-    '''assignment : declaration EQUALSIGN assignment
-                  | declaration EQUALSIGN expression
-                  | declaration COLON     charclass'''
+    '''assignment : declaration equals assignment
+                  | declaration equals expression
+                  | declaration COLON  charclass'''
     declaration = t[1]
     lineno = t.lineno(1)
     if isinstance(t[3], Assignment):
@@ -836,6 +829,13 @@ def p_assignment(t):
         value = t[3]
         assignment = Assignment([declaration], value, lineno)
     t[0] = assignment
+
+
+def p_equals(t):
+    '''equals :            EQUALSIGN
+              | WHITESPACE EQUALSIGN
+              |            EQUALSIGN WHITESPACE
+              | WHITESPACE EQUALSIGN WHITESPACE'''
 
 
 def p_declaration(t):
