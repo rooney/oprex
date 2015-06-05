@@ -36,9 +36,6 @@ def sanitize(source_code):
 
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
-states = (
-    ('preamble', 'inclusive'),
-)
 reserved = {
     '_' : 'UNDERSCORE',
 }
@@ -131,7 +128,7 @@ class CharClass(unicode):
 
 class Flagset(unicode):
     __slots__ = ('turn_ons', 'turn_offs')
-    support = {}
+    all_flags = {}
     scopeds = {
         'fullcase'   : 'f',
         'ignorecase' : 'i',
@@ -160,8 +157,8 @@ class Flagset(unicode):
         flagset.turn_offs = turn_offs
         return flagset
         
-Flagset.support.update(Flagset.scopeds)
-Flagset.support.update(Flagset.globals)
+Flagset.all_flags.update(Flagset.scopeds)
+Flagset.all_flags.update(Flagset.globals)
 
 
 def t_charclass(t):
@@ -279,13 +276,8 @@ def t_charclass(t):
     return t
 
 
-def t_preamble_FLAGSET(t):
-    r'\([- \t\w]+\)(?=[ \t]*\n)'
-    return t_FLAGSET(t)
-
-
 def t_FLAGSET(t):
-    r'\([- \t\w]+\)(?=[ \t]*[^ \t\n=:])'
+    r'\([- \t\w]+\)'
     flags = t.value[1:-1] # exclude the surrounding ( )
     flags = flags.split(' ') # will contain empty strings in case of consecutive spaces, so...
     flags = filter(lambda flag: flag, flags) # ...exclude empty strings
@@ -294,11 +286,11 @@ def t_FLAGSET(t):
     for flag in flags:
         try:
             if flag.startswith('-'):
-                turn_offs += Flagset.support[flag[1:]]
+                turn_offs += Flagset.all_flags[flag[1:]]
             else:
-                turn_ons += Flagset.support[flag]
+                turn_ons += Flagset.all_flags[flag]
         except KeyError:
-            raise OprexSyntaxError(t.lineno, "Unknown flag '%s'. Supported flags are: %s" % (flag, ' '.join(sorted(Flagset.support.keys()))))
+            raise OprexSyntaxError(t.lineno, "Unknown flag '%s'. Supported flags are: %s" % (flag, ' '.join(sorted(Flagset.all_flags.keys()))))
 
     flags = Flagset(turn_ons, turn_offs)
     try:
@@ -881,7 +873,6 @@ def build_lexer(source_lines):
     lexer = lexer0.clone()
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
-    lexer.begin('preamble')
     lexer.indent_stack = [0] # for keeping track of indentation depths
     lexer.captures = set()
     lexer.backreferences = set()
