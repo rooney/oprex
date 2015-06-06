@@ -81,10 +81,7 @@ t_SLASH      = r'\/'
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
 
 
-class Assignment(namedtuple('Assignment', 'declarations value lineno')):
-    __slots__ = ()
-
-class Variable(namedtuple('Variable', 'name value lineno already_grouped')):
+class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
     def is_builtin(self):
         return self.lineno == 0
@@ -95,36 +92,37 @@ class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture ato
 class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
     __slots__ = ()
 
-class SubroutineCall(namedtuple('SubroutineCall', 'varname lineno optional')):
+class Backreference(namedtuple('Backreference', 'varname lineno optional')):
     __slots__ = ()
 
-class Backreference(namedtuple('Backreference', 'varname lineno optional')):
+class SubroutineCall(namedtuple('SubroutineCall', 'varname lineno optional')):
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
     __slots__ = ()
 
-class Quantification(unicode):
-    __slots__ = ('quantified', 'quantifier')
-    def __new__(cls, quantified, quantifier):
-        quantification = unicode.__new__(cls, quantified + quantifier)
-        quantification.quantified = quantified
-        quantification.quantifier = quantifier
-        return quantification
+class Assignment(namedtuple('Assignment', 'declarations value lineno')):
+    __slots__ = ()
 
-class CharClass(unicode):
-    __slots__ = ('is_set_op',)
-    escapes = {
-        '['  : '\\[',
-        ']'  : '\\]',
-        '^'  : '\\^',
-        '-'  : '\\-',
-        '\\' : '\\\\',
-    }
-    def __new__(cls, value, is_set_op):
-        charclass = unicode.__new__(cls, value)
-        charclass.is_set_op = is_set_op
-        return charclass
+
+class Expression(unicode):
+    __slots__ = ('grouped', 'quantifier')
+    def __new__(cls, base_value, modifier=None): # modifier can be quantifier, scoped flags, capture, or atomic group
+        value = base_value
+        grouped = False
+        quantifier = None
+        if modifier:
+            if modifier.startswith('(?'): # scoped flags/capture/atomic group -- in any case it should be missing the closing paren
+                value = modifier + base_value + ')' # add the closing paren
+                grouped = True
+            else: # modifier is quantifier
+                quantifier = modifier
+                value += quantifier
+        expr = unicode.__new__(cls, value)
+        expr.grouped = grouped
+        expr.quantifier = quantifier
+        return expr
+
 
 class Flagset(unicode):
     __slots__ = ('turn_ons', 'turn_offs')
@@ -159,6 +157,21 @@ class Flagset(unicode):
         
 Flagset.all_flags.update(Flagset.scopeds)
 Flagset.all_flags.update(Flagset.globals)
+
+
+class CharClass(unicode):
+    __slots__ = ('is_set_op',)
+    escapes = {
+        '['  : '\\[',
+        ']'  : '\\]',
+        '^'  : '\\^',
+        '-'  : '\\-',
+        '\\' : '\\\\',
+    }
+    def __new__(cls, value, is_set_op):
+        charclass = unicode.__new__(cls, value)
+        charclass.is_set_op = is_set_op
+        return charclass
 
 
 def t_charclass(t):
@@ -475,10 +488,10 @@ def p_global_flagging(t):
     flagset = t[2]
     if 'u' in flagset.turn_ons: # turning unicode on changes some built-ins
         t.lexer.scopes[0].update(
-            alpha = Variable('alpha', CharClass('\\p{Alphabetic}',   is_set_op=False), lineno=0, already_grouped=False),
-            upper = Variable('upper', CharClass('\\p{Uppercase}',    is_set_op=False), lineno=0, already_grouped=False),
-            lower = Variable('lower', CharClass('\\p{Lowercase}',    is_set_op=False), lineno=0, already_grouped=False),
-            alnum = Variable('alnum', CharClass('\\p{Alphanumeric}', is_set_op=False), lineno=0, already_grouped=False),
+            alpha = Variable('alpha', CharClass('\\p{Alphabetic}',   is_set_op=False), lineno=0),
+            upper = Variable('upper', CharClass('\\p{Uppercase}',    is_set_op=False), lineno=0),
+            lower = Variable('lower', CharClass('\\p{Lowercase}',    is_set_op=False), lineno=0),
+            alnum = Variable('alnum', CharClass('\\p{Alphanumeric}', is_set_op=False), lineno=0),
         )
     t[0] = flagset
 
@@ -494,7 +507,7 @@ def p_expression(t):
 def p_string_expr(t):
     '''string_expr : string NEWLINE optional_block'''
     scope_check(t, optional_block=t[3], referenced_vars=())
-    t[0] = t[1]
+    t[0] = Expression(t[1])
 
 
 def p_string(t):
@@ -593,38 +606,47 @@ def p_optionalize(t):
     t[0] = Quantifier(base='?', modifier='+')
 
 
-def quantify(expr, quantifier, already_grouped=False):
+def quantify(expr, quantifier):
     if quantifier == '{0}' or expr == '':
-        return ''
+        return Expression('')
     if quantifier == '{1}' or quantifier == '':
         return expr
-    try: # maybe expr is already a Quantification? merge the quantifiers
-        return expr.quantified + { # The purpose of this is so we can have something super-readable e.g.
-             '? of +'  : '*' ,     #     digits?
-            '?+ of ++' : '*+',     #         digits = 1.. of digit
-            '?? of +?' : '*?',     # without making the regex output suboptimal
-        }[quantifier + ' of ' + expr.quantifier]
-    except KeyError: # expr is a Quantification, but this is not a "? of +" operation
-        try: # merge repeats (e.g. colorhex = 3 of byte; byte = 2 of hex) --> optimize "hex{2}{3}" into "hex{6}"
-            n1 = int(regex.match(r'{(\d+)}', expr.quantifier).group(1))
-            n2 = int(regex.match(r'{(\d+)}',      quantifier).group(1))
-            return Quantification(expr.quantified, '{%d}' % (n1 * n2))
-        except AttributeError: # not "repeat a repeat" operation, simply put expr in a group
-            return Quantification('(?:%s)' % expr, quantifier)
-    except AttributeError: # expr is a plain string, not a Quantification
-        if len(expr) > 1 and not isinstance(expr, CharClass) and not already_grouped: # needs grouping
-            expr = '(?:%s)' % expr
-        return Quantification(expr, quantifier)
+
+    def merge_quantifiers():
+        try:
+            return {               # The purpose of this is so we can write x* as (x+)? e.g.
+                 '? of +'  : '*' , #     digits?
+                '?+ of ++' : '*+', #         digits = 1.. of digit
+                '?? of +?' : '*?', # without making the regex output suboptimal
+            }[quantifier + ' of ' + expr.quantifier]
+        except KeyError: # not a "? of +" operation, try merge repeats e.g.
+            n1 = int(expr.quantifier.strip('{').strip('}')) # colorhex = 3 of byte
+            n2 = int(     quantifier.strip('{').strip('}')) #     byte = 2 of hex
+            return '{%d}' % (n1 * n2)                       # --> optimize "hex{2}{3}" into "hex{6}"
+
+    def strip_old_quantifier():
+        return expr[:-len(expr.quantifier)]
+
+    def put_in_group():
+        unneeded = len(expr) == 1 or isinstance(expr, CharClass) or expr.grouped # already
+        if unneeded:
+            return expr # unchanged
+        else:
+            return '(?:%s)' % expr
+
+    try:
+        return Expression(strip_old_quantifier(), modifier=merge_quantifiers())
+    except:
+        return Expression(put_in_group(), modifier=quantifier)
 
 
 def p_flagged_expr(t):
     '''flagged_expr : LPAREN FLAGSET RPAREN WHITESPACE expression'''
     flags = t[2]
-    expression = t[5]
     for flag_name, global_flag in Flagset.globals.iteritems():
         if global_flag in flags.turn_ons:
             raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not scoped." % flag_name)
-    t[0] = '(?%s:%s)' % (flags, expression)
+    t[0] = Expression(t[5], modifier='(?%s:' % flags)
 
 
 def p_lookup_expr(t):
@@ -639,7 +661,7 @@ def p_lookup_expr(t):
         except KeyError:
             raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % lookup.varname)
         if lookup.optional:
-            return quantify(var.value, quantifier=lookup.optional, already_grouped=var.already_grouped)
+            return quantify(var.value, quantifier=lookup.optional)
         else:
             return var.value
 
@@ -654,7 +676,7 @@ def p_lookup_expr(t):
             return '(?&%s)%s' % (lookup.varname, lookup.optional)
 
     if t[1] == '/': # chain of lookups
-        t[0] = ''.join(map(resolve, t[2]))
+        t[0] = Expression(''.join(map(resolve, t[2])))
     else: # single lookup
         t[0] = resolve(t[1])
     scope_check(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
@@ -673,9 +695,9 @@ def p_lookup_chain(t):
 def p_lookup(t):
     '''lookup : lookup_type
               | lookup_type QUESTMARK'''
+    LookupClass, varname = t[1]
     has_questmark = len(t) == 3
-    lookup_type, varname = t[1]
-    t[0] = lookup_type(varname, t.lineno(1), optional='?+' if has_questmark else '')
+    t[0] = LookupClass(varname, t.lineno(1), optional='?+' if has_questmark else '')
 
 
 def p_lookup_type(t):
@@ -782,14 +804,15 @@ def p_definition(t):
         assignment = t[1]
         scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
 
-    def make_var(declaration, value):
+    def make_var(declaration, base_value):
         varname = declaration.varname
+        value = base_value
         if declaration.atomic:
-            value = '(?>%s)' % value
+            value = Expression(value, modifier='(?>')
         if declaration.capture:
-            value = '(?P<%s>%s)' % (varname, value)
+            value = Expression(value, modifier='(?P<%s>' % varname)
             t.lexer.captures.add(varname)
-        return Variable(varname, value, assignment.lineno, already_grouped=declaration.capture or declaration.atomic)
+        return Variable(varname, value, assignment.lineno)
 
     def define(declaration):
         var = make_var(declaration, assignment.value)
@@ -878,14 +901,14 @@ def build_lexer(source_lines):
     lexer.backreferences = set()
     lexer.subroutine_calls = set()
     lexer.scopes = [{
-        'alpha'    : Variable('alpha',    CharClass('[a-zA-Z]',    is_set_op=False), lineno=0, already_grouped=False),
-        'upper'    : Variable('upper',    CharClass('[A-Z]',       is_set_op=False), lineno=0, already_grouped=False),
-        'lower'    : Variable('lower',    CharClass('[a-z]',       is_set_op=False), lineno=0, already_grouped=False),
-        'alnum'    : Variable('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False), lineno=0, already_grouped=False),
-        'digit'    : Variable('digit',    CharClass('\\d',         is_set_op=False), lineno=0, already_grouped=False),
-        'wordchar' : Variable('wordchar', CharClass('\\w',         is_set_op=False), lineno=0, already_grouped=False),
-        '.'        : Variable('.',                  '\\b',                           lineno=0, already_grouped=False),
-        '_'        : Variable('_',                  '\\B',                           lineno=0, already_grouped=False),
+        'alpha'    : Variable('alpha',    CharClass('[a-zA-Z]',    is_set_op=False), lineno=0),
+        'upper'    : Variable('upper',    CharClass('[A-Z]',       is_set_op=False), lineno=0),
+        'lower'    : Variable('lower',    CharClass('[a-z]',       is_set_op=False), lineno=0),
+        'alnum'    : Variable('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False), lineno=0),
+        'digit'    : Variable('digit',    CharClass('\\d',         is_set_op=False), lineno=0),
+        'wordchar' : Variable('wordchar', CharClass('\\w',         is_set_op=False), lineno=0),
+        '.'        : Variable('.',                  '\\b',                           lineno=0),
+        '_'        : Variable('_',                  '\\B',                           lineno=0),
     }]
     return CustomLexer(lexer)
 

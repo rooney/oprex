@@ -2446,7 +2446,7 @@ class TestOutput(unittest.TestCase):
             hex?
                 hex = (ignorecase) 1 of: +digit a..f
         ''',
-        expect_regex=r'(?:(?i:[\da-f]))?+')
+        expect_regex=r'(?i:[\da-f])?+')
 
 
     def test_variable_named_of(self):
