@@ -2376,6 +2376,45 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'\Bbloody\B')
 
+        self.given('''
+            _
+        ''',
+        expect_regex=r'\B')
+
+        self.given('''
+            .
+        ''',
+        expect_regex=r'\b')
+
+        self.given('''
+            2 of .
+        ''',
+        expect_regex=r'\b{2}')
+
+        self.given('''
+            bdry
+                .bdry = .
+        ''',
+        expect_regex=r'(?>\b)')
+
+        self.given('''
+            bdry
+                <bdry> = .
+        ''',
+        expect_regex=r'(?P<bdry>\b)')
+
+        self.given('''
+            bdries
+                bdries = 1 of 2 of 3 of .
+        ''',
+        expect_regex=r'\b{6}')
+
+        self.given('''
+            bdries?
+                bdries = 1.. of .
+        ''',
+        expect_regex=r'\b*+')
+
 
     def test_flagging_output(self):
         self.given('''

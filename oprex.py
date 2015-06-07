@@ -628,7 +628,12 @@ def quantify(expr, quantifier):
         return expr[:-len(expr.quantifier)]
 
     def put_in_group():
-        unneeded = len(expr) == 1 or isinstance(expr, CharClass) or expr.grouped # already
+        unneeded = (
+            len(expr) == 1 or 
+            len(expr) == 2 and expr[0] == '\\' or 
+            isinstance(expr, CharClass) or 
+            expr.grouped # already
+        )
         if unneeded:
             return expr # unchanged
         else:
@@ -907,8 +912,8 @@ def build_lexer(source_lines):
         'alnum'    : Variable('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False), lineno=0),
         'digit'    : Variable('digit',    CharClass('\\d',         is_set_op=False), lineno=0),
         'wordchar' : Variable('wordchar', CharClass('\\w',         is_set_op=False), lineno=0),
-        '.'        : Variable('.',                  '\\b',                           lineno=0),
-        '_'        : Variable('_',                  '\\B',                           lineno=0),
+        '.'        : Variable('.',        Expression('\\b'),                         lineno=0),
+        '_'        : Variable('_',        Expression('\\B'),                         lineno=0),
     }]
     return CustomLexer(lexer)
 
