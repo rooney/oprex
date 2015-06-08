@@ -493,7 +493,7 @@ class TestErrorHandling(unittest.TestCase):
             /A/a/
                 A: a = A a
         ''',
-        expect_error='Line 3: Duplicate item in character class definition: a')
+        expect_error="Line 2: 'a' is not defined")
 
         self.given('''
             /A/a/

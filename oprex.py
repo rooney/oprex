@@ -173,11 +173,20 @@ class CharClass(unicode):
         charclass.is_set_op = is_set_op
         return charclass
 
+ESCAPE_SEQUENCE_RE = regex.compile(r'''
+    ( \\U........      # 8-digit hex escapes
+    | \\u....          # 4-digit hex escapes
+    | \\x..            # 2-digit hex escapes
+    | \\[0-7]{1,3}     # Octal escapes
+    | \\N\{[^}]+\}     # Unicode characters by name
+    | \\[\\'"abfnrtv]  # Single-character escapes
+    )''', regex.UNICODE | regex.VERBOSE)
 
 def t_charclass(t):
     ''':.*'''
     value = t.value.split('--')[0] # parts after "--" are comments, ignore them 
-    chardefs = filter(lambda chardef: chardef != '', value.split(' '))
+    chardefs = value.split(' ') # will have empty string in case of consecutive spaces
+    chardefs = filter(lambda chardef: chardef, chardefs)  # exclude empty strings
     if chardefs[0] != ':':
         raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
     del chardefs[0] # no need to process the colon
@@ -185,7 +194,6 @@ def t_charclass(t):
         raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
 
     t.counter = 0
-    seen = set()
     includes = set()
 
     def try_translate(chardef, *functions):
@@ -197,6 +205,13 @@ def t_charclass(t):
     def single(chardef): # example: a 1 $ 久 😐
         if len(chardef) == 1:
             return CharClass.escapes.get(chardef, chardef)
+
+    def escaped(chardef): # example: \n \x61 \u0061 \U00000061
+        if chardef.startswith('\\'):
+            if ESCAPE_SEQUENCE_RE.match(chardef):
+                return chardef
+            else:
+                raise OprexSyntaxError(t.lineno, 'Bad escape sequence: ' + chardef)
 
     def uhex(chardef): # example: U+65 U+1F4A9
         if chardef.startswith('U+'):
@@ -259,11 +274,8 @@ def t_charclass(t):
                 raise OprexSyntaxError(t.lineno, "Incorrect use of %s '%s' operator" % (type, chardef))
 
     def translate(chardef):
-        if chardef in seen:
-            raise OprexSyntaxError(t.lineno, 'Duplicate item in character class definition: ' + chardef)
-        seen.add(chardef)
         t.counter += 1
-        result = try_translate(chardef, range, single, uhex, by_prop, by_name, include, set_operation)
+        result = try_translate(chardef, range, single, escaped, uhex, by_prop, by_name, include, set_operation)
         if not result:
             raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
         test(chardef, result)
@@ -486,12 +498,13 @@ def p_main_expression(t):
 def p_global_flagging(t):
     '''global_flagging : LPAREN FLAGSET RPAREN NEWLINE'''
     flagset = t[2]
-    if 'u' in flagset.turn_ons: # turning unicode on changes some built-ins
+    if 'u' in flagset.turn_ons: # turning-on unicode changes some built-ins
         t.lexer.scopes[0].update(
-            alpha = Variable('alpha', CharClass('\\p{Alphabetic}',   is_set_op=False), lineno=0),
-            upper = Variable('upper', CharClass('\\p{Uppercase}',    is_set_op=False), lineno=0),
-            lower = Variable('lower', CharClass('\\p{Lowercase}',    is_set_op=False), lineno=0),
-            alnum = Variable('alnum', CharClass('\\p{Alphanumeric}', is_set_op=False), lineno=0),
+            alpha    = Variable('alpha',    CharClass(r'\p{Alphabetic}',                 is_set_op=False), lineno=0),
+            upper    = Variable('upper',    CharClass(r'\p{Uppercase}',                  is_set_op=False), lineno=0),
+            lower    = Variable('lower',    CharClass(r'\p{Lowercase}',                  is_set_op=False), lineno=0),
+            alnum    = Variable('alnum',    CharClass(r'\p{Alphanumeric}',               is_set_op=False), lineno=0),
+            linechar = Variable('linechar', CharClass(r'[\r\n\x0B\x0C\x85\u2028\u2029]', is_set_op=False), lineno=0),
         )
     t[0] = flagset
 
@@ -906,14 +919,23 @@ def build_lexer(source_lines):
     lexer.backreferences = set()
     lexer.subroutine_calls = set()
     lexer.scopes = [{
-        'alpha'    : Variable('alpha',    CharClass('[a-zA-Z]',    is_set_op=False), lineno=0),
-        'upper'    : Variable('upper',    CharClass('[A-Z]',       is_set_op=False), lineno=0),
-        'lower'    : Variable('lower',    CharClass('[a-z]',       is_set_op=False), lineno=0),
-        'alnum'    : Variable('alnum',    CharClass('[a-zA-Z0-9]', is_set_op=False), lineno=0),
-        'digit'    : Variable('digit',    CharClass('\\d',         is_set_op=False), lineno=0),
-        'wordchar' : Variable('wordchar', CharClass('\\w',         is_set_op=False), lineno=0),
-        '.'        : Variable('.',        Expression('\\b'),                         lineno=0),
-        '_'        : Variable('_',        Expression('\\B'),                         lineno=0),
+        'alpha'     : Variable('alpha',     CharClass('[a-zA-Z]',        is_set_op=False), lineno=0),
+        'upper'     : Variable('upper',     CharClass('[A-Z]',           is_set_op=False), lineno=0),
+        'lower'     : Variable('lower',     CharClass('[a-z]',           is_set_op=False), lineno=0),
+        'alnum'     : Variable('alnum',     CharClass('[a-zA-Z0-9]',     is_set_op=False), lineno=0),
+        'digit'     : Variable('digit',     CharClass(r'\d',             is_set_op=False), lineno=0),
+        'space'     : Variable('space',     CharClass(' ',               is_set_op=False), lineno=0),
+        'linechar'  : Variable('linechar',  CharClass(r'[\r\n\x0B\x0C]', is_set_op=False), lineno=0),
+        'whitechar' : Variable('whitechar', CharClass(r'\s',             is_set_op=False), lineno=0),
+        'wordchar'  : Variable('wordchar',  CharClass(r'\w',             is_set_op=False), lineno=0),
+        '.'         : Variable('.',         Expression(r'\b'),                             lineno=0),
+        '_'         : Variable('_',         Expression(r'\B'),                             lineno=0),
+        'SoS'       : Variable('SoS',       Expression(r'\A'),                             lineno=0),
+        'EoS'       : Variable('EoS',       Expression(r'\Z'),                             lineno=0),
+        'SoL'       : Variable('SoL',       Expression(r'^'),                              lineno=0),
+        'EoL'       : Variable('EoL',       Expression(r'$'),                              lineno=0),
+        'any'       : Variable('any',       Expression('(?s:.)'),                          lineno=0),
+        'uany'      : Variable('uany',      Expression(r'\X'),                             lineno=0),
     }]
     return CustomLexer(lexer)
 
