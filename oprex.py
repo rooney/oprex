@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import regex, argparse, codecs
+import regex, argparse, codecs, unicodedata
 from ply import lex, yacc
 from collections import namedtuple, deque
 
@@ -104,34 +104,23 @@ class Quantifier(namedtuple('Quantifier', 'base modifier')):
 class Assignment(namedtuple('Assignment', 'declarations value lineno')):
     __slots__ = ()
 
-
-class Expression(unicode):
-    __slots__ = ('grouped', 'quantifier')
-    def __new__(cls, base_value, modifier=None): # modifier can be quantifier, scoped flags, capture, or atomic group
-        value = base_value
-        grouped = False
-        quantifier = None
-        if modifier:
-            if modifier.startswith('(?'): # scoped flags/capture/atomic group -- in any case it should be missing the closing paren
-                value = modifier + base_value + ')' # add the closing paren
-                grouped = True
-            else: # modifier is quantifier
-                quantifier = modifier
-                value += quantifier
-        expr = unicode.__new__(cls, value)
-        expr.grouped = grouped
-        expr.quantifier = quantifier
-        return expr
+class Scope(dict):
+    ROOTSCOPE, BLOCKSCOPE, FLAGSCOPE = range(3)
+    __slots__ = ('type')
+    def __init__(self, type, parent_scope):
+        self.type = type
+        if parent_scope:
+            self.update(parent_scope)
 
 
 class Flagset(unicode):
     __slots__ = ('turn_ons', 'turn_offs')
     all_flags = {}
     scopeds = {
+        'dotall'     : 's',
         'fullcase'   : 'f',
         'ignorecase' : 'i',
         'multiline'  : 'm',
-        'dotall'     : 's',
         'verbose'    : 'x',
         'word'       : 'w',
     }
@@ -159,7 +148,26 @@ Flagset.all_flags.update(Flagset.scopeds)
 Flagset.all_flags.update(Flagset.globals)
 
 
-class CharClass(unicode):
+class Expression(unicode):
+    __slots__ = ('grouped', 'quantifier')
+    def __new__(cls, base_value, modifier=None): # modifier can be quantifier, scoped flags, capture, or atomic group
+        value = base_value
+        grouped = False
+        quantifier = None
+        if modifier:
+            if modifier.startswith('(?'): # scoped flags/capture/atomic group -- in any case it should be missing the closing paren
+                value = modifier + base_value + ')' # add the closing paren
+                grouped = True
+            else: # modifier is quantifier
+                quantifier = modifier
+                value += quantifier
+        expr = unicode.__new__(cls, value)
+        expr.grouped = grouped
+        expr.quantifier = quantifier
+        return expr
+
+
+class CharClass(Expression):
     __slots__ = ('is_set_op',)
     escapes = {
         '['  : '\\[',
@@ -169,18 +177,86 @@ class CharClass(unicode):
         '\\' : '\\\\',
     }
     def __new__(cls, value, is_set_op):
-        charclass = unicode.__new__(cls, value)
+        charclass = Expression.__new__(cls, value)
         charclass.is_set_op = is_set_op
         return charclass
 
+
+Builtin   = lambda name, value: Variable(name, Expression(value), lineno=0)
+BuiltinCC = lambda name, value: Variable(name, CharClass(value, is_set_op=False), lineno=0)
+BUILTINS  = [
+    BuiltinCC('alpha',     '[a-zA-Z]'),
+    BuiltinCC('upper',     '[A-Z]'),
+    BuiltinCC('lower',     '[a-z]'),
+    BuiltinCC('alnum',     '[a-zA-Z0-9]'),
+    BuiltinCC('digit',     r'\d'),
+    BuiltinCC('backslash', r'\\'),
+    BuiltinCC('whitechar', r'\s'),
+    BuiltinCC('wordchar',  r'\w'),
+    Builtin('.',           r'\b'),
+    Builtin('_',           r'\B'),
+    Builtin('SoS',         r'\A'),
+    Builtin('EoS',         r'\Z'),
+    Builtin('uany',        r'\X'),
+]
+FLAG_DEPENDENT_BUILTINS = dict(
+    m = { # MULTILINE
+        True  : [
+            Builtin('SoL', '^'),
+            Builtin('EoL', '$'),
+        ],
+        False : [
+            Builtin('SoL', '(?m:^)'),
+            Builtin('EoL', '(?m:$)'),
+        ],
+    },
+    s = { # DOTALL
+        True  : [
+            Builtin('any', '.'),
+        ],
+        False : [
+            Builtin('any', '(?s:.)'),
+        ],
+    },
+    w = { # WORD
+        True  : [
+            BuiltinCC('linechar', r'[\r\n\x0B\x0C]'),
+        ],
+        False : [
+            BuiltinCC('linechar', r'\n'),
+        ],
+    },
+    x = { # VERBOSE
+        True  : [
+            BuiltinCC('space',  '[ ]'),
+            BuiltinCC('tab',   r'[\t]'),
+        ],
+        False : [
+            BuiltinCC('space',  ' '),
+            BuiltinCC('tab',   r'\t'),
+        ],
+    },
+)
+DEFAULT_FLAGS = 'wm'
+for flag in FLAG_DEPENDENT_BUILTINS:
+    for var in FLAG_DEPENDENT_BUILTINS[flag][flag in DEFAULT_FLAGS]:
+        BUILTINS.append(var)
+
+def flags_redef_builtins(t, flags, scope):
+    for flag in FLAG_DEPENDENT_BUILTINS:
+        if flag in flags:
+            for var in t.lexer.flag_dependent_builtins[flag][flag in flags.turn_ons]:
+                scope[var.name] = var
+
+
 ESCAPE_SEQUENCE_RE = regex.compile(r'''
-    ( \\U........      # 8-digit hex escapes
-    | \\u....          # 4-digit hex escapes
-    | \\x..            # 2-digit hex escapes
-    | \\[0-7]{1,3}     # Octal escapes
-    | \\N\{[^}]+\}     # Unicode characters by name
-    | \\[\\'"abfnrtv]  # Single-character escapes
-    )''', regex.UNICODE | regex.VERBOSE)
+      \\U\d{8}      # 8-digit hex escapes
+    | \\u\d{4}      # 4-digit hex escapes
+    | \\x\d{2}      # 2-digit hex escapes
+    | \\[0-7]{1,3}  # Octal escapes
+    | \\[abfnrtv]   # Single-character escapes
+    | \\N\{[^}]++\} # Unicode character name
+''', regex.VERBOSE)
 
 def t_charclass(t):
     ''':.*'''
@@ -206,9 +282,9 @@ def t_charclass(t):
         if len(chardef) == 1:
             return CharClass.escapes.get(chardef, chardef)
 
-    def escaped(chardef): # example: \n \x61 \u0061 \U00000061
+    def escaped(chardef): # example: \n \61 \x61 \u0061 \U00000061
         if chardef.startswith('\\'):
-            if ESCAPE_SEQUENCE_RE.match(chardef):
+            if ESCAPE_SEQUENCE_RE.fullmatch(chardef):
                 return chardef
             else:
                 raise OprexSyntaxError(t.lineno, 'Bad escape sequence: ' + chardef)
@@ -333,13 +409,42 @@ def t_FLAGSET(t):
     return t
 
 
+OVERESCAPED_RE = regex.compile(r'''\\
+    ( \\U\d{8}        # 8-digit hex escapes
+    | \\u\d{4}        # 4-digit hex escapes
+    | \\x\d{2}        # 2-digit hex escapes
+    | \\[0-7]{1,3}    # Octal escapes
+    | \\\\\\          # Escaped backslash
+    | \\['"abfnrtv]   # Single-character escapes
+    | \\N\\\{[^}]++\} # Unicode character name
+    ) ''', regex.VERBOSE)
+
+def restore_overescaped(match):
+    match = match.group(1)
+    if match.startswith('\\N'):
+        charname = match[4:-2]
+        unicodedata.lookup(charname) # raise KeyError if undefined character name
+        return '\\N{' + charname + '}'
+    else:
+        return {
+            '\\\\\\' : '\\\\',
+            '\\a'    : '\\x07',
+            '\\b'    : '\\x08',
+            '\\f'    : '\\x0C',
+            '\\v'    : '\\x0B',
+        }.get(match, match)
+
 def t_STRING(t):
     r'''("(\\.|[^"\\])*")|('(\\.|[^'\\])*')''' # single- or double-quoted string, with escape-quote support
     value = t.value[1:-1] # remove the surrounding quotes
-    value = value.replace('\\"', '"').replace("\\'", "'") # apply (unescape) escaped quotes
-    value = regex.escape(value, special_only=True) # this will unnecessarily turn \ into \\
-    t.value = value.replace('\\\\', '\\') # ...so, restore 
-    return t
+    value = value.replace('\\"', '"').replace("\\'", "'") # apply escaped quotes
+    value = regex.escape(value, special_only=True)
+    try:
+        t.value = OVERESCAPED_RE.sub(restore_overescaped, value)
+    except KeyError as e:
+        raise OprexSyntaxError(t.lineno, e.message)
+    else:
+        return t
 
 
 def t_VARNAME(t):
@@ -458,55 +563,44 @@ def p_oprex(t):
     else:
         flags = expression = ''
 
-    if 'm' not in flags: # turn on MULTILINE by default
-        flags = 'm' + flags
-    if 'w' not in flags: # turn on WORD by default
-        flags = 'w'+ flags
+    for flag in DEFAULT_FLAGS:
+        if flag not in flags:
+            flags = flag + flags
+    if 'V' not in flags: # use V1 by default
+        flags = 'V1' + flags # put at the front so it can be easily trimmed out of the result if unwanted
 
-    flags = '(?%s)' % flags
-    if 'V' not in flags: # use V1 by default, but put it in its own group, at the front, so we can easily ...
-        flags = '(?V1)' + flags # trim it out of the result if unwanted (e.g. if using re rather than regex)
-
-    try:
-        regex.compile(flags)
-    except Exception as e:
-        raise OprexSyntaxError(t.lineno(2),  'Starting flags rejected by the regex engine with error message: ' + str(e.message))
-    t[0] = flags + expression
+    t[0] = '(?%s)%s' % (flags, expression)
 
 
 def p_main_expression(t):
-    '''main_expression : global_flagging main_expression
-                       | global_flagging
+    '''main_expression : global_flags expression
+                       | global_flags
                        | expression'''
-    if len(t) == 3: # the first form above
-        flags = t[1]
-        more_flags, expression = t[2]
-        flags = Flagset(
-            turn_ons=flags.turn_ons + more_flags.turn_ons,
-            turn_offs=flags.turn_offs + more_flags.turn_offs,
-        )
-    elif isinstance(t[1], Flagset): # second form (flags only)
-        flags = t[1]
-        expression = ''
-    else: # third form (flagless expression)
-        flags = Flagset(turn_ons='', turn_offs='')
-        expression = t[1]
-
-    t[0] = flags, expression
+    last = len(t) - 1
+    flag = t[1] if isinstance(t[1], Flagset) else ''
+    expr = t[last] if isinstance(t[last], Expression) else ''
+    t[0] = flag, expr
 
 
-def p_global_flagging(t):
-    '''global_flagging : LPAREN FLAGSET RPAREN NEWLINE'''
-    flagset = t[2]
-    if 'u' in flagset.turn_ons: # turning-on unicode changes some built-ins
-        t.lexer.scopes[0].update(
+def p_global_flags(t):
+    '''global_flags : LPAREN FLAGSET RPAREN NEWLINE'''
+    flags = t[2]
+    root_scope = t.lexer.scopes[0]
+    if 'u' in flags.turn_ons: 
+        root_scope.update(
             alpha    = Variable('alpha',    CharClass(r'\p{Alphabetic}',                 is_set_op=False), lineno=0),
             upper    = Variable('upper',    CharClass(r'\p{Uppercase}',                  is_set_op=False), lineno=0),
             lower    = Variable('lower',    CharClass(r'\p{Lowercase}',                  is_set_op=False), lineno=0),
             alnum    = Variable('alnum',    CharClass(r'\p{Alphanumeric}',               is_set_op=False), lineno=0),
             linechar = Variable('linechar', CharClass(r'[\r\n\x0B\x0C\x85\u2028\u2029]', is_set_op=False), lineno=0),
         )
-    t[0] = flagset
+        t.lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS.copy()
+        t.lexer.flag_dependent_builtins['w'] = t.lexer.flag_dependent_builtins['w'].copy()
+        t.lexer.flag_dependent_builtins['w'][True] = [
+            root_scope['linechar']
+        ]
+    flags_redef_builtins(t, flags, root_scope)
+    t[0] = flags
 
 
 def p_expression(t):
@@ -519,7 +613,7 @@ def p_expression(t):
 
 def p_string_expr(t):
     '''string_expr : string NEWLINE optional_block'''
-    scope_check(t, optional_block=t[3], referenced_vars=())
+    end_scope(t, optional_block=t[3], referenced_vars=())
     t[0] = Expression(t[1])
 
 
@@ -642,10 +736,10 @@ def quantify(expr, quantifier):
 
     def put_in_group():
         unneeded = (
-            len(expr) == 1 or 
-            len(expr) == 2 and expr[0] == '\\' or 
-            isinstance(expr, CharClass) or 
             expr.grouped # already
+            or len(expr) == 1
+            or isinstance(expr, CharClass)
+            or ESCAPE_SEQUENCE_RE.fullmatch(expr)
         )
         if unneeded:
             return expr # unchanged
@@ -659,12 +753,19 @@ def quantify(expr, quantifier):
 
 
 def p_flagged_expr(t):
-    '''flagged_expr : LPAREN FLAGSET RPAREN WHITESPACE expression'''
+    '''flagged_expr : scoped_flags expression'''
+    flags = t[1]
+    t[0] = Expression(t[2], modifier='(?%s:' % flags)
+
+
+def p_scoped_flags(t):
+    '''scoped_flags : LPAREN FLAGSET RPAREN WHITESPACE'''
     flags = t[2]
     for flag_name, global_flag in Flagset.globals.iteritems():
         if global_flag in flags.turn_ons:
             raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not scoped." % flag_name)
-    t[0] = Expression(t[5], modifier='(?%s:' % flags)
+    flags_redef_builtins(t, flags, begin_scope(t, Scope.FLAGSCOPE))
+    t[0] = flags
 
 
 def p_lookup_expr(t):
@@ -697,7 +798,7 @@ def p_lookup_expr(t):
         t[0] = Expression(''.join(map(resolve, t[2])))
     else: # single lookup
         t[0] = resolve(t[1])
-    scope_check(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
+    end_scope(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
 
 
 def p_lookup_chain(t):
@@ -783,7 +884,7 @@ def p_charclass(t):
             result = '[' + result + ']'
         t[0] = CharClass(result, is_set_op='set_operation' in types)
 
-    scope_check(t, optional_block=t[3], referenced_vars=includes)
+    end_scope(t, optional_block=t[3], referenced_vars=includes)
 
 
 def p_optional_block(t):
@@ -795,12 +896,31 @@ def p_optional_block(t):
 
 def p_begin_block(t):
     '''begin_block : INDENT'''
+    begin_scope(t, Scope.BLOCKSCOPE)
+
+
+def begin_scope(t, type):
     current_scope = t.lexer.scopes[-1]
-    t.lexer.scopes.append(current_scope.copy())
+    new_scope = Scope(type=type, parent_scope=current_scope)
+    t.lexer.scopes.append(new_scope)
+    return new_scope
 
 
 def p_end_block(t):
     '''end_block : DEDENT'''
+    # we don't end_scope() immediately after seeing a DEDENT because the parent expression needs the variable(s) defined in its sub-block
+    # instead the parent will do the end_scope() 
+
+
+def end_scope(t, optional_block, referenced_vars):
+    if optional_block:
+        for var in optional_block:
+            if var.name not in referenced_vars:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+        t.lexer.scopes.pop()
+
+    while t.lexer.scopes[-1].type == Scope.FLAGSCOPE:
+        t.lexer.scopes.pop()
 
 
 def p_definitions(t):
@@ -901,14 +1021,6 @@ def find_column(t):
     return t.lexpos - last_newline
 
 
-def scope_check(t, optional_block, referenced_vars):
-    if optional_block:
-        for var in optional_block:
-            if var.name not in referenced_vars:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
-
-
 lexer0 = lex.lex()
 def build_lexer(source_lines):
     lexer = lexer0.clone()
@@ -918,25 +1030,13 @@ def build_lexer(source_lines):
     lexer.captures = set()
     lexer.backreferences = set()
     lexer.subroutine_calls = set()
-    lexer.scopes = [{
-        'alpha'     : Variable('alpha',     CharClass('[a-zA-Z]',        is_set_op=False), lineno=0),
-        'upper'     : Variable('upper',     CharClass('[A-Z]',           is_set_op=False), lineno=0),
-        'lower'     : Variable('lower',     CharClass('[a-z]',           is_set_op=False), lineno=0),
-        'alnum'     : Variable('alnum',     CharClass('[a-zA-Z0-9]',     is_set_op=False), lineno=0),
-        'digit'     : Variable('digit',     CharClass(r'\d',             is_set_op=False), lineno=0),
-        'space'     : Variable('space',     CharClass(' ',               is_set_op=False), lineno=0),
-        'linechar'  : Variable('linechar',  CharClass(r'[\r\n\x0B\x0C]', is_set_op=False), lineno=0),
-        'whitechar' : Variable('whitechar', CharClass(r'\s',             is_set_op=False), lineno=0),
-        'wordchar'  : Variable('wordchar',  CharClass(r'\w',             is_set_op=False), lineno=0),
-        '.'         : Variable('.',         Expression(r'\b'),                             lineno=0),
-        '_'         : Variable('_',         Expression(r'\B'),                             lineno=0),
-        'SoS'       : Variable('SoS',       Expression(r'\A'),                             lineno=0),
-        'EoS'       : Variable('EoS',       Expression(r'\Z'),                             lineno=0),
-        'SoL'       : Variable('SoL',       Expression(r'^'),                              lineno=0),
-        'EoL'       : Variable('EoL',       Expression(r'$'),                              lineno=0),
-        'any'       : Variable('any',       Expression('(?s:.)'),                          lineno=0),
-        'uany'      : Variable('uany',      Expression(r'\X'),                             lineno=0),
-    }]
+    lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS
+    lexer.scopes = [Scope(type=Scope.ROOTSCOPE, parent_scope=None)]
+
+    root_scope = lexer.scopes[0]
+    for var in BUILTINS:
+        root_scope[var.name] = var
+
     return CustomLexer(lexer)
 
 
@@ -994,7 +1094,7 @@ if __name__ == "__main__":
     default_encoding = 'utf-8'
     encoding = args.encoding or default_encoding
 
-    with codecs.open(source_file, 'r', encoding) as f:
+    with codecs.open(source_file, 'r') as f:
         source_code = f.read()
 
     print oprex(source_code)

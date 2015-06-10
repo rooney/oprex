@@ -1,3 +1,8 @@
 
-(-word)
-1 of: \n \t \n \x61 \u0061 \U00000061 \N{TILDE}
+--(unicode -word)
+--/a/b/
+--	a = '\N{TILDE}\N{AMPERSAND}'
+--	b = (word) linechar
+
+            (-word) /linechar/line2/alpha/
+                line2 = (word) /linechar/alpha/
