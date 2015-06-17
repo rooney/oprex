@@ -373,7 +373,7 @@ def t_charclass(t):
 
     results = map(translate, chardefs)
     t.type = 'COLON'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (chardefs, results, includes))]
+    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (results, includes))]
     return t
 
 
@@ -845,7 +845,7 @@ def p_subroutine_call(t):
 
 def p_charclass(t):
     '''charclass : CHARCLASS NEWLINE optional_block'''
-    chardefs, results, includes = t[1]
+    results, includes = t[1]
     values, types = zip(*results)
     current_scope = t.lexer.scopes[-1]
 
@@ -870,7 +870,7 @@ def p_charclass(t):
                 value = value[1]
         return value
 
-    if len(chardefs) == 1 and 'include' in types: # simple aliasing
+    if len(results) == 1 and 'include' in types: # simple aliasing
         t[0] = lookup(values[0].varname)
     else:
         result = ''.join(map(value_or_lookup, values))
@@ -878,9 +878,9 @@ def p_charclass(t):
             result = '-'
         elif len(result) == 1:
             result = regex.escape(result, special_only=True)
-        elif len(chardefs) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
+        elif len(results) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
             result = result.replace(r'^\p{', r'\P{', 1)
-        elif len(chardefs) > 1 or 'range' in types:
+        elif len(results) > 1 or 'range' in types:
             result = '[' + result + ']'
         t[0] = CharClass(result, is_set_op='set_operation' in types)
 
