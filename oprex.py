@@ -34,6 +34,9 @@ def sanitize(source_code):
     return source_lines
 
 
+states = (
+    ('charclass', 'exclusive'),
+)
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
 reserved = {
@@ -41,7 +44,7 @@ reserved = {
 }
 tokens = [
     'AMPERSAND',
-    'CHARCLASS',
+    'CHAR',
     'COLON',
     'DEDENT',
     'DOT',
@@ -181,6 +184,22 @@ class CharClass(Expression):
         charclass.is_set_op = is_set_op
         return charclass
 
+    class Item(namedtuple('CharClassItem', 'source type value')):
+        __slots__ = ()
+
+    @staticmethod
+    def item_token(t, type, value):
+        source = t.value
+        if type not in ('include', 'op'): # testing those types requires parser context
+            try:
+                regex.compile('[' + value + ']')
+            except regex.error as e:
+                raise OprexSyntaxError(t.lineno, 
+                    '%s compiles to %s which is rejected by the regex engine with error message: %s' % (source, value, e.message))
+        t.type = 'CHAR'
+        t.value = CharClass.Item(source, type, value)
+        return t
+
 
 Builtin   = lambda name, value: Variable(name, Expression(value), lineno=0)
 BuiltinCC = lambda name, value: Variable(name, CharClass(value, is_set_op=False), lineno=0)
@@ -249,132 +268,66 @@ def flags_redef_builtins(t, flags, scope):
                 scope[var.name] = var
 
 
-ESCAPE_SEQUENCE_RE = regex.compile(r'''
-      \\U\d{8}      # 8-digit hex escapes
-    | \\u\d{4}      # 4-digit hex escapes
-    | \\x\d{2}      # 2-digit hex escapes
-    | \\[0-7]{1,3}  # Octal escapes
-    | \\[abfnrtv]   # Single-character escapes
-    | \\N\{[^}]++\} # Unicode character name
-''', regex.VERBOSE)
-
-def t_charclass(t):
-    ''':.*'''
-    value = t.value.split('--')[0] # parts after "--" are comments, ignore them 
-    chardefs = value.split(' ') # will have empty string in case of consecutive spaces
-    chardefs = filter(lambda chardef: chardef, chardefs)  # exclude empty strings
-    if chardefs[0] != ':':
-        raise OprexSyntaxError(t.lineno, 'Character class definition requires space after the : (colon)')
-    del chardefs[0] # no need to process the colon
-    if not chardefs:
-        raise OprexSyntaxError(t.lineno, 'Empty character class is not allowed')
-
-    t.counter = 0
-    includes = set()
-
-    def try_translate(chardef, *functions):
-        for fn in functions:
-            result = fn(chardef)
-            if result:
-                return result, fn.__name__
-
-    def single(chardef): # example: a 1 $ 久 😐
-        if len(chardef) == 1:
-            return CharClass.escapes.get(chardef, chardef)
-
-    def escaped(chardef): # example: \n \61 \x61 \u0061 \U00000061
-        if chardef.startswith('\\'):
-            if ESCAPE_SEQUENCE_RE.fullmatch(chardef):
-                return chardef
-            else:
-                raise OprexSyntaxError(t.lineno, 'Bad escape sequence: ' + chardef)
-
-    def uhex(chardef): # example: U+65 U+1F4A9
-        if chardef.startswith('U+'):
-            hexnum = chardef[2:]
-            try:
-                int(hexnum, 16)
-            except ValueError:
-                raise OprexSyntaxError(t.lineno, 'Syntax error %s should be U+hexadecimal' % chardef)
-            hexlen = len(hexnum)
-            if hexlen > 8:
-                raise OprexSyntaxError(t.lineno, 'Syntax error %s out of range' % chardef)
-            if hexlen <= 4:
-                return unicode('\\u' + ('0' * (4-hexlen) + hexnum))
-            else:
-                return unicode('\\U' + ('0' * (8-hexlen) + hexnum))
-
-    def include(chardef): # example: +alpha +digit
-        if regex.match('\\+[a-zA-Z]\\w*+$', chardef):
-            varname = chardef[1:]
-            includes.add(varname)
-            return VariableLookup(varname, t.lineno, optional=False)
-
-    def by_prop(chardef): # example: /Alphabetic /Script=Latin /InBasicLatin /IsCyrillic
-        if regex.match('/\\w+', chardef):
-            prop = chardef[1:]
-            return '\\p{%s}' % prop
-
-    def by_name(chardef):           # example: :TRUE :CHECK_MARK :BALLOT_BOX_WITH_CHECK
-        if chardef.startswith(':'): # must be in uppercase, using underscores rather than spaces
-            if not chardef.isupper(): 
-                raise OprexSyntaxError(t.lineno, 'Character name must be in uppercase')
-            name = chardef[1:].replace('_', ' ')
-            return '\\N{%s}' % name
-
-    def range(chardef): # example: A..Z U+41..U+4F :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
-        if '..' in chardef:
-            try:
-                range_from, range_to = chardef.split('..')
-                from_val, _ = try_translate(range_from, single, uhex, by_name)
-                to_val, _   = try_translate(range_to, single, uhex, by_name)
-                return from_val + '-' + to_val
-            except (TypeError, ValueError):
-                raise OprexSyntaxError(t.lineno, 'Invalid character range: ' + chardef)
-
-    def set_operation(chardef): # example: +alpha and +digit not +hex
-        if chardef in ('not:', 'and', 'not'):
-            t.contains_setop = True
-            is_first = t.counter == 1
-            is_last = t.counter == len(chardefs)
-            prefix = is_first and not is_last
-            infix = not (is_first or is_last)
-            type, valid_placement, translation = {
-                'not:': ('unary',  prefix, '^'),
-                'not' : ('binary', infix,  '--'),
-                'and' : ('binary', infix,  '&&'),
-            }[chardef]
-            if valid_placement:
-                return translation
-            else:
-                raise OprexSyntaxError(t.lineno, "Incorrect use of %s '%s' operator" % (type, chardef))
-
-    def translate(chardef):
-        t.counter += 1
-        result = try_translate(chardef, range, single, escaped, uhex, by_prop, by_name, include, set_operation)
-        if not result:
-            raise OprexSyntaxError(t.lineno, 'Not a valid character class keyword: ' + chardef)
-        test(chardef, result)
-        return result
-
-    def test(chardef, result):
-        value, type = result
-        if type in ('include', 'set_operation'): # - includes are not testable at this point
-            return                               # - set operators are not testable by itself
-                                                 # --> so just skip test for those cases
-        test = value
-        if type != 'by_prop': # for some reason the regex library will not catch some errors if unicode property...
-            test = '[' + test + ']' # ...is put inside brackets, so in that case we'll just skip bracketing it
-        try:
-            regex.compile(test)
-        except regex.error as e:
-            msg = '%s compiles to %s which is rejected by the regex engine with error message: %s'
-            raise OprexSyntaxError(t.lineno, msg % (chardef, value, e.msg if hasattr(e, 'msg') else e.message))
-
-    results = map(translate, chardefs)
-    t.type = 'COLON'
-    t.extra_tokens = [ExtraToken(t, 'CHARCLASS', (results, includes))]
+def t_COLON(t):
+    r''':'''
+    t.lexer.begin('charclass')
     return t
+
+
+def t_charclass_DOT(t):
+    r'''\.'''
+    return t
+
+
+def t_charclass_op(t):
+    '''not:|not|and'''
+    return CharClass.item_token(t, 'op', {
+        'not:' : '^',
+        'not'  : '--',
+        'and'  : '&&',
+    }[t.value])
+
+
+def t_charclass_varname(t):
+    r'''\w{2,}'''
+    return CharClass.item_token(t, 'include', VariableLookup(t.value, t.lineno, optional=False))
+
+
+def t_charclass_include(t):
+    r'''\+\w+'''
+    return CharClass.item_token(t, 'include', VariableLookup(t.value[1:], t.lineno, optional=False))
+
+
+def t_charclass_prop(t):
+    r'''/\w+(=\w+)?'''
+    return CharClass.item_token(t, 'prop', '\p{%s}' % t.value[1:])
+
+
+def t_charclass_name(t):
+    r''':[\w-]+'''
+    return CharClass.item_token(t, 'name', '\N{%s}' % t.value[1:].replace('_', ' '))
+
+
+def t_charclass_escape(t):
+    r'''(?x)\\
+    ( [\\abfnrtv]    # Single-character escapes
+    | N\{[^}]+\}     # Unicode character name
+    | U[a-fA-F\d]{8} # 8-digit hex escapes
+    | u[a-fA-F\d]{4} # 4-digit hex escapes
+    | x[a-fA-F\d]{2} # 2-digit hex escapes 
+    | [0-7]{1,3}     # Octal escapes
+    )(?=[\s.])'''
+    return CharClass.item_token(t, 'escape', t.value)
+
+
+def t_charclass_bad_escape(t):
+    r'''\\\S+'''
+    raise OprexSyntaxError(t.lineno, 'Bad escape sequence: ' + t.value)
+
+
+def t_charclass_literal(t):
+    r'''\S'''
+    return CharClass.item_token(t, 'literal', CharClass.escapes.get(t.value, t.value))
 
 
 def t_FLAGSET(t):
@@ -409,30 +362,38 @@ def t_FLAGSET(t):
     return t
 
 
-OVERESCAPED_RE = regex.compile(r'''\\
-    ( \\U\d{8}        # 8-digit hex escapes
-    | \\u\d{4}        # 4-digit hex escapes
-    | \\x\d{2}        # 2-digit hex escapes
-    | \\[0-7]{1,3}    # Octal escapes
-    | \\\\\\          # Escaped backslash
-    | \\['"abfnrtv]   # Single-character escapes
-    | \\N\\\{[^}]++\} # Unicode character name
-    ) ''', regex.VERBOSE)
+ESCAPE_SEQUENCE_RE = regex.compile(r'''\\
+    ( [abfnrtv]   # Single-character escapes
+    | N\{[^}]++\} # Unicode character name
+    | U\d{8}      # 8-digit hex escapes
+    | u\d{4}      # 4-digit hex escapes
+    | x\d{2}      # 2-digit hex escapes
+    | [0-7]{1,3}  # Octal escapes
+    )''', regex.VERBOSE)
+
+OVERESCAPED_RE = regex.compile(r'''\\\\
+    ( \\\\          # Escaped backslash
+    | ['"abfnrtv]   # Single-character escapes
+    | N\\\{[^}]++\} # Unicode character name
+    | U\d{8}        # 8-digit hex escapes
+    | u\d{4}        # 4-digit hex escapes
+    | x\d{2}        # 2-digit hex escapes
+    | [0-7]{1,3}    # Octal escapes
+    )''', regex.VERBOSE)
 
 def restore_overescaped(match):
     match = match.group(1)
-    if match.startswith('\\N'):
-        charname = match[4:-2]
+    if match.startswith('N'):
+        charname = match[3:-2]
         unicodedata.lookup(charname) # raise KeyError if undefined character name
         return '\\N{' + charname + '}'
     else:
         return {
-            '\\\\\\' : '\\\\',
-            '\\a'    : '\\x07',
-            '\\b'    : '\\x08',
-            '\\f'    : '\\x0C',
-            '\\v'    : '\\x0B',
-        }.get(match, match)
+            'a'    : '\\x07',
+            'b'    : '\\x08',
+            'f'    : '\\x0C',
+            'v'    : '\\x0B',
+        }.get(match, '\\' + match)
 
 def t_STRING(t):
     r'''("(\\.|[^"\\])*")|('(\\.|[^'\\])*')''' # single- or double-quoted string, with escape-quote support
@@ -465,7 +426,7 @@ def t_OF(t):
     return t
 
 
-def t_linemark(t):
+def t_INITIAL_charclass_linemark(t):
     r'(?m)(((^|[ \t]+)--.*)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
     lines = t.value.split('\n')
     num_newlines = len(lines) - 1
@@ -477,6 +438,7 @@ def t_linemark(t):
     else:
         t.type = 'NEWLINE'
         t.lexer.lineno += num_newlines
+        t.lexer.begin('INITIAL') # should we are in 'cc' state, linebreak ends it
 
     # the whitespace after the last newline is indentation
     indentation = lines[-1]
@@ -542,7 +504,7 @@ def t_linemark(t):
         return t 
 
 
-def t_error(t):
+def t_INITIAL_charclass_error(t):
     raise OprexSyntaxError(t.lineno, 'Syntax error at or near: ' + t.value.split('\n')[0])
 
 
@@ -844,11 +806,45 @@ def p_subroutine_call(t):
 
 
 def p_charclass(t):
-    '''charclass : CHARCLASS NEWLINE optional_block'''
-    results, includes = t[1]
-    values, types = zip(*results)
-    current_scope = t.lexer.scopes[-1]
+    '''charclass : charitems NEWLINE optional_block'''
+    items = t[1]
+    
+    includes = []
+    def track_inclusion(item):
+        includes.append(item.value.varname)
 
+    def check_op(index, item):
+        is_first = index == 0
+        is_last = index == len(items)-1
+        prefix = is_first and not is_last
+        infix = not (is_first or is_last)
+
+        op_type, valid_placement = {
+            'not:': ('unary', prefix),
+            'not' : ('binary', infix),
+            'and' : ('binary', infix),
+        }[item.source]
+
+        if not valid_placement:
+            raise OprexSyntaxError(t.lineno(0), "Invalid use of %s '%s' operator" % (op_type, item.source))
+        
+        if op_type == 'binary': # binary ops require the previous item to be non-op
+            prev_item = items[index-1]
+            if prev_item.type == 'op':
+                raise OprexSyntaxError(t.lineno(0),  "Bad set operation '%s %s'" % (prev_item.source, item.source))              
+
+    has_range = False
+    has_set_op = False
+    for index, item in enumerate(items):
+        if item.type == 'include':
+            track_inclusion(item)
+        elif item.type == 'op':
+            check_op(index, item)
+            has_set_op = True
+        elif item.type == 'range':
+            has_range = True
+
+    current_scope = t.lexer.scopes[-1]
     def lookup(varname):
         try:
             var = current_scope[varname]
@@ -859,7 +855,8 @@ def p_charclass(t):
         else:
             return var.value
 
-    def value_or_lookup(value):
+    def value_or_lookup(item):
+        value = item.value
         if isinstance(value, VariableLookup):
             value = lookup(value.varname)
             if value.startswith('[') and not value.is_set_op: # remove nested [] unless it's set-operation
@@ -870,21 +867,66 @@ def p_charclass(t):
                 value = value[1]
         return value
 
-    if len(results) == 1 and 'include' in types: # simple aliasing
-        t[0] = lookup(values[0].varname)
+    if len(items) == 1 and items[0].type == 'include': # simple aliasing
+        t[0] = lookup(items[0].value.varname)
     else:
-        result = ''.join(map(value_or_lookup, values))
+        result = ''.join(map(value_or_lookup, items))
         if result == '\\-': # no need to escape dash outside of character class
             result = '-'
         elif len(result) == 1:
             result = regex.escape(result, special_only=True)
-        elif len(results) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
+        elif len(items) == 2 and result.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
             result = result.replace(r'^\p{', r'\P{', 1)
-        elif len(results) > 1 or 'range' in types:
+        elif len(items) > 1 or has_range:
             result = '[' + result + ']'
-        t[0] = CharClass(result, is_set_op='set_operation' in types)
+        t[0] = CharClass(result, is_set_op=has_set_op)
 
     end_scope(t, optional_block=t[3], referenced_vars=includes)
+
+
+def p_charitems(t):
+    '''charitems : WHITESPACE charitem
+                 | WHITESPACE charitem charitems'''
+    try:
+        t[0] = t[3]
+    except IndexError:
+        t[0] = deque()
+    t[0].appendleft(t[2])
+
+
+def p_charitem(t):
+    '''charitem : ranged_char
+                | single_char
+                | period_char'''
+    t[0] = t[1]
+
+def p_ranged_char(t):
+    '''ranged_char : CHAR DOT DOT CHAR'''
+    L_source, L_type, L_value = t[1]
+    R_source, R_type, R_value = t[4]
+    source = '%s..%s' % (L_source, R_source)
+    value = '%s-%s' % (L_value, R_value)
+
+    for type in (L_type, R_type):
+        if type in ('include', 'prop'):
+            raise OprexSyntaxError(t.lineno(0), 'Invalid character range: ' + source)
+    try:
+        regex.compile('[%s]' % value)
+    except regex.error as e:
+        raise OprexSyntaxError(t.lineno(0), 
+            '%s compiles to [%s] which is rejected by the regex engine with error message: %s' % (source, value, e.message))
+
+    t[0] = CharClass.Item(source, 'range', value)
+
+
+def p_period_char(t):
+    '''period_char : DOT'''
+    t[0] = CharClass.Item('.', 'literal', '.')
+
+
+def p_single_char(t):
+    '''single_char : CHAR'''
+    t[0] = t[1]
 
 
 def p_optional_block(t):

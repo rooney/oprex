@@ -3,1350 +3,1509 @@
 import unittest, regex
 from oprex import oprex, OprexSyntaxError
 
-# class TestErrorHandling(unittest.TestCase):
-#     def given(self, oprex_source, expect_error):
-#         expect_error = '\n' + expect_error
-#         try:
-#             oprex(oprex_source)
-#         except Exception as err:
-#             got_error = err.message
-#         else:
-#             got_error = ''
+class TestErrorHandling(unittest.TestCase):
+    def given(self, oprex_source, expect_error):
+        expect_error = '\n' + expect_error
+        try:
+            oprex(oprex_source)
+        except Exception as err:
+            got_error = err.message
+        else:
+            got_error = ''
 
-#         if got_error != expect_error:
-#             msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
-#             raise AssertionError(msg % (
-#                 oprex_source or '(empty string)', 
-#                 got_error or '\n(no error)', 
-#                 expect_error or '\n(no error)',
-#             ))
-
-
-#     def test_white_guards(self):
-#         self.given('one-liner input',
-#         expect_error='Line 1: First line must be blank, not: one-liner input')
-
-#         self.given('''something in the first line
-#         ''',
-#         expect_error='Line 1: First line must be blank, not: something in the first line')
-
-#         self.given('''
-#         something in the last line''',
-#         expect_error='Line 2: Last line must be blank, not:         something in the last line')
+        if got_error != expect_error:
+            msg = 'For input: %s\n----------------------------- Got Error: -----------------------------%s\n\n-------------------------- Expected Error: ---------------------------%s'
+            raise AssertionError(msg % (
+                oprex_source or '(empty string)', 
+                got_error or '\n(no error)', 
+                expect_error or '\n(no error)',
+            ))
 
 
-#     def test_unknown_symbol(self):
-#         self.given('''
-#             `@$%^&;{}[]\\
-#         ''',
-#         expect_error='Line 2: Syntax error at or near: `@$%^&;{}[]\\')
+    def test_white_guards(self):
+        self.given('one-liner input',
+        expect_error='Line 1: First line must be blank, not: one-liner input')
+
+        self.given('''something in the first line
+        ''',
+        expect_error='Line 1: First line must be blank, not: something in the first line')
+
+        self.given('''
+        something in the last line''',
+        expect_error='Line 2: Last line must be blank, not:         something in the last line')
 
 
-#     def test_unexpected_token(self):
-#         self.given('''
-#             /to/be/?
-#         ''',
-#         expect_error='''Line 2: Unexpected QUESTMARK
-#             /to/be/?
-#                    ^''')
-
-#         self.given('''
-#             root
-#                 branch
-#         ''',
-#         expect_error='''Line 3: Unexpected NEWLINE
-#                 branch
-#                       ^''')
-
-#         self.given('''
-#             root
-#                 root = '/'
-#             root2
-#         ''',
-#         expect_error='''Line 4: Unexpected VARNAME
-#             root2
-#             ^''')
-
-#         self.given('''
-#             root
-#                 root = '/'\nroot2
-#         ''',
-#         expect_error='Line 4: Unexpected VARNAME\nroot2\n^')
-
-#         self.given('''
-# *)          /warming/and/warming/
-#         ''',
-#         expect_error='Line 2: Unexpected GLOBALMARK\n*)          /warming/and/warming/\n^')
-
-#         self.given('''
-#             /greeting/world/
-#                 greeting = 'hello'
-#                     world = 'world'
-#         ''',
-#         expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
+    def test_unknown_symbol(self):
+        self.given('''
+            `@$%^&;{}[]\\
+        ''',
+        expect_error='Line 2: Syntax error at or near: `@$%^&;{}[]\\')
 
 
-#     def test_indentation_error(self):
-#         self.given('''
-#             /greeting/world/
-#                 greeting = 'hello'
-#                  world = 'world'
-#         ''',
-#         expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
+    def test_unexpected_token(self):
+        self.given('''
+            /to/be/?
+        ''',
+        expect_error='''Line 2: Unexpected QUESTMARK
+            /to/be/?
+                   ^''')
 
-#         self.given('''
-#             root
-#                 branch
-#                misaligned
-#         ''',
-#         expect_error='Line 4: Indentation error')
+        self.given('''
+            root
+                branch
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+                branch
+                      ^''')
 
-#         self.given('''
-#                 root
-#                     branch
-#             hyperroot
-#         ''',
-#         expect_error='Line 4: Indentation error')
+        self.given('''
+            root
+                root = '/'
+            root2
+        ''',
+        expect_error='''Line 4: Unexpected VARNAME
+            root2
+            ^''')
 
+        self.given('''
+            root
+                root = '/'\nroot2
+        ''',
+        expect_error='Line 4: Unexpected VARNAME\nroot2\n^')
 
-#     def test_correct_error_line_numbering(self):
-#         self.given('''
-#             /greeting/world/
-#                 greeting = 'hello'
+        self.given('''
+*)          /warming/and/warming/
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*)          /warming/and/warming/\n^')
 
-#                     world = 'world'
-#         ''',
-#         expect_error="Line 5: 'world' is defined but not used (by its parent expression)")
-
-#         self.given('''
-
-#             /greeting/world/
-
-
-#                 greeting = 'hello'
-
-#                  world = 'world'
-#         ''',
-#         expect_error="Line 8: 'world' is defined but not used (by its parent expression)")
-
-#         self.given('''
-#             /greeting/world/
-#                 greeting = 'hello'
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
+                    world = 'world'
+        ''',
+        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
 
 
-#                world = 'world'
-#         ''',
-#         expect_error='Line 6: Indentation error')
+    def test_indentation_error(self):
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
+                 world = 'world'
+        ''',
+        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
 
-#         self.given('''
-#             warming
+        self.given('''
+            root
+                branch
+               misaligned
+        ''',
+        expect_error='Line 4: Indentation error')
 
-
-#             *)  warming = 'global'
-#         ''',
-#         expect_error="Line 5: The GLOBALMARK *) must be put at the line's beginning")
-
-
-#     def test_mixed_indentation(self):
-#         self.given('''
-#             \tthis_line_mixes_tab_and_spaces_for_indentation
-#         ''',
-#         expect_error='Line 2: Cannot mix space and tab for indentation')
-
-#         self.given('''
-#             /tabs/vs/spaces/
-# \t\ttabs = 'this line is tabs-indented'
-#                 spaces = 'this line is spaces-indented'
-#         ''',
-#         expect_error='Line 3: Inconsistent indentation character')
+        self.given('''
+                root
+                    branch
+            hyperroot
+        ''',
+        expect_error='Line 4: Indentation error')
 
 
-#     def test_undefined_variable(self):
-#         self.given('''
-#             bigfoot
-#         ''',
-#         expect_error="Line 2: 'bigfoot' is not defined")
+    def test_correct_error_line_numbering(self):
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
 
-#         self.given('''
-#             /horses/and/unicorns/
-#                 horses = 'Thoroughbreds'
-#                 and = ' and '
-#         ''',
-#         expect_error="Line 2: 'unicorns' is not defined")
+                    world = 'world'
+        ''',
+        expect_error="Line 5: 'world' is defined but not used (by its parent expression)")
 
-#         self.given('''
-#             /unicorns/and/horses/
-#                 horses = 'Thoroughbreds'
-#                 and = ' and '
-#         ''',
-#         expect_error="Line 2: 'unicorns' is not defined")
+        self.given('''
 
-#         self.given('''
-#             unicorn
-#                 unicorn = unicorn
-#         ''',
-#         expect_error="Line 3: 'unicorn' is not defined")
+            /greeting/world/
 
 
-#     def test_illegal_variable_name(self):
-#         self.given('''
-#             101dalmatians
-#                 101dalmatians = 101 of 'dalmatians'
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             101dalmatians
-#                ^''')
+                greeting = 'hello'
+
+                 world = 'world'
+        ''',
+        expect_error="Line 8: 'world' is defined but not used (by its parent expression)")
+
+        self.given('''
+            /greeting/world/
+                greeting = 'hello'
+
+
+               world = 'world'
+        ''',
+        expect_error='Line 6: Indentation error')
+
+        self.given('''
+            warming
+
+
+            *)  warming = 'global'
+        ''',
+        expect_error="Line 5: The GLOBALMARK *) must be put at the line's beginning")
+
+
+    def test_mixed_indentation(self):
+        self.given('''
+            \tthis_line_mixes_tab_and_spaces_for_indentation
+        ''',
+        expect_error='Line 2: Cannot mix space and tab for indentation')
+
+        self.given('''
+            /tabs/vs/spaces/
+\t\ttabs = 'this line is tabs-indented'
+                spaces = 'this line is spaces-indented'
+        ''',
+        expect_error='Line 3: Inconsistent indentation character')
+
+
+    def test_undefined_variable(self):
+        self.given('''
+            bigfoot
+        ''',
+        expect_error="Line 2: 'bigfoot' is not defined")
+
+        self.given('''
+            /horses/and/unicorns/
+                horses = 'Thoroughbreds'
+                and = ' and '
+        ''',
+        expect_error="Line 2: 'unicorns' is not defined")
+
+        self.given('''
+            /unicorns/and/horses/
+                horses = 'Thoroughbreds'
+                and = ' and '
+        ''',
+        expect_error="Line 2: 'unicorns' is not defined")
+
+        self.given('''
+            unicorn
+                unicorn = unicorn
+        ''',
+        expect_error="Line 3: 'unicorn' is not defined")
+
+
+    def test_illegal_variable_name(self):
+        self.given('''
+            101dalmatians
+                101dalmatians = 101 of 'dalmatians'
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            101dalmatians
+               ^''')
         
-#         self.given('''
-#             /101dalmatians/
-#                 101dalmatians = 101 of 'dalmatians'
-#         ''',
-#         expect_error='''Line 2: Unexpected NUMBER
-#             /101dalmatians/
-#              ^''')
+        self.given('''
+            /101dalmatians/
+                101dalmatians = 101 of 'dalmatians'
+        ''',
+        expect_error='''Line 2: Unexpected NUMBER
+            /101dalmatians/
+             ^''')
         
-#         self.given('''
-#             /_/
-#                 _ = 'underscore'
-#         ''',
-#         expect_error='''Line 3: Unexpected UNDERSCORE
-#                 _ = 'underscore'
-#                 ^''')
+        self.given('''
+            /_/
+                _ = 'underscore'
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+                _ = 'underscore'
+                ^''')
 
 
-#     def test_duplicate_variable(self):
-#         self.given(u'''
-#             dejavu
-#                 dejavu = 'Déjà vu'
-#                 dejavu = 'Déjà vu'
-#         ''',
-#         expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
+    def test_duplicate_variable(self):
+        self.given(u'''
+            dejavu
+                dejavu = 'Déjà vu'
+                dejavu = 'Déjà vu'
+        ''',
+        expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
-#         self.given(u'''
-#             dejavu
-#                 dejavu = dejavu = 'Déjà vu'
-#         ''',
-#         expect_error="Line 3: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
+        self.given(u'''
+            dejavu
+                dejavu = dejavu = 'Déjà vu'
+        ''',
+        expect_error="Line 3: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
 
-#         self.given('''
-#             /subject/predicate/object/
-#                 subject = /article/adjective/noun/
-# *)                  article = 'the'
-# *)                  adjective = /speed/color/
-#                         speed = 'quick'
-#                         color = 'brown'
-# *)                  noun = 'fox'
-#                 predicate = /verb/adverb/
-#                     verb = 'jumps'
-#                     adverb = 'over'
-#                 object = /article/adjective/noun/
-#                     article = 'an'
-#         ''',
-#         expect_error="Line 13: Names must be unique within a scope, 'article' is already defined (previous definition at line 4)")
-
-
-#     def test_unused_variable(self):
-#         self.given('''
-#             /alice/bob/
-#                 alice = 'alice'
-#                 bob = 'bob'
-#                 trudy = 'trudy'
-#         ''',
-#         expect_error="Line 5: 'trudy' is defined but not used (by its parent expression)")
-
-#         self.given('''
-#             /alice/bob/
-#                 alice = 'alice'
-#                 bob = robert
-#                     robert = 'bob'
-#                     doe = 'doe'
-#         ''',
-#         expect_error="Line 6: 'doe' is defined but not used (by its parent expression)")
+        self.given('''
+            /subject/predicate/object/
+                subject = /article/adjective/noun/
+*)                  article = 'the'
+*)                  adjective = /speed/color/
+                        speed = 'quick'
+                        color = 'brown'
+*)                  noun = 'fox'
+                predicate = /verb/adverb/
+                    verb = 'jumps'
+                    adverb = 'over'
+                object = /article/adjective/noun/
+                    article = 'an'
+        ''',
+        expect_error="Line 13: Names must be unique within a scope, 'article' is already defined (previous definition at line 4)")
 
 
-#     def test_unclosed_literal(self):
-#         self.given('''
-#             mcd
-#                 mcd = 'McDonald's
-#         ''',
-#         expect_error='''Line 3: Unexpected VARNAME
-#                 mcd = 'McDonald's
-#                                 ^''')
+    def test_unused_variable(self):
+        self.given('''
+            /alice/bob/
+                alice = 'alice'
+                bob = 'bob'
+                trudy = 'trudy'
+        ''',
+        expect_error="Line 5: 'trudy' is defined but not used (by its parent expression)")
+
+        self.given('''
+            /alice/bob/
+                alice = 'alice'
+                bob = robert
+                    robert = 'bob'
+                    doe = 'doe'
+        ''',
+        expect_error="Line 6: 'doe' is defined but not used (by its parent expression)")
+
+
+    def test_unclosed_literal(self):
+        self.given('''
+            mcd
+                mcd = 'McDonald's
+        ''',
+        expect_error='''Line 3: Unexpected VARNAME
+                mcd = 'McDonald's
+                                ^''')
         
-#         self.given('''
-#             "she said \\"Hi\\"
-#         ''',
-#         expect_error='Line 2: Syntax error at or near: "she said \\"Hi\\"')
+        self.given('''
+            "she said \\"Hi\\"
+        ''',
+        expect_error='Line 2: Syntax error at or near: "she said \\"Hi\\"')
         
-#         self.given('''
-#             quotes_mismatch
-#                 quotes_mismatch = "'
-#         ''',
-#         expect_error="""Line 3: Syntax error at or near: "'""")
-
-
-#     def test_invalid_string_escape(self):
-#         self.given('''
-#             '\N{KABAYAN}'
-#         ''',
-#         expect_error="Line 2: undefined character name 'KABAYAN'")
-
-#         self.given(u'''
-#             '\N{APOSTROPHE}'
-#         ''',
-#         expect_error="Line 2: Syntax error at or near: '")
-
-
-#     def test_invalid_global_mark(self):
-#         self.given('''
-#             *)
-#         ''',
-#         expect_error="Line 2: The GLOBALMARK *) must be put at the line's beginning")
-
-#         self.given('''
-# *)
-#         ''',
-#         expect_error='Line 2: Indentation required after GLOBALMARK *)')
-
-#         self.given('''
-# *)\t
-#         ''',
-#         expect_error='Line 2: Unexpected GLOBALMARK\n*) \n^')
-
-#         self.given('''
-# *)warming
-#         ''',
-#         expect_error='Line 2: Indentation required after GLOBALMARK *)')
-
-#         self.given('''
-# *)          warming
-#         ''',
-#         expect_error='Line 2: Unexpected GLOBALMARK\n*)          warming\n^')
-
-#         self.given('''
-#             warming
-#                 *)warming = 'global'
-#         ''',
-#         expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
-
-#         self.given('''
-#             warming
-#             *)  warming = 'global'
-#         ''',
-#         expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
-
-#         self.given('''
-#             warming
-#                 warming*) = 'global'
-#         ''',
-#         expect_error="Line 3: Syntax error at or near: *) = 'global'")
-
-#         self.given('''
-#             warming
-#                 warming = global *)
-#         ''',
-#         expect_error="Line 3: Syntax error:                 warming = global *)")
-
-#         self.given('''
-#             warming
-#                 warming = *) 'global'
-#         ''',
-#         expect_error="Line 3: Syntax error:                 warming = *) 'global'")
-
-#         self.given('''
-#             warming
-#                 warming *) = 'global'
-#         ''',
-#         expect_error="Line 3: Syntax error:                 warming *) = 'global'")
-
-#         self.given('''
-#             warming
-# *)          *)  warming = 'global'
-#         ''',
-#         expect_error='Line 3: Syntax error: *)          *)  ')
-
-#         self.given('''
-#             warming
-# *)              warming*) = 'global'
-#         ''',
-#         expect_error="Line 3: Syntax error at or near: *) = 'global'")
-
-#         self.given('''
-#             warming
-# *)              warming = global *)
-#         ''',
-#         expect_error="Line 3: Syntax error: *)              warming = global *)")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)              
-#         ''',
-#         expect_error="Line 4: Unexpected NEWLINE\n*)              \n                ^")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)
-#         ''',
-#         expect_error="Line 4: Indentation required after GLOBALMARK *)")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)              junk
-#         ''',
-#         expect_error="Line 4: Unexpected NEWLINE\n*)              junk\n                    ^")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)            *)junk
-#         ''',
-#         expect_error="Line 4: Syntax error: *)            *)")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)              *)
-#         ''',
-#         expect_error="Line 4: Syntax error: *)              *)")
-
-#         self.given('''
-#             warming
-#                 warming = 'global'
-# *)            *)
-#         ''',
-#         expect_error="Line 4: Syntax error: *)            *)")
-
-
-#     def test_global_aliasing(self):
-#         self.given('''
-#             /oneoneone/oneone/one/
-#                 oneoneone = /satu/uno/ichi/
-#                     satu = '1'
-# *)                  uno = ichi = satu
-#                 oneone = /uno/ichi/
-#                 one = ichi
-#                     ichi: 1
-#         ''',
-#         expect_error="Line 8: Names must be unique within a scope, 'ichi' is already defined (previous definition at line 5)")
-
-#         self.given('''
-#             /oneoneone/oneone/one/
-#                 oneoneone = /satu/uno/ichi/
-#                     satu = '1'
-# *)                  uno = ichi = satu
-#                 oneone = /uno/ichi/
-#                 one = uno
-#                     uno: 1
-#         ''',
-#         expect_error="Line 8: Names must be unique within a scope, 'uno' is already defined (previous definition at line 5)")
-
-#         self.given('''
-#             /oneoneone/oneone/one/
-#                 oneoneone = /satu/uno/ichi/
-#                     satu = '1'
-# *)                  uno = ichi = satu
-#                 oneone = /uno/ichi/
-#                 one = satu
-#         ''',
-#         expect_error="Line 7: 'satu' is not defined")
-
-#         self.given('''
-#             /oneoneone/oneone/one/
-#                 oneoneone = /satu/uno/ichi/
-# *)                  satu = '1'
-#                     uno = ichi = satu
-#                 one = satu
-#                 oneone = /uno/ichi/
-#         ''',
-#         expect_error="Line 7: 'uno' is not defined")
-
-
-#     def test_invalid_charclass(self):
-#         self.given('''
-#             empty_charclass
-#                 empty_charclass:
-#         ''',
-#         expect_error='Line 3: Empty character class is not allowed')
-
-#         self.given('''
-#             noSpaceAfterColon
-#                 noSpaceAfterColon:n o
-#         ''',
-#         expect_error='Line 3: Character class definition requires space after the : (colon)')
-
-#         self.given('''
-#             diphtong
-#                 diphtong: ae au
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: ae')
-
-#         self.given('''
-#             miscolon
-#                 miscolon: /colon/should/be/equal/sign/
-#         ''',
-#         expect_error='Line 3: /colon/should/be/equal/sign/ compiles to \p{colon/should/be/equal/sign/} which is rejected by the regex engine with error message: bad fuzzy constraint')
-
-#         self.given('''
-#             miscolon
-#                 miscolon: 'colon should be equal sign'
-#         ''',
-#         expect_error="Line 3: Not a valid character class keyword: 'colon")
-
-#         self.given('''
-#             /A/a/
-#                 A: a: A a
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: a:')
-
-#         self.given('''
-#             /A/a/
-#                 A: a = A a
-#         ''',
-#         expect_error="Line 2: 'a' is not defined")
-
-#         self.given('''
-#             /A/a/
-#                 A: a = A
-#         ''',
-#         expect_error="Line 2: 'a' is not defined")
-
-#         self.given('''
-#             /shouldBeColon/
-#                 shouldBeColon = A a
-#         ''',
-#         expect_error='''Line 3: Unexpected VARNAME
-#                 shouldBeColon = A a
-#                                   ^''')
-
-#         self.given('''
-#             mixedAssignment
-#                 mixedAssignment : = x
-#         ''',
-#         expect_error='''Line 3: Unexpected COLON
-#                 mixedAssignment : = x
-#                                 ^''')
-
-#         self.given('''
-#             mixedAssignment
-#                 mixedAssignment := x
-#         ''',
-#         expect_error='Line 3: Character class definition requires space after the : (colon)')
-
-#         self.given('''
-#             mixedAssignment
-#                 mixedAssignment:= x
-#         ''',
-#         expect_error='Line 3: Character class definition requires space after the : (colon)')
-
-#         self.given('''
-#             mixedAssignment
-#                 mixedAssignment=: x
-#         ''',
-#         expect_error='''Line 3: Unexpected COLON
-#                 mixedAssignment=: x
-#                                 ^''')
-
-#         self.given('''
-#             mixedAssignment
-#                 mixedAssignment =: x
-#         ''',
-#         expect_error='''Line 3: Unexpected COLON
-#                 mixedAssignment =: x
-#                                  ^''')
-
-#         self.given('''
-#             x
-#                 x: /IsAwesome
-#         ''',
-#         expect_error='Line 3: /IsAwesome compiles to \p{IsAwesome} which is rejected by the regex engine with error message: unknown property')
-
-#         self.given('''
-#             x
-#                 x: :KABAYAN_SABA_KOTA
-#         ''',
-#         expect_error='Line 3: :KABAYAN_SABA_KOTA compiles to \N{KABAYAN SABA KOTA} which is rejected by the regex engine with error message: undefined character name')
-
-#         self.given(r'''
-#             x
-#                 x: \N{KABAYAN}
-#         ''',
-#         expect_error='Line 3: \N{KABAYAN} compiles to \N{KABAYAN} which is rejected by the regex engine with error message: undefined character name')
-
-#         self.given(r'''
-#             x
-#                 x: \o
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \o')
-
-#         self.given(r'''
-#             x
-#                 x: \w
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \w')
-
-#         self.given(r'''
-#             x
-#                 x: \'
-#         ''',
-#         expect_error="Line 3: Bad escape sequence: \\'")
-
-#         self.given(r'''
-#             x
-#                 x: \"
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \\"')
-
-#         self.given(r'''
-#             x
-#                 x: \\
-#         ''',
-#         expect_error=r'Line 3: Bad escape sequence: \\')
-
-#         self.given(r'''
-#             x
-#                 x: \ron
-#         ''',
-#         expect_error=r'Line 3: Bad escape sequence: \ron')
-
-#         self.given(r'''
-#             x
-#                 x: \u123
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \u123')
-
-#         self.given(r'''
-#             x
-#                 x: \U1234
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \U1234')
-
-#         self.given(r'''
-#             x
-#                 x: \u12345
-#         ''',
-#         expect_error='Line 3: Bad escape sequence: \u12345')
-
-
-#     def test_invalid_char(self):
-#         self.given('''
-#             x
-#                 x: u1234
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: u1234')
-
-#         self.given('''
-#             x
-#                 x: u+ab
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: u+ab')
-
-#         self.given('''
-#             x
-#                 x: u+123z
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: u+123z')
-
-#         self.given('''
-#             x
-#                 x: U+123z
-#         ''',
-#         expect_error='Line 3: Syntax error U+123z should be U+hexadecimal')
-
-#         self.given('''
-#             x
-#                 x: U+123456789
-#         ''',
-#         expect_error='Line 3: Syntax error U+123456789 out of range')
-
-#         self.given('''
-#             x
-#                 x: U+
-#         ''',
-#         expect_error='Line 3: Syntax error U+ should be U+hexadecimal')
-
-#         self.given('''
-#             x
-#                 x: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
-#         ''',
-#         expect_error='Line 3: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex engine with error message: undefined character name')
-
-#         # unicode character name should be in uppercase
-#         self.given('''
-#             x
-#                 x: check-mark
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: check-mark')
-
-#         self.given('''
-#             x
-#                 x: @omic
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: @omic')
-
-#         self.given('''
-#             x
-#                 x: awe$ome
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: awe$ome')
-
-
-#     def test_invalid_range(self):
-#         self.given('''
-#             x
-#                 x: ..
-#         ''',
-#         expect_error='Line 3: Invalid character range: ..')
-
-#         self.given('''
-#             x
-#                 x: infinity..
-#         ''',
-#         expect_error='Line 3: Invalid character range: infinity..')
-
-#         self.given('''
-#             x
-#                 x: ..bigbang
-#         ''',
-#         expect_error='Line 3: Invalid character range: ..bigbang')
-
-#         self.given('''
-#             x
-#                 x: bigcrunch..bigbang
-#         ''',
-#         expect_error='Line 3: Invalid character range: bigcrunch..bigbang')
-
-#         self.given('''
-#             x
-#                 x: A...Z
-#         ''',
-#         expect_error='Line 3: Invalid character range: A...Z')
-
-#         self.given('''
-#             x
-#                 x: 1..2..3
-#         ''',
-#         expect_error='Line 3: Invalid character range: 1..2..3')
-
-#         self.given('''
-#             x
-#                 x: /IsAlphabetic..Z
-#         ''',
-#         expect_error='Line 3: Invalid character range: /IsAlphabetic..Z')
-
-#         self.given('''
-#             x
-#                 x: +alpha..Z
-#         ''',
-#         expect_error='Line 3: Invalid character range: +alpha..Z')
-
-
-#     def test_invalid_charclass_include(self):
-#         self.given('''
-#             x
-#                 x: +1
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +1')
-
-#         self.given('''
-#             x
-#                 x: +7even
-#                     7even: 7
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +7even')
-
-#         self.given('''
-#             x
-#                 x: +bang!
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +bang!')
-
-#         self.given('''
-#             x
-#                 x: ++
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: ++')
-
-#         self.given('''
-#             x
-#                 x: ++
-#                     +: p l u s
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: ++')
-
-#         self.given('''
-#             x
-#                 x: +!awe+some
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +!awe+some')
-
-#         self.given('''
-#             x
-#                 x: +__special__
-#                     __special__: x
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +__special__')
-
-#         self.given('''
-#             x
-#                 x: y
-#                     y: m i s n g +
-#         ''',
-#         expect_error="Line 4: 'y' is defined but not used (by its parent expression)")
-
-#         self.given('''
-#             x
-#                 x: +y
-#                     y = 'should be a charclass'
-#         ''',
-#         expect_error="Line 3: Cannot include 'y': not a character class")
-
-#         self.given(u'''
-#             vowhex
-#                 vowhex: +!vowel +hex
-#                     vowel: a i u e o A I U E O
-#                     hex: 0..9 a..f A..F
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: +!vowel')
-
-#         self.given(u'''
-#             /x/y/
-#                 x = 'x'
-#                 y: +x
-#         ''',
-#         expect_error="Line 4: Cannot include 'x': not a character class")
-
-#         self.given(u'''
-#             /plus/minus/pmz/
-#                 plus: +
-#                 minus = '-' -- gotcha: exactly-same output with "minus: -" but not includable 
-#                 pmz: +plus +minus z
-#         ''',
-#         expect_error="Line 5: Cannot include 'minus': not a character class")
-
-#         self.given(u'''
-#             /plus/minus/pmz/
-#                 plus: +
-#                 minus = '-'
-#                 pmz: +plus +dash z
-#                     dash: +minus
-#         ''',
-#         expect_error="Line 6: Cannot include 'minus': not a character class")
-
-
-#     def test_invalid_charclass_operation(self):
-#         self.given(u'''
-#             missing_arg
-#                 missing_arg: /Alphabetic and
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'and' operator")
-
-#         self.given(u'''
-#             missing_arg
-#                 missing_arg: and /Alphabetic
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'and' operator")
-
-#         self.given(u'''
-#             missing_arg
-#                 missing_arg: /Alphabetic not
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'not' operator")
-
-#         self.given(u'''
-#             missing_arg
-#                 missing_arg: not /Alphabetic
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'not' operator")
-
-#         self.given(u'''
-#             missing_args
-#                 missing_args: and
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'and' operator")
-
-#         self.given(u'''
-#             missing_args
-#                 missing_args: not
-#         ''',
-#         expect_error="Line 3: Incorrect use of binary 'not' operator")
-
-#         self.given(u'''
-#             missing_args
-#                 missing_args: not:
-#         ''',
-#         expect_error="Line 3: Incorrect use of unary 'not:' operator")
-
-
-#     def test_invalid_quantifier(self):
-#         self.given(u'''
-#             3 of
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 of
-#               ^''')
-
-#         self.given(u'''
-#             3 of          
-#                 of = 'trailing spaces above after the "of"'
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 of          
-#               ^''')
-
-#         self.given(u'''
-#             3 of -- 3 of what?
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 of -- 3 of what?
-#               ^''')
-
-#         self.given(u'''
-#             3 of-- 3 of what?
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 of-- 3 of what?
-#               ^''')
-
-#         self.given(u'''
-#             3 of of--
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             3 of of--
-#                    ^''')
-
-#         self.given(u'''
-#             3 alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 alpha
-#               ^''')
-
-#         self.given(u'''
-#             3 ofalpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 ofalpha
-#               ^''')
-
-#         self.given(u'''
-#             3of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3of alpha
-#              ^''')
-
-#         self.given(u'''
-#             3 o falpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 o falpha
-#               ^''')
-
-#         self.given(u'''
-#             3 office alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             3 office alpha
-#               ^''')
-
-#         self.given(u'''
-#             3. of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected WHITESPACE
-#             3. of alpha
-#               ^''')
-
-#         self.given(u'''
-#             3... of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected DOT
-#             3... of alpha
-#                ^''')
-
-#         self.given(u'''
-#             3+ of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected PLUS
-#             3+ of alpha
-#              ^''')
-
-#         self.given(u'''
-#             3+3 of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected PLUS
-#             3+3 of alpha
-#              ^''')
-
-#         self.given(u'''
-#             3..2 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             2..2 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             1..1 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             0..0 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             1 ..3 of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected DOT
-#             1 ..3 of alpha
-#               ^''')
-
-#         self.given(u'''
-#             1.. 3 of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected NUMBER
-#             1.. 3 of alpha
-#                 ^''')
-
-#         self.given(u'''
-#             1 .. of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected DOT
-#             1 .. of alpha
-#               ^''')
-
-#         self.given(u'''
-#             1 <<- of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             1 <<- of alpha
-#                 ^''')
-
-#         self.given(u'''
-#             1 <<+ of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected WHITESPACE
-#             1 <<+ of alpha
-#                  ^''')
-
-#         self.given(u'''
-#             1 <<+..0 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             0 <<+..0 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             1 <<+..1 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             2 <<+..2 of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             2..1 <<- of alpha
-#         ''',
-#         expect_error='Line 2: Repeat max must be > min')
-
-#         self.given(u'''
-#             ? <<- of alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected LT
-#             ? <<- of alpha
-#               ^''')
-
-
-#     def test_commenting_error(self):
-#         self.given(u'''
-#             - this comment is missing another - prefix
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             - this comment is missing another - prefix
-#             ^''')
-
-#         self.given(u'''
-#             1 of vowel - this comment is missing another - prefix
-#                 vowel: a i u e o 
-#         ''',
-#         expect_error='''Line 2: Unexpected WHITESPACE
-#             1 of vowel - this comment is missing another - prefix
-#                       ^''')
-
-#         self.given(u'''
-#             1 of vowel- this comment is missing another - prefix
-#                 vowel: a i u e o 
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             1 of vowel- this comment is missing another - prefix
-#                       ^''')
-
-#         self.given(u'''
-#             1 of vowel
-#                 vowel: a i u e o - this comment is missing another - prefix
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: this')
-
-#         self.given(u'''
-#             1 of vowel
-#                 vowel: a i u e o- this comment is missing another - prefix
-#         ''',
-#         expect_error='Line 3: Not a valid character class keyword: o-')
-
-#         self.given('''
-#             /comment/-- whitespace required before the "--"
-#                 comment = 'first'
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             /comment/-- whitespace required before the "--"
-#                      ^''')
-
-#         self.given('''
-#             /comment/--
-#                 comment = 'first'
-#         ''',
-#         expect_error='''Line 2: Unexpected MINUS
-#             /comment/--
-#                      ^''')
-
-
-#     def test_invalid_reference(self):
-#         self.given(u'''
-#             =missing
-#         ''',
-#         expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
-
-#         self.given(u'''
-#             =missing?
-#         ''',
-#         expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
-
-#         self.given(u'''
-#             &missing
-#         ''',
-#         expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
-
-#         self.given(u'''
-#             /&missing/
-#         ''',
-#         expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
-
-#         self.given(u'''
-#             &=invalid_mix
-#         ''',
-#         expect_error='''Line 2: Unexpected EQUALSIGN
-#             &=invalid_mix
-#              ^''')
-
-#         self.given(u'''
-#             =&invalid_mix
-#         ''',
-#         expect_error='''Line 2: Unexpected AMPERSAND
-#             =&invalid_mix
-#              ^''')
-
-#         self.given(u'''
-#             =alpha
-#         ''',
-#         expect_error="Line 2: Invalid backreference: 'alpha' is not defined/not a capture")
-
-#         self.given(u'''
-#             /alpha/&alpha/
-#         ''',
-#         expect_error="Line 2: Invalid subroutine call: 'alpha' is not defined/not a capture")
-
-#         self.given(u'''
-#             /alpha/&alpha/
-#                 alpha: a..z A..Z
-#         ''',
-#         expect_error="Line 3: 'alpha' is a built-in variable and cannot be redefined")
-
-#         self.given(u'''
-#             /bang/=bang/
-#                 bang: b a n g !
-#         ''',
-#         expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
-
-
-#     def test_invalid_boundaries(self):
-#         self.given(u'''
-#             /cat./
-#                 cat = 'cat'
-#         ''',
-#         expect_error='''Line 2: Unexpected DOT
-#             /cat./
-#                 ^''')
-
-#         self.given(u'''
-#             /.cat/
-#                 cat = 'cat'
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             /.cat/
-#               ^''')
-
-#         self.given(u'''
-#             /cat_/
-#                 cat = 'cat'
-#         ''',
-#         expect_error="Line 2: 'cat_' is not defined")
-
-#         self.given(u'''
-#             /cat/
-#                 cat = 'cat' .
-#         ''',
-#         expect_error='''Line 3: Unexpected WHITESPACE
-#                 cat = 'cat' .
-#                            ^''')
-
-#         self.given(u'''
-#             /cat/
-#                 cat = 'cat'__
-#         ''',
-#         expect_error='''Line 3: Unexpected VARNAME
-#                 cat = 'cat'__
-#                            ^''')
-
-#         self.given(u'''
-#             /_/
-#                 _ = 'underscore'
-#         ''',
-#         expect_error='''Line 3: Unexpected UNDERSCORE
-#                 _ = 'underscore'
-#                 ^''')
-
-#         self.given(u'''
-#             /_./
-#         ''',
-#         expect_error='''Line 2: Unexpected DOT
-#             /_./
-#               ^''')
-
-
-#     def test_invalid_flags(self):
-#         self.given(u'''
-#             (pirate) 'carribean'
-#         ''',
-#         expect_error="Line 2: Unknown flag 'pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
+        self.given('''
+            quotes_mismatch
+                quotes_mismatch = "'
+        ''',
+        expect_error="""Line 3: Syntax error at or near: "'""")
+
+
+    def test_invalid_string_escape(self):
+        self.given('''
+            '\N{KABAYAN}'
+        ''',
+        expect_error="Line 2: undefined character name 'KABAYAN'")
+
+        self.given(u'''
+            '\N{APOSTROPHE}'
+        ''',
+        expect_error="Line 2: Syntax error at or near: '")
+
+
+    def test_invalid_global_mark(self):
+        self.given('''
+            *)
+        ''',
+        expect_error="Line 2: The GLOBALMARK *) must be put at the line's beginning")
+
+        self.given('''
+*)
+        ''',
+        expect_error='Line 2: Indentation required after GLOBALMARK *)')
+
+        self.given('''
+*)\t
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*) \n^')
+
+        self.given('''
+*)warming
+        ''',
+        expect_error='Line 2: Indentation required after GLOBALMARK *)')
+
+        self.given('''
+*)          warming
+        ''',
+        expect_error='Line 2: Unexpected GLOBALMARK\n*)          warming\n^')
+
+        self.given('''
+            warming
+                *)warming = 'global'
+        ''',
+        expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
+
+        self.given('''
+            warming
+            *)  warming = 'global'
+        ''',
+        expect_error="Line 3: The GLOBALMARK *) must be put at the line's beginning")
+
+        self.given('''
+            warming
+                warming*) = 'global'
+        ''',
+        expect_error="Line 3: Syntax error at or near: *) = 'global'")
+
+        self.given('''
+            warming
+                warming = global *)
+        ''',
+        expect_error="Line 3: Syntax error:                 warming = global *)")
+
+        self.given('''
+            warming
+                warming = *) 'global'
+        ''',
+        expect_error="Line 3: Syntax error:                 warming = *) 'global'")
+
+        self.given('''
+            warming
+                warming *) = 'global'
+        ''',
+        expect_error="Line 3: Syntax error:                 warming *) = 'global'")
+
+        self.given('''
+            warming
+*)          *)  warming = 'global'
+        ''',
+        expect_error='Line 3: Syntax error: *)          *)  ')
+
+        self.given('''
+            warming
+*)              warming*) = 'global'
+        ''',
+        expect_error="Line 3: Syntax error at or near: *) = 'global'")
+
+        self.given('''
+            warming
+*)              warming = global *)
+        ''',
+        expect_error="Line 3: Syntax error: *)              warming = global *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              
+        ''',
+        expect_error="Line 4: Unexpected NEWLINE\n*)              \n                ^")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)
+        ''',
+        expect_error="Line 4: Indentation required after GLOBALMARK *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              junk
+        ''',
+        expect_error="Line 4: Unexpected NEWLINE\n*)              junk\n                    ^")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)            *)junk
+        ''',
+        expect_error="Line 4: Syntax error: *)            *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)              *)
+        ''',
+        expect_error="Line 4: Syntax error: *)              *)")
+
+        self.given('''
+            warming
+                warming = 'global'
+*)            *)
+        ''',
+        expect_error="Line 4: Syntax error: *)            *)")
+
+
+    def test_global_aliasing(self):
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = ichi
+                    ichi: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'ichi' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = uno
+                    uno: 1
+        ''',
+        expect_error="Line 8: Names must be unique within a scope, 'uno' is already defined (previous definition at line 5)")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+                    satu = '1'
+*)                  uno = ichi = satu
+                oneone = /uno/ichi/
+                one = satu
+        ''',
+        expect_error="Line 7: 'satu' is not defined")
+
+        self.given('''
+            /oneoneone/oneone/one/
+                oneoneone = /satu/uno/ichi/
+*)                  satu = '1'
+                    uno = ichi = satu
+                one = satu
+                oneone = /uno/ichi/
+        ''',
+        expect_error="Line 7: 'uno' is not defined")
+
+
+    def test_invalid_charclass(self):
+        self.given('''
+            empty_charclass
+                empty_charclass:
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+                empty_charclass:
+                                ^''')
+
+        self.given('''
+            noSpaceAfterColon
+                noSpaceAfterColon:n o
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                noSpaceAfterColon:n o
+                                  ^''')
+
+        self.given('''
+            diphtong
+                diphtong: ae au
+        ''',
+        expect_error="Line 3: Cannot include 'ae': not defined")
+
+        self.given('''
+            miscolon
+                miscolon: /colon/should/be/equal/sign/
+        ''',
+        expect_error='Line 3: /colon compiles to \p{colon} which is rejected by the regex engine with error message: unknown property at position 10')
+
+        self.given('''
+            miscolon
+                miscolon: /alphabetic/colon/should/be/equal/sign/
+        ''',
+        expect_error='Line 3: /colon compiles to \p{colon} which is rejected by the regex engine with error message: unknown property at position 10')
+
+        self.given('''
+            miscolon
+                miscolon: 'colon should be equal sign'
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                miscolon: 'colon should be equal sign'
+                           ^''')
+
+        self.given('''
+            /A/a/
+                A: a: A a
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                A: a: A a
+                    ^''')
+
+        self.given('''
+            /A/a/
+                A: a = A a
+        ''',
+        expect_error="Line 2: 'a' is not defined")
+
+        self.given('''
+            /A/a/
+                A: a = A
+        ''',
+        expect_error="Line 2: 'a' is not defined")
+
+        self.given('''
+            /shouldBeColon/
+                shouldBeColon = A a
+        ''',
+        expect_error='''Line 3: Unexpected VARNAME
+                shouldBeColon = A a
+                                  ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment : = x
+        ''',
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment : = x
+                                ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment := x
+        ''',
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment := x
+                                ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment:= x
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                mixedAssignment:= x
+                                ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment=: x
+        ''',
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment=: x
+                                ^''')
+
+        self.given('''
+            mixedAssignment
+                mixedAssignment =: x
+        ''',
+        expect_error='''Line 3: Unexpected COLON
+                mixedAssignment =: x
+                                 ^''')
+
+        self.given('''
+            x
+                x: /IsAwesome
+        ''',
+        expect_error='Line 3: /IsAwesome compiles to \p{IsAwesome} which is rejected by the regex engine with error message: unknown property at position 14')
+
+        self.given('''
+            x
+                x: :KABAYAN_SABA_KOTA
+        ''',
+        expect_error='Line 3: :KABAYAN_SABA_KOTA compiles to \N{KABAYAN SABA KOTA} which is rejected by the regex engine with error message: undefined character name at position 22')
+
+        self.given(r'''
+            x
+                x: \N{KABAYAN}
+        ''',
+        expect_error='Line 3: \N{KABAYAN} compiles to \N{KABAYAN} which is rejected by the regex engine with error message: undefined character name at position 12')
+
+        self.given(r'''
+            x
+                x: \o
+        ''',
+        expect_error='Line 3: Bad escape sequence: \o')
+
+        self.given(r'''
+            x
+                x: \w
+        ''',
+        expect_error='Line 3: Bad escape sequence: \w')
+
+        self.given(r'''
+            x
+                x: \'
+        ''',
+        expect_error="Line 3: Bad escape sequence: \\'")
+
+        self.given(r'''
+            x
+                x: \"
+        ''',
+        expect_error='Line 3: Bad escape sequence: \\"')
+
+        self.given(r'''
+            x
+                x: \ron
+        ''',
+        expect_error=r'Line 3: Bad escape sequence: \ron')
+
+        self.given(r'''
+            x
+                x: \u123
+        ''',
+        expect_error='Line 3: Bad escape sequence: \u123')
+
+        self.given(r'''
+            x
+                x: \U1234
+        ''',
+        expect_error='Line 3: Bad escape sequence: \U1234')
+
+        self.given(r'''
+            x
+                x: \u12345
+        ''',
+        expect_error='Line 3: Bad escape sequence: \u12345')
+
+
+    def test_invalid_char(self):
+        self.given('''
+            x
+                x: u1234
+        ''',
+        expect_error="Line 3: Cannot include 'u1234': not defined")
+
+        self.given('''
+            x
+                x: \uab
+        ''',
+        expect_error='Line 3: Bad escape sequence: \uab')
+
+        self.given('''
+            x
+                x: \u123z
+        ''',
+        expect_error='Line 3: Bad escape sequence: \u123z')
+
+        self.given('''
+            x
+                x: \U1234567z
+        ''',
+        expect_error='Line 3: Bad escape sequence: \U1234567z')
+
+        self.given('''
+            x
+                x: \U123456789
+        ''',
+        expect_error='Line 3: Bad escape sequence: \U123456789')
+
+        self.given('''
+            x
+                x: \U
+        ''',
+        expect_error='Line 3: Bad escape sequence: \U')
+
+        self.given('''
+            x
+                x: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE
+        ''',
+        expect_error='Line 3: :YET_ANOTHER_CHARACTER_THAT_SHOULD_NOT_BE_IN_UNICODE compiles to \N{YET ANOTHER CHARACTER THAT SHOULD NOT BE IN UNICODE} which is rejected by the regex engine with error message: undefined character name at position 56')
+
+        # unicode character name should be in uppercase
+        self.given('''
+            x
+                x: check-mark
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: check-mark
+                        ^''')
+
+        self.given('''
+            x
+                x: @omic
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: @omic
+                    ^''')
+
+        self.given('''
+            x
+                x: awe$ome
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: awe$ome
+                      ^''')
+
+
+    def test_invalid_range(self):
+        self.given('''
+            x
+                x: ..
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: ..
+                    ^''')
+
+        self.given('''
+            x
+                x: ...,
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: ...,
+                    ^''')
+
+        self.given('''
+            x
+                x: ,...
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: ,...
+                      ^''')
+
+        self.given('''
+            x
+                x: ;..,
+        ''',
+        expect_error='Line 3: ;.., compiles to [;-,] which is rejected by the regex engine with error message: bad character range at position 4')
+
+        self.given('''
+            x
+                x: x....
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: x....
+                      ^''')
+
+        self.given('''
+            x
+                x: infinity..
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+                x: infinity..
+                             ^''')
+
+        self.given('''
+            x
+                x: ..bigbang
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: ..bigbang
+                    ^''')
+
+        self.given('''
+            x
+                x: bigcrunch..bigbang
+        ''',
+        expect_error='Line 3: Invalid character range: bigcrunch..bigbang')
+
+        self.given('''
+            x
+                x: A...Z
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: A...Z
+                      ^''')
+
+        self.given('''
+            x
+                x: 1..2..3
+        ''',
+        expect_error='''Line 3: Unexpected DOT
+                x: 1..2..3
+                       ^''')
+
+        self.given('''
+            x
+                x: /IsAlphabetic..Z
+        ''',
+        expect_error='Line 3: Invalid character range: /IsAlphabetic..Z')
+
+        self.given('''
+            x
+                x: +alpha..Z
+        ''',
+        expect_error='Line 3: Invalid character range: +alpha..Z')
+
+        self.given('''
+            aB
+                aB: a..B
+        ''',
+        expect_error='Line 3: a..B compiles to [a-B] which is rejected by the regex engine with error message: bad character range at position 4')
+
+        self.given(r'''
+            BA
+                BA: \u0042..A
+        ''',
+        expect_error='Line 3: \u0042..A compiles to [\u0042-A] which is rejected by the regex engine with error message: bad character range at position 9')
+
+        self.given(r'''
+            BA
+                BA: \U00000042..\u0041
+        ''',
+        expect_error='Line 3: \U00000042..\u0041 compiles to [\U00000042-\u0041] which is rejected by the regex engine with error message: bad character range at position 18')
+
+        self.given(r'''
+            BA
+                BA: \x42..\U00000041
+        ''',
+        expect_error=r'Line 3: \x42..\U00000041 compiles to [\x42-\U00000041] which is rejected by the regex engine with error message: bad character range at position 16')
+
+        self.given(r'''
+            BA
+                BA: \102..\x41
+        ''',
+        expect_error=r'Line 3: \102..\x41 compiles to [\102-\x41] which is rejected by the regex engine with error message: bad character range at position 10')
+
+        self.given(r'''
+            BA
+                BA: \N{LATIN CAPITAL LETTER B}..\101
+        ''',
+        expect_error=r'Line 3: \N{LATIN CAPITAL LETTER B}..\101 compiles to [\N{LATIN CAPITAL LETTER B}-\101] which is rejected by the regex engine with error message: bad character range at position 32')
+
+        self.given('''
+            BA
+                BA: :LATIN_CAPITAL_LETTER_B..\N{LATIN CAPITAL LETTER A}
+        ''',
+        expect_error='Line 3: :LATIN_CAPITAL_LETTER_B..\N{LATIN CAPITAL LETTER A} compiles to [\N{LATIN CAPITAL LETTER B}-\N{LATIN CAPITAL LETTER A}] which is rejected by the regex engine with error message: bad character range at position 54')
+
+        self.given('''
+            BA
+                BA: \N{LATIN CAPITAL LETTER B}..:LATIN_CAPITAL_LETTER_A
+        ''',
+        expect_error='Line 3: \N{LATIN CAPITAL LETTER B}..:LATIN_CAPITAL_LETTER_A compiles to [\N{LATIN CAPITAL LETTER B}-\N{LATIN CAPITAL LETTER A}] which is rejected by the regex engine with error message: bad character range at position 54')
+
+        self.given(r'''
+            aZ
+                aZ: \N{LATIN SMALL LETTER A}..:LATIN_CAPITAL_LETTER_Z
+        ''',
+        expect_error='Line 3: \N{LATIN SMALL LETTER A}..:LATIN_CAPITAL_LETTER_Z compiles to [\N{LATIN SMALL LETTER A}-\N{LATIN CAPITAL LETTER Z}] which is rejected by the regex engine with error message: bad character range at position 52')
+
+
+    def test_invalid_charclass_include(self):
+        self.given('''
+            x
+                x: +1
+        ''',
+        expect_error="Line 3: Cannot include '1': not defined")
+
+        self.given('''
+            x
+                x: +7even
+        ''',
+        expect_error="Line 3: Cannot include '7even': not defined")
+
+        self.given('''
+            x
+                x: +7even
+                    7even: 7
+        ''',
+        expect_error='''Line 4: Unexpected NUMBER
+                    7even: 7
+                    ^''')
+
+        self.given('''
+            x
+                x: +bang!
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: +bang!
+                        ^''')
+
+        self.given('''
+            x
+                x: ++
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: ++
+                    ^''')
+
+        self.given('''
+            x
+                x: +!awe+some
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                x: +!awe+some
+                    ^''')
+
+        self.given('''
+            x
+                x: y
+                    y: m i s n g +
+        ''',
+        expect_error="Line 4: 'y' is defined but not used (by its parent expression)")
+
+        self.given('''
+            x
+                x: +y
+                    y = 'should be a charclass'
+        ''',
+        expect_error="Line 3: Cannot include 'y': not a character class")
+
+        self.given(u'''
+            vowhex
+                vowhex: +!vowel +hex
+                    vowel: a i u e o A I U E O
+                    hex: 0..9 a..f A..F
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                vowhex: +!vowel +hex
+                         ^''')
+
+        self.given(u'''
+            notand
+                notand: not and -- possible, but must use +not +and
+                    not: n o t
+                    and: a n d
+        ''',
+        expect_error="Line 3: Invalid use of binary 'not' operator")
+
+        self.given(u'''
+            /x/y/
+                x = 'x'
+                y: +x
+        ''',
+        expect_error="Line 4: Cannot include 'x': not a character class")
+
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus = '-' -- gotcha: exactly-same output with "minus: -" but not includable 
+                pmz: +plus +minus z
+        ''',
+        expect_error="Line 5: Cannot include 'minus': not a character class")
+
+        self.given(u'''
+            /plus/minus/pmz/
+                plus: +
+                minus = '-'
+                pmz: +plus +dash z
+                    dash: +minus
+        ''',
+        expect_error="Line 6: Cannot include 'minus': not a character class")
+
+
+    def test_invalid_charclass_operation(self):
+        self.given(u'''
+            missing_arg
+                missing_arg: /Alphabetic and
+        ''',
+        expect_error="Line 3: Invalid use of binary 'and' operator")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: and /Alphabetic
+        ''',
+        expect_error="Line 3: Invalid use of binary 'and' operator")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: /Alphabetic not
+        ''',
+        expect_error="Line 3: Invalid use of binary 'not' operator")
+
+        self.given(u'''
+            missing_arg
+                missing_arg: not /Alphabetic
+        ''',
+        expect_error="Line 3: Invalid use of binary 'not' operator")
+
+        self.given(u'''
+            missing_args
+                missing_args: and
+        ''',
+        expect_error="Line 3: Invalid use of binary 'and' operator")
+
+        self.given(u'''
+            missing_args
+                missing_args: not
+        ''',
+        expect_error="Line 3: Invalid use of binary 'not' operator")
+
+        self.given(u'''
+            missing_args
+                missing_args: not:
+        ''',
+        expect_error="Line 3: Invalid use of unary 'not:' operator")
+
+        self.given(u'''
+            1 of: x and not y
+        ''',
+        expect_error="Line 2: Bad set operation 'and not'")
+
+        self.given(u'''
+            1 of: x not and y
+        ''',
+        expect_error="Line 2: Bad set operation 'not and'")
+
+        self.given(u'''
+            1 of: x not not y
+        ''',
+        expect_error="Line 2: Bad set operation 'not not'")
+
+        self.given(u'''
+            1 of: x and and y
+        ''',
+        expect_error="Line 2: Bad set operation 'and and'")
+
+        self.given(u'''
+            1 of: not: not: x
+        ''',
+        expect_error="Line 2: Invalid use of unary 'not:' operator")
+
+        self.given(u'''
+            1 of: not: not x
+        ''',
+        expect_error="Line 2: Bad set operation 'not: not'")
+
+        self.given(u'''
+            1 of: not: and x
+        ''',
+        expect_error="Line 2: Bad set operation 'not: and'")
+
+
+    def test_invalid_quantifier(self):
+        self.given(u'''
+            3 of
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of
+              ^''')
+
+        self.given(u'''
+            3 of          
+                of = 'trailing spaces above after the "of"'
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of          
+              ^''')
+
+        self.given(u'''
+            3 of -- 3 of what?
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of -- 3 of what?
+              ^''')
+
+        self.given(u'''
+            3 of-- 3 of what?
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 of-- 3 of what?
+              ^''')
+
+        self.given(u'''
+            3 of of--
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            3 of of--
+                   ^''')
+
+        self.given(u'''
+            3 alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 alpha
+              ^''')
+
+        self.given(u'''
+            3 ofalpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 ofalpha
+              ^''')
+
+        self.given(u'''
+            3of alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3of alpha
+             ^''')
+
+        self.given(u'''
+            3 o falpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 o falpha
+              ^''')
+
+        self.given(u'''
+            3 office alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            3 office alpha
+              ^''')
+
+        self.given(u'''
+            3. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected WHITESPACE
+            3. of alpha
+              ^''')
+
+        self.given(u'''
+            3... of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            3... of alpha
+               ^''')
+
+        self.given(u'''
+            3+ of alpha
+        ''',
+        expect_error='''Line 2: Unexpected PLUS
+            3+ of alpha
+             ^''')
+
+        self.given(u'''
+            3+3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected PLUS
+            3+3 of alpha
+             ^''')
+
+        self.given(u'''
+            3..2 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            2..2 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            1..1 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            0..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            1 ..3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            1 ..3 of alpha
+              ^''')
+
+        self.given(u'''
+            1.. 3 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected NUMBER
+            1.. 3 of alpha
+                ^''')
+
+        self.given(u'''
+            1 .. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            1 .. of alpha
+              ^''')
+
+        self.given(u'''
+            1 <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            1 <<- of alpha
+                ^''')
+
+        self.given(u'''
+            1 <<+ of alpha
+        ''',
+        expect_error='''Line 2: Unexpected WHITESPACE
+            1 <<+ of alpha
+                 ^''')
+
+        self.given(u'''
+            1 <<+..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            0 <<+..0 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            1 <<+..1 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            2 <<+..2 of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            2..1 <<- of alpha
+        ''',
+        expect_error='Line 2: Repeat max must be > min')
+
+        self.given(u'''
+            ? <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected LT
+            ? <<- of alpha
+              ^''')
+
+
+    def test_commenting_error(self):
+        self.given(u'''
+            - this comment is missing another - prefix
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            - this comment is missing another - prefix
+            ^''')
+
+        self.given(u'''
+            1 of vowel - this comment is missing another - prefix
+                vowel: a i u e o 
+        ''',
+        expect_error='''Line 2: Unexpected WHITESPACE
+            1 of vowel - this comment is missing another - prefix
+                      ^''')
+
+        self.given(u'''
+            1 of vowel- this comment is missing another - prefix
+                vowel: a i u e o 
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            1 of vowel- this comment is missing another - prefix
+                      ^''')
+
+        self.given(u'''
+            1 of vowel
+                vowel: a i u e o - this comment is missing another - prefix
+        ''',
+        expect_error="Line 3: Cannot include 'this': not defined")
+
+        self.given(u'''
+            1 of vowel
+                vowel: a i u e o- this comment is missing another - prefix
+        ''',
+        expect_error='''Line 3: Unexpected CHAR
+                vowel: a i u e o- this comment is missing another - prefix
+                                ^''')
+
+        self.given('''
+            /comment/-- whitespace required before the "--"
+                comment = 'first'
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            /comment/-- whitespace required before the "--"
+                     ^''')
+
+        self.given('''
+            /comment/--
+                comment = 'first'
+        ''',
+        expect_error='''Line 2: Unexpected MINUS
+            /comment/--
+                     ^''')
+
+
+    def test_invalid_reference(self):
+        self.given(u'''
+            =missing
+        ''',
+        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            =missing?
+        ''',
+        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            &missing
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            /&missing/
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+
+        self.given(u'''
+            &=invalid_mix
+        ''',
+        expect_error='''Line 2: Unexpected EQUALSIGN
+            &=invalid_mix
+             ^''')
+
+        self.given(u'''
+            =&invalid_mix
+        ''',
+        expect_error='''Line 2: Unexpected AMPERSAND
+            =&invalid_mix
+             ^''')
+
+        self.given(u'''
+            =alpha
+        ''',
+        expect_error="Line 2: Invalid backreference: 'alpha' is not defined/not a capture")
+
+        self.given(u'''
+            /alpha/&alpha/
+        ''',
+        expect_error="Line 2: Invalid subroutine call: 'alpha' is not defined/not a capture")
+
+        self.given(u'''
+            /alpha/&alpha/
+                alpha: a..z A..Z
+        ''',
+        expect_error="Line 3: 'alpha' is a built-in variable and cannot be redefined")
+
+        self.given(u'''
+            /bang/=bang/
+                bang: b a n g !
+        ''',
+        expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
+
+
+    def test_invalid_boundaries(self):
+        self.given(u'''
+            /cat./
+                cat = 'cat'
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /cat./
+                ^''')
+
+        self.given(u'''
+            /.cat/
+                cat = 'cat'
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            /.cat/
+              ^''')
+
+        self.given(u'''
+            /cat_/
+                cat = 'cat'
+        ''',
+        expect_error="Line 2: 'cat_' is not defined")
+
+        self.given(u'''
+            /cat/
+                cat = 'cat' .
+        ''',
+        expect_error='''Line 3: Unexpected WHITESPACE
+                cat = 'cat' .
+                           ^''')
+
+        self.given(u'''
+            /cat/
+                cat = 'cat'__
+        ''',
+        expect_error='''Line 3: Unexpected VARNAME
+                cat = 'cat'__
+                           ^''')
+
+        self.given(u'''
+            /_/
+                _ = 'underscore'
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+                _ = 'underscore'
+                ^''')
+
+        self.given(u'''
+            /_./
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /_./
+              ^''')
+
+
+    def test_invalid_flags(self):
+        self.given(u'''
+            (pirate) 'carribean'
+        ''',
+        expect_error="Line 2: Unknown flag 'pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-#         self.given(u'''
-#             (-pirate) 'carribean'
-#         ''',
-#         expect_error="Line 2: Unknown flag '-pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
+        self.given(u'''
+            (-pirate) 'carribean'
+        ''',
+        expect_error="Line 2: Unknown flag '-pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-#         self.given(u'''
-#             (--ignorecase) 'carribean'
-#         ''',
-#         expect_error="Line 2: Unknown flag '--ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
+        self.given(u'''
+            (--ignorecase) 'carribean'
+        ''',
+        expect_error="Line 2: Unknown flag '--ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-#         self.given(u'''
-#             (unicode-ignorecase)
-#             alpha
-#         ''',
-#         expect_error="Line 2: Unknown flag 'unicode-ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
+        self.given(u'''
+            (unicode-ignorecase)
+            alpha
+        ''',
+        expect_error="Line 2: Unknown flag 'unicode-ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
 
-#         self.given(u'''
-#             (unicode) alpha
-#         ''',
-#         expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not scoped.")
+        self.given(u'''
+            (unicode) alpha
+        ''',
+        expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not scoped.")
 
-#         self.given(u'''
-#             (ignorecase)alpha
-#         ''',
-#         expect_error='''Line 2: Unexpected VARNAME
-#             (ignorecase)alpha
-#                         ^''')
+        self.given(u'''
+            (ignorecase)alpha
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            (ignorecase)alpha
+                        ^''')
 
-#         self.given(u'''
-#             (ignorecase)
-#              alpha
-#         ''',
-#         expect_error='Line 3: Unexpected INDENT')
+        self.given(u'''
+            (ignorecase)
+             alpha
+        ''',
+        expect_error='Line 3: Unexpected INDENT')
 
-#         self.given(u'''
-#             (ignorecase -ignorecase) alpha
-#         ''',
-#         expect_error='Line 2: (ignorecase -ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
+        self.given(u'''
+            (ignorecase -ignorecase) alpha
+        ''',
+        expect_error='Line 2: (ignorecase -ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
  
-#         self.given(u'''
-#             (-ignorecase ignorecase) alpha
-#         ''',
-#         expect_error='Line 2: (-ignorecase ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
+        self.given(u'''
+            (-ignorecase ignorecase) alpha
+        ''',
+        expect_error='Line 2: (-ignorecase ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
  
-#         self.given(u'''
-#             (-ignorecase ignorecase unicode)
-#             alpha
-#         ''',
-#         expect_error='Line 2: (-ignorecase ignorecase unicode) compiles to (?iu-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
+        self.given(u'''
+            (-ignorecase ignorecase unicode)
+            alpha
+        ''',
+        expect_error='Line 2: (-ignorecase ignorecase unicode) compiles to (?iu-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
  
-#         self.given(u'''
-#             (-ignorecase unicode ignorecase)
-#             alpha
-#         ''',
-#         expect_error='Line 2: (-ignorecase unicode ignorecase) compiles to (?ui-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
+        self.given(u'''
+            (-ignorecase unicode ignorecase)
+            alpha
+        ''',
+        expect_error='Line 2: (-ignorecase unicode ignorecase) compiles to (?ui-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
  
-#         self.given(u'''
-#             (-unicode)
-#             alpha
-#         ''',
-#         expect_error='Line 2: (-unicode) compiles to (?-u) which is rejected by the regex engine with error message: bad inline flags: cannot turn off global flag at position 9')
+        self.given(u'''
+            (-unicode)
+            alpha
+        ''',
+        expect_error='Line 2: (-unicode) compiles to (?-u) which is rejected by the regex engine with error message: bad inline flags: cannot turn off global flag at position 9')
  
-#         self.given(u'''
-#             (ignorecase)
-#             (-ignorecase)
-#         ''',
-#         expect_error='''Line 3: Unexpected NEWLINE
-#             (-ignorecase)
-#                          ^''')
+        self.given(u'''
+            (ignorecase)
+            (-ignorecase)
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+            (-ignorecase)
+                         ^''')
  
-#         self.given(u'''
-#             (unicode ignorecase)
-#             (-ignorecase)
-#         ''',
-#         expect_error='''Line 3: Unexpected NEWLINE
-#             (-ignorecase)
-#                          ^''')
+        self.given(u'''
+            (unicode ignorecase)
+            (-ignorecase)
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+            (-ignorecase)
+                         ^''')
 
-#         self.given(u'''
-#             (ascii unicode)
-#         ''',
-#         expect_error='Line 2: (ascii unicode) compiles to (?au) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+        self.given(u'''
+            (ascii unicode)
+        ''',
+        expect_error='Line 2: (ascii unicode) compiles to (?au) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-#         self.given(u'''
-#             (unicode ascii)
-#         ''',
-#         expect_error='Line 2: (unicode ascii) compiles to (?ua) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+        self.given(u'''
+            (unicode ascii)
+        ''',
+        expect_error='Line 2: (unicode ascii) compiles to (?ua) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-#         self.given(u'''
-#             (ascii locale)
-#         ''',
-#         expect_error='Line 2: (ascii locale) compiles to (?aL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+        self.given(u'''
+            (ascii locale)
+        ''',
+        expect_error='Line 2: (ascii locale) compiles to (?aL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-#         self.given(u'''
-#             (unicode locale)
-#         ''',
-#         expect_error='Line 2: (unicode locale) compiles to (?uL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
+        self.given(u'''
+            (unicode locale)
+        ''',
+        expect_error='Line 2: (unicode locale) compiles to (?uL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-#         self.given(u'''
-#             (version0 version1)
-#         ''',
-#         expect_error='Line 2: (version0 version1) compiles to (?V0V1) which is rejected by the regex engine with error message: 8448')
+        self.given(u'''
+            (version0 version1)
+        ''',
+        expect_error='Line 2: (version0 version1) compiles to (?V0V1) which is rejected by the regex engine with error message: 8448')
 
-#         self.given(u'''
-#             (version1 version0)
-#         ''',
-#         expect_error='Line 2: (version1 version0) compiles to (?V1V0) which is rejected by the regex engine with error message: 8448')
+        self.given(u'''
+            (version1 version0)
+        ''',
+        expect_error='Line 2: (version1 version0) compiles to (?V1V0) which is rejected by the regex engine with error message: 8448')
 
 
 class TestOutput(unittest.TestCase):
@@ -1477,19 +1636,19 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             x
-                x: U+ab U+AB U+00ab U+00Ab
+                x: \u00ab \u00AB \U000000ab \u00Ab
         ''',
-        expect_regex='[\u00ab\u00AB\u00ab\u00Ab]')
+        expect_regex='[\u00ab\u00AB\U000000ab\u00Ab]')
 
         self.given('''
             x
-                x: U+12ab U+12AB U+12Ab
+                x: \u12ab \u12AB \u12Ab
         ''',
         expect_regex='[\u12ab\u12AB\u12Ab]')
 
         self.given('''
             x
-                x: U+1234a U+1234A U+01234a
+                x: \U0001234a \U0001234A \U0001234a
         ''',
         expect_regex='[\U0001234a\U0001234A\U0001234a]')
 
@@ -1501,11 +1660,53 @@ class TestOutput(unittest.TestCase):
 
 
     def test_character_range_output(self):
-        self.given('''
-            x
-                x: U+41..Z :LEFTWARDS_ARROW..:LEFT_RIGHT_OPEN-HEADED_ARROW
+        self.given(r'''
+            AB
+                AB: A..\u0042
         ''',
-        expect_regex=r'[\u0041-Z\N{LEFTWARDS ARROW}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
+        expect_regex=r'[A-\u0042]')
+
+        self.given(r'''
+            AB
+                AB: \u0041..\U00000042
+        ''',
+        expect_regex=r'[\u0041-\U00000042]')
+
+        self.given(r'''
+            AB
+                AB: \U00000041..\x42
+        ''',
+        expect_regex=r'[\U00000041-\x42]')
+
+        self.given(r'''
+            AB
+                AB: \x41..\102
+        ''',
+        expect_regex=r'[\x41-\102]')
+
+        self.given(r'''
+            AB
+                AB: \101..\N{LATIN CAPITAL LETTER B}
+        ''',
+        expect_regex=r'[\101-\N{LATIN CAPITAL LETTER B}]')
+
+        self.given('''
+            AB
+                AB: \N{LATIN CAPITAL LETTER A}..:LEFT_RIGHT_OPEN-HEADED_ARROW
+        ''',
+        expect_regex=r'[\N{LATIN CAPITAL LETTER A}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
+
+        self.given('''
+            AB
+                AB: :LATIN_CAPITAL_LETTER_A..\N{LEFT RIGHT OPEN-HEADED ARROW}
+        ''',
+        expect_regex=r'[\N{LATIN CAPITAL LETTER A}-\N{LEFT RIGHT OPEN-HEADED ARROW}]')
+
+        self.given(r'''
+            colon_to_semi
+                colon_to_semi: :..;
+        ''',
+        expect_regex='[:-;]')
 
         self.given('''
             need_escape
@@ -1540,10 +1741,10 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=u'ä')
 
-        self.given(u'''
+        self.given('''
             aUmlaut
                 aUmlaut: +a_with_diaeresis
-                    a_with_diaeresis: U+E4
+                    a_with_diaeresis: \u00E4
         ''',
         expect_regex=r'\u00E4')
 
@@ -1636,6 +1837,14 @@ class TestOutput(unittest.TestCase):
         expect_regex='[^[^X]]')
 
         self.given(u'''
+            notand
+                notand: +not +and
+                    not: n o t
+                    and: a n d
+        ''',
+        expect_regex='[notand]')
+
+        self.given(u'''
             /plus/minus/pmz/
                 plus: +
                 minus: -
@@ -1650,6 +1859,27 @@ class TestOutput(unittest.TestCase):
                     hex: 0..9 a..f A..F
         ''',
         expect_regex='[aiueoAIUEO0-9a-fA-F]')
+
+        self.given('''
+            x
+                x: +__special__
+                    __special__: x
+        ''',
+        expect_regex='x')
+
+        self.given('''
+            x
+                x: __special__
+                   __special__: x
+        ''',
+        expect_regex='x')
+
+        self.given('''
+            /dot/period/
+                period: .
+                dot: . period
+        ''',
+        expect_regex='[..]\.')
 
 
     def test_charclass_operation_output(self):
@@ -1724,11 +1954,17 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'[\n\r\t\a\b\v\f]')
 
+        self.given('''
+            backspace
+                backspace: \\
+        ''',
+        expect_regex=r'\\')
+
         self.given(r'''
             unicode_charname
-                unicode_charname: \N{AMPERSAND} :AMPERSAND
+                unicode_charname: \N{AMPERSAND} :AMPERSAND \N{BIOHAZARD SIGN} :BIOHAZARD_SIGN
         ''',
-        expect_regex='[\N{AMPERSAND}\N{AMPERSAND}]')
+        expect_regex='[\N{AMPERSAND}\N{AMPERSAND}\N{BIOHAZARD SIGN}\N{BIOHAZARD SIGN}]')
 
 
     def test_string_literal(self):
@@ -2957,7 +3193,7 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             x
-                x: U+41 U+042 U+00043 U+44 U+0045
+                x: \u0041 \u0042 \u0043 \u0044 \u0045
         ''',
         expect_full_match=['A', 'B', 'C', 'D', 'E'],
         no_match=['a', 'b', 'c', 'd', 'e'])
@@ -3008,12 +3244,47 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['[\\^]'])
 
     def test_character_range(self):
-        self.given('''
+        self.given(r'''
             AZ
-                AZ: U+41..Z
+                AZ: \x41..Z
         ''',
         expect_full_match=['A', 'B', 'C', 'X', 'Y', 'Z'],
         no_match=['a', 'x', 'z', '1', '0'])
+
+        self.given(r'''
+            AB
+                AB: A..\u0042
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
+
+        self.given(r'''
+            AB
+                AB: \u0041..\U00000042
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
+
+        self.given(r'''
+            AB
+                AB: \U00000041..\x42
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
+
+        self.given(r'''
+            AB
+                AB: \x41..\102
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
+
+        self.given(r'''
+            AB
+                AB: \101..\N{LATIN CAPITAL LETTER B}
+        ''',
+        expect_full_match=['A', 'B'],
+        no_match=['a', 'b'])
 
         self.given('''
             arrows
@@ -3028,6 +3299,18 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['[', '^', 'a', '-', 'z', ']'],
         no_match=['b', 'A'])
+
+        self.given('''
+            1 of: a -..\\
+        ''',
+        expect_full_match=['a', '-', '\\', '.'],
+        no_match=[','])
+
+        self.given('''
+            1 of: [..]
+        ''',
+        expect_full_match=['[', ']'],
+        no_match=['-'])
 
 
     def test_charclass_include(self):
@@ -3077,10 +3360,10 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=[u'ä'])
 
-        self.given(u'''
+        self.given('''
             aUmlaut
                 aUmlaut: +a_with_diaeresis
-                    a_with_diaeresis: U+E4
+                    a_with_diaeresis: \u00E4
         ''',
         expect_full_match=[u'ä'])
 
@@ -3126,8 +3409,6 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['+-+', '+--', '+-z'],
         no_match=['+-a'])
 
-
-    def test_nested_charclass(self):
         self.given(u'''
             vowhex
                 vowhex: +vowel +hex
@@ -3136,6 +3417,11 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', 'b', 'f', 'A', 'B', 'F', '0', '1', '9', 'i', 'u', 'E', 'O'],
         no_match=['$', 'z', 'k'])
+
+        self.given(u'''
+            1 of: . , ;
+        ''',
+        expect_full_match=['.', ',', ';'])
 
 
     def test_charclass_operation(self):
@@ -3223,10 +3509,17 @@ class TestMatches(unittest.TestCase):
 
         self.given(r'''
             unicode_charname
-                unicode_charname: \N{AMPERSAND} :AMPERSAND
+                unicode_charname: \N{AMPERSAND} \N{BIOHAZARD SIGN}
         ''',
-        expect_full_match=['&', u'\N{AMPERSAND}'],
-        no_match=['\N{AMPERSAND}', r'\N{AMPERSAND}'])
+        expect_full_match=['&', u'\N{AMPERSAND}', u'\N{BIOHAZARD SIGN}', u'☣'],
+        no_match=['\N{AMPERSAND}', r'\N{AMPERSAND}', r'\N{BIOHAZARD SIGN}', '☣'])
+
+        self.given(r'''
+            unicode_charname
+                unicode_charname: \N{AMPERSAND} :AMPERSAND \N{BIOHAZARD SIGN} :BIOHAZARD_SIGN
+        ''',
+        expect_full_match=['&', u'\N{AMPERSAND}', u'\N{BIOHAZARD SIGN}', u'☣'],
+        no_match=['\N{AMPERSAND}', r'\N{AMPERSAND}', r'\N{BIOHAZARD SIGN}', '☣'])
 
 
     def test_builtin(self):

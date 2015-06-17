@@ -1,8 +1,2 @@
 
---(unicode -word)
---/a/b/
---	a = '\N{TILDE}\N{AMPERSAND}'
---	b = (word) linechar
-
-            (-word) /linechar/line2/alpha/
-                line2 = (word) /linechar/alpha/
+1 of: -..\\
