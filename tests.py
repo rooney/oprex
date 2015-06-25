@@ -83,7 +83,7 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                     world = 'world'
         ''',
-        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
+        expect_error='Line 4: Unexpected INDENT')
 
 
     def test_indentation_error(self):
@@ -92,7 +92,7 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                  world = 'world'
         ''',
-        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
+        expect_error='Line 4: Unexpected INDENT')
 
         self.given('''
             root
@@ -116,7 +116,7 @@ class TestErrorHandling(unittest.TestCase):
 
                     world = 'world'
         ''',
-        expect_error="Line 5: 'world' is defined but not used (by its parent expression)")
+        expect_error='Line 5: Unexpected INDENT')
 
         self.given('''
 
@@ -127,7 +127,7 @@ class TestErrorHandling(unittest.TestCase):
 
                  world = 'world'
         ''',
-        expect_error="Line 8: 'world' is defined but not used (by its parent expression)")
+        expect_error='Line 8: Unexpected INDENT')
 
         self.given('''
             /greeting/world/
