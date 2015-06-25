@@ -306,7 +306,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
 *)
         ''',
-        expect_error='Line 2: Indentation required after GLOBALMARK *)')
+        expect_error='Line 2: Syntax error: *)')
 
         self.given('''
 *)\t
@@ -316,7 +316,7 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
 *)warming
         ''',
-        expect_error='Line 2: Indentation required after GLOBALMARK *)')
+        expect_error='Line 2: Syntax error: *)')
 
         self.given('''
 *)          warming
@@ -389,7 +389,7 @@ class TestErrorHandling(unittest.TestCase):
                 warming = 'global'
 *)
         ''',
-        expect_error="Line 4: Indentation required after GLOBALMARK *)")
+        expect_error="Line 4: Syntax error: *)")
 
         self.given('''
             warming

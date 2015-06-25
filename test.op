@@ -1,2 +1,10 @@
 
-1 of: -..\\
+--/|
+-- |'AM'
+-- |'PM'
+-- |/
+
+1 of: consonant
+	consonant: not: vowel
+		vowel: a i u e o A I U E O
+		-- hello
