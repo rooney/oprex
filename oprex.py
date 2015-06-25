@@ -574,20 +574,14 @@ def p_expression(t):
 
 
 def p_string_expr(t):
-    '''string_expr : string NEWLINE optional_block'''
-    end_scope(t, optional_block=t[3], referenced_vars=())
-    t[0] = Expression(t[1])
+    '''string_expr : str_b STRING str_b NEWLINE'''
+    t[0] = Expression(t[1] + t[2] + t[3])
 
 
-def p_string(t):
-    '''string : boundary STRING boundary'''
-    t[0] = t[1] + t[2] + t[3]
-
-
-def p_boundary(t):
-    '''boundary :
-                | DOT
-                | UNDERSCORE'''
+def p_str_b(t):
+    '''str_b :
+             | DOT
+             | UNDERSCORE'''
     t[0] = {
         None : '',
         '.'  : '\\b',
