@@ -9,17 +9,19 @@ def oprex(source_code):
     source_lines = sanitize(source_code)
     lexer = build_lexer(source_lines)
     result = parse(lexer=lexer)
-    check_captures(lexer=lexer)
+    cleanup(lexer=lexer)
     return result
 
 
 class OprexSyntaxError(Exception):
     def __init__(self, lineno, msg):
         msg = msg.replace('\t', ' ')
-        if lineno:
-            Exception.__init__(self, '\nLine %d: %s' % (lineno, msg))
-        else:
-            Exception.__init__(self, '\n' + msg)
+        Exception.__init__(self, '\nLine %d: %s' % (lineno, msg))
+
+
+class OprexInternalError(Exception):
+    def __init__(self, lineno, msg):
+        Exception.__init__(self, 'Line %d: %s' % (lineno, msg))
 
 
 def sanitize(source_code):
@@ -36,6 +38,7 @@ def sanitize(source_code):
 
 states = (
     ('charclass', 'exclusive'),
+    ('OR-block',  'inclusive'),
 )
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
@@ -43,10 +46,10 @@ reserved = {
     '_' : 'UNDERSCORE',
 }
 tokens = [
-    'ALTBEGIN',
-    'ALTEND',
     'AMPERSAND',
     'OR',
+    'ORBEGIN',
+    'OREND',
     'CHAR',
     'COLON',
     'DEDENT',
@@ -73,7 +76,6 @@ tokens = [
 
 GLOBALMARK   = '*)'
 t_AMPERSAND  = r'\&'
-t_OR         = r'\|'
 t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
 t_GT         = r'\>'
@@ -81,6 +83,7 @@ t_LPAREN     = r'\('
 t_LT         = r'\<'
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
+t_OR         = r'\|'
 t_PLUS       = r'\+'
 t_QUESTMARK  = r'\?'
 t_RPAREN     = r'\)'
@@ -111,14 +114,22 @@ class Quantifier(namedtuple('Quantifier', 'base modifier')):
 class Assignment(namedtuple('Assignment', 'declarations value lineno')):
     __slots__ = ()
 
+class Block(namedtuple('Block', 'variables starting_lineno')):
+    __slots__ = ()
+    def check_unused_vars(self, referenced_varnames):
+        for var in self.variables:
+            if var.name not in referenced_varnames:
+                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+
 class Scope(dict):
+    types = ['ROOTSCOPE', 'BLOCKSCOPE', 'FLAGSCOPE']
     ROOTSCOPE, BLOCKSCOPE, FLAGSCOPE = range(3)
-    __slots__ = ('type')
-    def __init__(self, type, parent_scope):
+    __slots__ = ('starting_lineno', 'type')
+    def __init__(self, starting_lineno, type, parent_scope):
+        self.starting_lineno = starting_lineno
         self.type = type
         if parent_scope:
             self.update(parent_scope)
-
 
 class Flagset(unicode):
     __slots__ = ('turn_ons', 'turn_offs')
@@ -172,6 +183,9 @@ class Expression(unicode):
         expr.grouped = grouped
         expr.quantifier = quantifier
         return expr
+
+class StringExpression(Expression):
+    pass
 
 
 class CharClass(Expression):
@@ -265,22 +279,11 @@ for flag in FLAG_DEPENDENT_BUILTINS:
     for var in FLAG_DEPENDENT_BUILTINS[flag][flag in DEFAULT_FLAGS]:
         BUILTINS.append(var)
 
-def flags_redef_builtins(t, flags, scope):
+def flags_redef_builtins(flag_dependent_builtins, flags, scope):
     for flag in FLAG_DEPENDENT_BUILTINS:
         if flag in flags:
-            for var in t.lexer.flag_dependent_builtins[flag][flag in flags.turn_ons]:
+            for var in flag_dependent_builtins[flag][flag in flags.turn_ons]:
                 scope[var.name] = var
-
-
-def t_ALTBEGIN(t):
-    r'''/\|'''
-    return t
-
-
-def t_ALTEND(t):
-    r'''\|/'''
-    return t
-
 
 def t_COLON(t):
     r''':'''
@@ -376,6 +379,18 @@ def t_FLAGSET(t):
     return t
 
 
+def t_ORBEGIN(t):
+    r'''/\|'''
+    t.lexer.set_mode('OR-block')
+    return t
+
+
+def t_OREND(t):
+    r'''\|/'''
+    t.lexer.set_mode('INITIAL')
+    return t
+
+
 ESCAPE_SEQUENCE_RE = regex.compile(r'''\\
     ( [abfnrtv]   # Single-character escapes
     | N\{[^}]++\} # Unicode character name
@@ -462,7 +477,7 @@ def t_ANY_linemark(t):
     if endpos(t) == len(t.lexer.lexdata) and not has_globalmark: # this is a just-before-the-end-of-input whitespace
         return t                                                 # no further processing needed
 
-    t.extra_tokens = deque() # gonna produce these extra tokens:
+    t.extra_tokens = deque() # later we will produce these extra tokens:
     # - GLOBALMARK if has_globalmark
     # - INDENT if indentation depth is more than previous line's
     # - DEDENT (can be more than one) if indentation depth is less than previous line's
@@ -517,13 +532,13 @@ def t_ANY_linemark(t):
             if indentlen != prev: # the indentation tries to return to a nonexistent level
                 raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
 
-    if t.lexer.mode != 'alternation':
+    if t.lexer.mode != 'OR-block':
         produce_INDENT_DEDENT()
 
     return t
 
 
-def t_INITIAL_charclass_error(t):
+def t_ANY_error(t):
     raise OprexSyntaxError(t.lineno, 'Syntax error at or near: ' + t.value.split('\n')[0])
 
 
@@ -580,13 +595,18 @@ def p_global_flags(t):
         t.lexer.flag_dependent_builtins['w'][True] = [
             root_scope['linechar']
         ]
-    flags_redef_builtins(t, flags, root_scope)
+    flags_redef_builtins(
+        flag_dependent_builtins = t.lexer.flag_dependent_builtins, 
+        flags = flags, 
+        scope = root_scope,
+    )
     t[0] = flags
 
 
 def p_expression(t):
     '''expression : string_expr
                   | lookup_expr
+                  | orblock_expr
                   | flagged_expr
                   | quantified_expr'''
     t[0] = t[1]
@@ -594,7 +614,7 @@ def p_expression(t):
 
 def p_string_expr(t):
     '''string_expr : str_b STRING str_b NEWLINE'''
-    t[0] = Expression(t[1] + t[2] + t[3])
+    t[0] = StringExpression(t[1] + t[2] + t[3])
 
 
 def p_str_b(t):
@@ -727,23 +747,11 @@ def quantify(expr, quantifier):
         return Expression(put_in_group(), modifier=quantifier)
 
 
-def p_alternation_expr(t):
-    '''alternation_expr : ALTBEGIN NEWLINE alternatives ALTEND'''
-
-
-def p_alternatives(t):
-    '''alternatives : alternative
-                    | alternative alternatives'''
-
-
-def p_alternative(t):
-    '''alternative : OR'''
-
-
 def p_flagged_expr(t):
     '''flagged_expr : scoped_flags expression'''
     flags = t[1]
     t[0] = Expression(t[2], modifier='(?%s:' % flags)
+    t.lexer.end_a_scope(Scope.FLAGSCOPE, at=t.lineno(1))
 
 
 def p_scoped_flags(t):
@@ -752,50 +760,115 @@ def p_scoped_flags(t):
     for flag_name, global_flag in Flagset.globals.iteritems():
         if global_flag in flags.turn_ons:
             raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not scoped." % flag_name)
-    flags_redef_builtins(t, flags, begin_scope(t, Scope.FLAGSCOPE))
+
+    flags_redef_builtins(
+        flag_dependent_builtins = t.lexer.flag_dependent_builtins, 
+        flags = flags, 
+        scope = t.lexer.begin_a_scope(Scope.FLAGSCOPE),
+    )
     t[0] = flags
+
+
+def p_orblock_expr(t):
+    '''orblock_expr : ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block'''
+    current_scope = t.lexer.scopes[-1]
+    referenced_varnames = set()
+
+    def expr_from(or_item):
+        if isinstance(or_item, StringExpression):
+            return or_item # unchanged
+        else: # or_item in (lookup, lookup_chain)
+            expr, var_lookups, backreferences, subroutine_calls = resolve_lookup(or_item, current_scope)
+            referenced_varnames.update(lookup.varname for lookup in var_lookups)
+            t.lexer.backreferences.update(backreferences)
+            t.lexer.subroutine_calls.update(subroutine_calls)
+            return expr
+
+    subexpressions = map(expr_from, t[3])
+    t[0] = Expression('|'.join(subexpressions))
+
+    optional_block_cleanup(
+        lexer = t.lexer, 
+        optional_block = t[len(t)-1], 
+        referenced_varnames = referenced_varnames,
+    )
+
+
+def p_orblock_items(t):
+    '''orblock_items : or_item
+                     | or_item orblock_items'''
+    try:
+        t[0] = t[2]
+    except:
+        t[0] = deque()
+    t[0].appendleft(t[1])
+
+
+def p_or_item(t):
+    '''or_item : OR string_expr
+               | OR lookup       NEWLINE
+               | OR lookup_chain NEWLINE'''
+    t[0] = t[2]
 
 
 def p_lookup_expr(t):
     '''lookup_expr : lookup             NEWLINE optional_block
                    | SLASH lookup_chain NEWLINE optional_block'''
-    referenced_vars = set()
-    current_scope = t.lexer.scopes[-1]
-    def resolve_var(lookup):
-        referenced_vars.add(lookup.varname)
-        try:
-            var = current_scope[lookup.varname]
-        except KeyError:
-            raise OprexSyntaxError(t.lineno(0), "'%s' is not defined" % lookup.varname)
-        if lookup.optional:
-            return quantify(var.value, quantifier=lookup.optional)
-        else:
-            return var.value
+    t[0], var_lookups, backreferences, subroutine_calls = resolve_lookup(
+        lookup = t[1] if t[1] != '/' else t[2],
+        scope = t.lexer.scopes[-1],
+    )
+    t.lexer.backreferences.update(backreferences)
+    t.lexer.subroutine_calls.update(subroutine_calls)
+    optional_block_cleanup(
+        lexer = t.lexer, 
+        optional_block = t[len(t)-1], 
+        referenced_varnames = set(lookup.varname for lookup in var_lookups),
+    )
 
-    def resolve(lookup):
+
+def resolve_lookup(lookup, scope):
+    var_lookups = []
+    backreferences = []
+    subroutine_calls = []
+
+    def do_resolve(lookup):
+        def var_lookup():
+            try:
+                var = scope[lookup.varname]
+            except KeyError:
+                raise OprexSyntaxError(lookup.lineno, "'%s' is not defined" % lookup.varname)
+            if lookup.optional:
+                return quantify(var.value, quantifier=lookup.optional)
+            else:
+                return var.value
+
         if isinstance(lookup, VariableLookup):
-            return resolve_var(lookup)
+            var_lookups.append(lookup)
+            return var_lookup()
         elif isinstance(lookup, Backreference): 
-            t.lexer.backreferences.add(lookup)
+            backreferences.append(lookup)
             return '(?P=%s)%s' % (lookup.varname, lookup.optional)
         elif isinstance(lookup, SubroutineCall): 
-            t.lexer.subroutine_calls.add(lookup)
+            subroutine_calls.append(lookup)
             return '(?&%s)%s' % (lookup.varname, lookup.optional)
 
-    if t[1] == '/': # chain of lookups
-        t[0] = Expression(''.join(map(resolve, t[2])))
+    if isinstance(lookup, LookupChain):
+        result = Expression(''.join(map(do_resolve, lookup)))
     else: # single lookup
-        t[0] = resolve(t[1])
-    end_scope(t, optional_block=t[len(t)-1], referenced_vars=referenced_vars)
+        result = do_resolve(lookup)
+
+    return result, var_lookups, backreferences, subroutine_calls
 
 
+class LookupChain(deque): pass
 def p_lookup_chain(t):
     '''lookup_chain : lookup SLASH
                     | lookup SLASH lookup_chain'''
     try:
         t[0] = t[3]
     except IndexError:
-        t[0] = deque()
+        t[0] = LookupChain()
     t[0].appendleft(t[1])
 
 
@@ -835,9 +908,9 @@ def p_charclass(t):
     '''charclass : charitems NEWLINE optional_block'''
     items = t[1]
     
-    includes = []
+    includes = set()
     def track_inclusion(item):
-        includes.append(item.value.varname)
+        includes.add(item.value.varname)
 
     def check_op(index, item):
         is_first = index == 0
@@ -907,7 +980,11 @@ def p_charclass(t):
             result = '[' + result + ']'
         t[0] = CharClass(result, is_set_op=has_set_op)
 
-    end_scope(t, optional_block=t[3], referenced_vars=includes)
+    optional_block_cleanup(
+        lexer = t.lexer, 
+        optional_block = t[3], 
+        referenced_varnames = includes
+    )
 
 
 def p_charitems(t):
@@ -959,36 +1036,26 @@ def p_optional_block(t):
     '''optional_block : begin_block definitions end_block
                       |'''
     if len(t) > 1:
-        t[0] = t[2]
+        t[0] = Block(
+            variables = t[2],
+            starting_lineno = t.lineno(0),
+        )
+
+
+def optional_block_cleanup(lexer, optional_block, referenced_varnames):
+    if optional_block:
+        optional_block.check_unused_vars(referenced_varnames)
+        lexer.end_a_scope(Scope.BLOCKSCOPE, at=optional_block.starting_lineno)
 
 
 def p_begin_block(t):
     '''begin_block : INDENT'''
-    begin_scope(t, Scope.BLOCKSCOPE)
-
-
-def begin_scope(t, type):
-    current_scope = t.lexer.scopes[-1]
-    new_scope = Scope(type=type, parent_scope=current_scope)
-    t.lexer.scopes.append(new_scope)
-    return new_scope
+    t.lexer.begin_a_scope(type=Scope.BLOCKSCOPE)
 
 
 def p_end_block(t):
     '''end_block : DEDENT'''
-    # we don't end_scope() immediately after seeing a DEDENT because the parent expression needs the variable(s) defined in its sub-block
-    # instead the parent will do the end_scope() 
-
-
-def end_scope(t, optional_block, referenced_vars):
-    if optional_block:
-        for var in optional_block:
-            if var.name not in referenced_vars:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
-        t.lexer.scopes.pop()
-
-    while t.lexer.scopes[-1].type == Scope.FLAGSCOPE:
-        t.lexer.scopes.pop()
+    # we don't end_a_scope() immediately after seeing a DEDENT because the block owner (parent expression) needs the variable(s) defined in the block
 
 
 def p_definitions(t):
@@ -1010,18 +1077,18 @@ def p_definition(t):
         assignment = t[1]
         scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
 
-    def make_var(declaration, base_value):
-        varname = declaration.varname
-        value = base_value
-        if declaration.atomic:
-            value = Expression(value, modifier='(?>')
-        if declaration.capture:
-            value = Expression(value, modifier='(?P<%s>' % varname)
-            t.lexer.captures.add(varname)
-        return Variable(varname, value, assignment.lineno)
+    def variable_from(declaration):
+        def make_var():
+            varname = declaration.varname
+            value = assignment.value
+            if declaration.atomic:
+                value = Expression(value, modifier='(?>')
+            if declaration.capture:
+                value = Expression(value, modifier='(?P<%s>' % varname)
+                t.lexer.captures.add(varname)
+            return Variable(varname, value, assignment.lineno)
 
-    def define(declaration):
-        var = make_var(declaration, assignment.value)
+        var = make_var()
         try: # check the deepest scope for varname (every scope supersets its parent, so checking only the deepeset is sufficient)
             prev_def = scopes[-1][var.name]
         except KeyError: # not already defined, OK to define it
@@ -1034,7 +1101,9 @@ def p_definition(t):
                     "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
                         % (var.name, prev_def.lineno))
         return var
-    t[0] = map(define, assignment.declarations)
+
+    list_of_variables = map(variable_from, assignment.declarations)
+    t[0] = list_of_variables
 
 
 def p_assignment(t):
@@ -1091,7 +1160,7 @@ def find_column(t):
 
 lexer0 = lex.lex()
 def build_lexer(source_lines):
-    lexer = lexer0.clone()
+    lexer = CustomLexer(lexer0.clone())
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
     lexer.indent_stack = [0] # for keeping track of indentation depths
@@ -1099,25 +1168,27 @@ def build_lexer(source_lines):
     lexer.backreferences = set()
     lexer.subroutine_calls = set()
     lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS
-    lexer.scopes = [Scope(type=Scope.ROOTSCOPE, parent_scope=None)]
 
-    root_scope = lexer.scopes[0]
+    root_scope = Scope(type=Scope.ROOTSCOPE, starting_lineno=0, parent_scope=None)
     for var in BUILTINS:
         root_scope[var.name] = var
+    lexer.scopes = [root_scope]
 
-    return CustomLexer(lexer)
+    return lexer
 
 
 class CustomLexer:
     def __init__(self, real_lexer):
-        real_lexer.mode = 'INITIAL'
-        def set_mode(mode):
-            real_lexer.mode = mode
-            real_lexer.begin(mode)
-        real_lexer.set_mode = set_mode
         self.__dict__ = real_lexer.__dict__
+        self.mode = 'INITIAL'
+        real_lexer.set_mode = self.set_mode
         self.real_lexer = real_lexer
         self.tokens = deque()
+
+    def token(self):
+        token = self.get_next_token()
+        # print token
+        return token
 
     def get_next_token(self):
         try:
@@ -1136,10 +1207,24 @@ class CustomLexer:
                 self.tokens.append(None)
             return self.get_next_token()
 
-    def token(self):
-        token = self.get_next_token()
-        # print token
-        return token
+    def input(self, input_str):
+        self.real_lexer.input(input_str)
+
+    def set_mode(self, mode):
+        self.mode = mode
+        self.real_lexer.begin(mode)
+
+    def begin_a_scope(self, type):
+        current_scope = self.scopes[-1]
+        new_scope = Scope(type=type, starting_lineno=self.lineno, parent_scope=current_scope)
+        self.scopes.append(new_scope)
+        return new_scope
+
+    def end_a_scope(self, type, at):
+        removed_scope = self.scopes.pop()
+        if type != removed_scope.type or at != removed_scope.starting_lineno:
+            raise OprexInternalError(self.lineno, 'end-of-scope for type=%s line=%d, but active scope is type=%s line=%d' % 
+                (Scope.types[type], at, Scope.types[removed_scope.type], removed_scope.starting_lineno))
 
 
 parser = yacc.yacc()
@@ -1147,14 +1232,23 @@ def parse(lexer):
     return unicode(parser.parse(lexer=lexer, tracking=True))
 
 
-def check_captures(lexer):
-    def check(type, lookups):
-        for lookup in lookups:
-            if lookup.varname not in lexer.captures:
-                errmsg = "Invalid %s: '%s' is not defined/not a capture" % (type, lookup.varname)
-                raise OprexSyntaxError(lookup.lineno, errmsg)
-    check('subroutine call', lexer.subroutine_calls)
-    check('backreference', lexer.backreferences)
+def cleanup(lexer):
+    def check_unclosed_scope():
+        for scope in lexer.scopes:
+            if scope.type != Scope.ROOTSCOPE:
+                raise OprexInternalError(lexer.lineno, 'Unclosed scope type=%s line=%d' % (Scope.types[scope.type], scope.starting_lineno))
+
+    def check_captures():
+        def check(type, lookups):
+            for lookup in lookups:
+                if lookup.varname not in lexer.captures:
+                    errmsg = "Invalid %s: '%s' is not defined/not a capture" % (type, lookup.varname)
+                    raise OprexSyntaxError(lookup.lineno, errmsg)
+        check('subroutine call', lexer.subroutine_calls)
+        check('backreference', lexer.backreferences)
+
+    check_captures()
+    check_unclosed_scope()
 
 
 if __name__ == "__main__":

@@ -2932,6 +2932,21 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'(?i:[\da-f])?+')
 
+        self.given('''
+            (ignorecase) 2 of 'yadda'
+        ''',
+        expect_regex=r'(?i:(?:yadda){2})')
+
+        self.given('''
+            2 of (ignorecase) 'yadda'
+        ''',
+        expect_regex=r'(?i:yadda){2}')
+
+        self.given('''
+            2 of (ignorecase) 3 of 4 of (ignorecase) 'yadda'
+        ''',
+        expect_regex=r'(?i:(?i:yadda){12}){2}')
+
 
     def test_variable_named_of(self):
         self.given('''

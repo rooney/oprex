@@ -1,10 +1,9 @@
 
 --/|
--- |'AM'
--- |'PM'
+-- |_'AM'
+-- |alpha
+-- |digit/upper/lower/
 -- |/
 
-1 of: consonant
-	consonant: not: vowel
-		vowel: a i u e o A I U E O
-		-- hello
+            2 of (ignorecase) 3 of 4 of (ignorecase) 'cat'
+

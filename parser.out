@@ -14,151 +14,154 @@ Rule 8     main_expression -> expression
 Rule 9     global_flags -> LPAREN FLAGSET RPAREN NEWLINE
 Rule 10    expression -> string_expr
 Rule 11    expression -> lookup_expr
-Rule 12    expression -> flagged_expr
-Rule 13    expression -> quantified_expr
-Rule 14    string_expr -> str_b STRING str_b NEWLINE
-Rule 15    str_b -> <empty>
-Rule 16    str_b -> DOT
-Rule 17    str_b -> UNDERSCORE
-Rule 18    quantified_expr -> quantifier WHITESPACE expression
-Rule 19    quantified_expr -> quantifier COLON charclass
-Rule 20    quantifier -> repeat_N_times
-Rule 21    quantifier -> repeat_range
-Rule 22    quantifier -> optionalize
-Rule 23    repeat_N_times -> NUMBER of
-Rule 24    repeat_range -> numrange of
-Rule 25    repeat_range -> numrange backtrack MINUS of
-Rule 26    repeat_range -> NUMBER backtrack PLUS DOT DOT of
-Rule 27    repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of
-Rule 28    backtrack -> WHITESPACE LT LT
-Rule 29    of -> WHITESPACE OF
-Rule 30    numrange -> DOT DOT
-Rule 31    numrange -> NUMBER DOT DOT
-Rule 32    numrange -> DOT DOT NUMBER
-Rule 33    numrange -> NUMBER DOT DOT NUMBER
-Rule 34    optionalize -> QUESTMARK of
-Rule 35    alternation_expr -> ALTBEGIN NEWLINE alternatives ALTEND
-Rule 36    alternatives -> alternative
-Rule 37    alternatives -> alternative alternatives
-Rule 38    alternative -> OR
-Rule 39    flagged_expr -> scoped_flags expression
-Rule 40    scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE
-Rule 41    lookup_expr -> lookup NEWLINE optional_block
-Rule 42    lookup_expr -> SLASH lookup_chain NEWLINE optional_block
-Rule 43    lookup_chain -> lookup SLASH
-Rule 44    lookup_chain -> lookup SLASH lookup_chain
-Rule 45    lookup -> lookup_type
-Rule 46    lookup -> lookup_type QUESTMARK
-Rule 47    lookup_type -> variable_lookup
-Rule 48    lookup_type -> backreference
-Rule 49    lookup_type -> subroutine_call
-Rule 50    variable_lookup -> VARNAME
-Rule 51    variable_lookup -> UNDERSCORE
-Rule 52    variable_lookup -> DOT
-Rule 53    backreference -> EQUALSIGN VARNAME
-Rule 54    subroutine_call -> AMPERSAND VARNAME
-Rule 55    charclass -> charitems NEWLINE optional_block
-Rule 56    charitems -> WHITESPACE charitem
-Rule 57    charitems -> WHITESPACE charitem charitems
-Rule 58    charitem -> ranged_char
-Rule 59    charitem -> single_char
-Rule 60    charitem -> period_char
-Rule 61    ranged_char -> CHAR DOT DOT CHAR
-Rule 62    period_char -> DOT
-Rule 63    single_char -> CHAR
-Rule 64    optional_block -> begin_block definitions end_block
-Rule 65    optional_block -> <empty>
-Rule 66    begin_block -> INDENT
-Rule 67    end_block -> DEDENT
-Rule 68    definitions -> definition
-Rule 69    definitions -> definition definitions
-Rule 70    definition -> assignment
-Rule 71    definition -> GLOBALMARK assignment
-Rule 72    assignment -> declaration equals assignment
-Rule 73    assignment -> declaration equals expression
-Rule 74    assignment -> declaration COLON charclass
-Rule 75    equals -> EQUALSIGN
-Rule 76    equals -> WHITESPACE EQUALSIGN
-Rule 77    equals -> EQUALSIGN WHITESPACE
-Rule 78    equals -> WHITESPACE EQUALSIGN WHITESPACE
-Rule 79    declaration -> VARNAME
-Rule 80    declaration -> DOT VARNAME
-Rule 81    declaration -> LT VARNAME GT
-Rule 82    declaration -> DOT LT VARNAME GT
+Rule 12    expression -> orblock_expr
+Rule 13    expression -> flagged_expr
+Rule 14    expression -> quantified_expr
+Rule 15    string_expr -> str_b STRING str_b NEWLINE
+Rule 16    str_b -> <empty>
+Rule 17    str_b -> DOT
+Rule 18    str_b -> UNDERSCORE
+Rule 19    quantified_expr -> quantifier WHITESPACE expression
+Rule 20    quantified_expr -> quantifier COLON charclass
+Rule 21    quantifier -> repeat_N_times
+Rule 22    quantifier -> repeat_range
+Rule 23    quantifier -> optionalize
+Rule 24    repeat_N_times -> NUMBER of
+Rule 25    repeat_range -> numrange of
+Rule 26    repeat_range -> numrange backtrack MINUS of
+Rule 27    repeat_range -> NUMBER backtrack PLUS DOT DOT of
+Rule 28    repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of
+Rule 29    backtrack -> WHITESPACE LT LT
+Rule 30    of -> WHITESPACE OF
+Rule 31    numrange -> DOT DOT
+Rule 32    numrange -> NUMBER DOT DOT
+Rule 33    numrange -> DOT DOT NUMBER
+Rule 34    numrange -> NUMBER DOT DOT NUMBER
+Rule 35    optionalize -> QUESTMARK of
+Rule 36    flagged_expr -> scoped_flags expression
+Rule 37    scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE
+Rule 38    orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+Rule 39    orblock_items -> or_item
+Rule 40    orblock_items -> or_item orblock_items
+Rule 41    or_item -> OR string_expr
+Rule 42    or_item -> OR lookup NEWLINE
+Rule 43    or_item -> OR lookup_chain NEWLINE
+Rule 44    lookup_expr -> lookup NEWLINE optional_block
+Rule 45    lookup_expr -> SLASH lookup_chain NEWLINE optional_block
+Rule 46    lookup_chain -> lookup SLASH
+Rule 47    lookup_chain -> lookup SLASH lookup_chain
+Rule 48    lookup -> lookup_type
+Rule 49    lookup -> lookup_type QUESTMARK
+Rule 50    lookup_type -> variable_lookup
+Rule 51    lookup_type -> backreference
+Rule 52    lookup_type -> subroutine_call
+Rule 53    variable_lookup -> VARNAME
+Rule 54    variable_lookup -> UNDERSCORE
+Rule 55    variable_lookup -> DOT
+Rule 56    backreference -> EQUALSIGN VARNAME
+Rule 57    subroutine_call -> AMPERSAND VARNAME
+Rule 58    charclass -> charitems NEWLINE optional_block
+Rule 59    charitems -> WHITESPACE charitem
+Rule 60    charitems -> WHITESPACE charitem charitems
+Rule 61    charitem -> ranged_char
+Rule 62    charitem -> single_char
+Rule 63    charitem -> period_char
+Rule 64    ranged_char -> CHAR DOT DOT CHAR
+Rule 65    period_char -> DOT
+Rule 66    single_char -> CHAR
+Rule 67    optional_block -> begin_block definitions end_block
+Rule 68    optional_block -> <empty>
+Rule 69    begin_block -> INDENT
+Rule 70    end_block -> DEDENT
+Rule 71    definitions -> definition
+Rule 72    definitions -> definition definitions
+Rule 73    definition -> assignment
+Rule 74    definition -> GLOBALMARK assignment
+Rule 75    assignment -> declaration equals assignment
+Rule 76    assignment -> declaration equals expression
+Rule 77    assignment -> declaration COLON charclass
+Rule 78    equals -> EQUALSIGN
+Rule 79    equals -> WHITESPACE EQUALSIGN
+Rule 80    equals -> EQUALSIGN WHITESPACE
+Rule 81    equals -> WHITESPACE EQUALSIGN WHITESPACE
+Rule 82    declaration -> VARNAME
+Rule 83    declaration -> DOT VARNAME
+Rule 84    declaration -> LT VARNAME GT
+Rule 85    declaration -> DOT LT VARNAME GT
 
 Terminals, with rules where they appear
 
-ALTBEGIN             : 35
-ALTEND               : 35
-AMPERSAND            : 54
-CHAR                 : 61 61 63
-COLON                : 19 74
-DEDENT               : 5 67
-DOT                  : 16 26 26 27 27 30 30 31 31 32 32 33 33 52 61 61 62 80 82
-EQUALSIGN            : 53 75 76 77 78
-FLAGSET              : 9 40
-GLOBALMARK           : 71
-GT                   : 81 82
-INDENT               : 5 66
-LPAREN               : 9 40
-LT                   : 28 28 81 82
-MINUS                : 25
-NEWLINE              : 3 4 5 9 14 35 41 42 55
-NUMBER               : 23 26 27 27 31 32 33 33
-OF                   : 29
-OR                   : 38
-PLUS                 : 26 27
-QUESTMARK            : 34 46
-RPAREN               : 9 40
-SLASH                : 42 43 44
-STRING               : 14
-UNDERSCORE           : 17 51
-VARNAME              : 50 53 54 79 80 81 82
-WHITESPACE           : 2 18 28 29 40 56 57 76 77 78 78
+AMPERSAND            : 57
+CHAR                 : 64 64 66
+COLON                : 20 77
+DEDENT               : 5 70
+DOT                  : 17 27 27 28 28 31 31 32 32 33 33 34 34 55 64 64 65 83 85
+EQUALSIGN            : 56 78 79 80 81
+FLAGSET              : 9 37
+GLOBALMARK           : 74
+GT                   : 84 85
+INDENT               : 5 69
+LPAREN               : 9 37
+LT                   : 29 29 84 85
+MINUS                : 26
+NEWLINE              : 3 4 5 9 15 38 38 42 43 44 45 58
+NUMBER               : 24 27 28 28 32 33 34 34
+OF                   : 30
+OR                   : 41 42 43
+ORBEGIN              : 38
+OREND                : 38
+PLUS                 : 27 28
+QUESTMARK            : 35 49
+RPAREN               : 9 37
+SLASH                : 45 46 47
+STRING               : 15
+UNDERSCORE           : 18 54
+VARNAME              : 53 56 57 82 83 84 85
+WHITESPACE           : 2 19 29 30 37 59 60 79 80 81 81
 error                : 
 
 Nonterminals, with rules where they appear
 
-alternation_expr     : 
-alternative          : 36 37
-alternatives         : 35 37
-assignment           : 70 71 72
-backreference        : 48
-backtrack            : 25 26 27
-begin_block          : 64
-charclass            : 19 74
-charitem             : 56 57
-charitems            : 55 57
-declaration          : 72 73 74
-definition           : 68 69
-definitions          : 64 69
-end_block            : 64
-equals               : 72 73
-expression           : 6 8 18 39 73
-flagged_expr         : 12
+assignment           : 73 74 75
+backreference        : 51
+backtrack            : 26 27 28
+begin_block          : 67
+charclass            : 20 77
+charitem             : 59 60
+charitems            : 58 60
+declaration          : 75 76 77
+definition           : 71 72
+definitions          : 67 72
+end_block            : 67
+equals               : 75 76
+expression           : 6 8 19 36 76
+flagged_expr         : 13
 global_flags         : 6 7
-lookup               : 41 43 44
-lookup_chain         : 42 44
+lookup               : 42 44 46 47
+lookup_chain         : 43 45 47
 lookup_expr          : 11
-lookup_type          : 45 46
+lookup_type          : 48 49
 main_expression      : 4 5
-numrange             : 24 25
-of                   : 23 24 25 26 27 34
+numrange             : 25 26
+of                   : 24 25 26 27 28 35
 oprex                : 0
-optional_block       : 41 42 55
-optionalize          : 22
-period_char          : 60
-quantified_expr      : 13
-quantifier           : 18 19
-ranged_char          : 58
-repeat_N_times       : 20
-repeat_range         : 21
-scoped_flags         : 39
-single_char          : 59
-str_b                : 14 14
-string_expr          : 10
-subroutine_call      : 49
-variable_lookup      : 47
+optional_block       : 38 44 45 58
+optionalize          : 23
+or_item              : 39 40
+orblock_expr         : 12
+orblock_items        : 38 40
+period_char          : 63
+quantified_expr      : 14
+quantifier           : 19 20
+ranged_char          : 61
+repeat_N_times       : 21
+repeat_range         : 22
+scoped_flags         : 36
+single_char          : 62
+str_b                : 15 15
+string_expr          : 10 41
+subroutine_call      : 52
+variable_lookup      : 50
 
 Parsing method: LALR
 
@@ -201,54 +204,57 @@ state 3
     (9) global_flags -> . LPAREN FLAGSET RPAREN NEWLINE
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
     $end            reduce using rule 3 (oprex -> NEWLINE .)
-    INDENT          shift and go to state 27
-    LPAREN          shift and go to state 22
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    INDENT          shift and go to state 29
+    LPAREN          shift and go to state 24
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     DOT             shift and go to state 13
     UNDERSCORE      shift and go to state 11
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
     VARNAME         shift and go to state 8
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -259,68 +265,72 @@ state 3
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
     main_expression                shift and go to state 15
-    string_expr                    shift and go to state 31
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    numrange                       shift and go to state 24
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 29
-    variable_lookup                shift and go to state 32
+    orblock_expr                   shift and go to state 20
+    numrange                       shift and go to state 26
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 31
+    variable_lookup                shift and go to state 34
 
 state 4
 
-    (39) flagged_expr -> scoped_flags . expression
+    (36) flagged_expr -> scoped_flags . expression
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     DOT             shift and go to state 13
     UNDERSCORE      shift and go to state 11
-    LPAREN          shift and go to state 33
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
+    LPAREN          shift and go to state 35
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
     VARNAME         shift and go to state 8
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -329,35 +339,36 @@ state 4
     backreference                  shift and go to state 10
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
-    string_expr                    shift and go to state 31
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    numrange                       shift and go to state 24
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 34
-    variable_lookup                shift and go to state 32
+    orblock_expr                   shift and go to state 20
+    numrange                       shift and go to state 26
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 36
+    variable_lookup                shift and go to state 34
 
 state 5
 
-    (20) quantifier -> repeat_N_times .
+    (21) quantifier -> repeat_N_times .
 
-    WHITESPACE      reduce using rule 20 (quantifier -> repeat_N_times .)
-    COLON           reduce using rule 20 (quantifier -> repeat_N_times .)
+    WHITESPACE      reduce using rule 21 (quantifier -> repeat_N_times .)
+    COLON           reduce using rule 21 (quantifier -> repeat_N_times .)
 
 
 state 6
 
-    (12) expression -> flagged_expr .
+    (13) expression -> flagged_expr .
 
-    $end            reduce using rule 12 (expression -> flagged_expr .)
-    DEDENT          reduce using rule 12 (expression -> flagged_expr .)
-    GLOBALMARK      reduce using rule 12 (expression -> flagged_expr .)
-    VARNAME         reduce using rule 12 (expression -> flagged_expr .)
-    DOT             reduce using rule 12 (expression -> flagged_expr .)
-    LT              reduce using rule 12 (expression -> flagged_expr .)
+    $end            reduce using rule 13 (expression -> flagged_expr .)
+    DEDENT          reduce using rule 13 (expression -> flagged_expr .)
+    GLOBALMARK      reduce using rule 13 (expression -> flagged_expr .)
+    VARNAME         reduce using rule 13 (expression -> flagged_expr .)
+    DOT             reduce using rule 13 (expression -> flagged_expr .)
+    LT              reduce using rule 13 (expression -> flagged_expr .)
 
 
 state 7
@@ -366,54 +377,57 @@ state 7
     (7) main_expression -> global_flags .
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
     DEDENT          reduce using rule 7 (main_expression -> global_flags .)
     $end            reduce using rule 7 (main_expression -> global_flags .)
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     DOT             shift and go to state 13
     UNDERSCORE      shift and go to state 11
-    LPAREN          shift and go to state 33
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
+    LPAREN          shift and go to state 35
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
     VARNAME         shift and go to state 8
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -422,51 +436,53 @@ state 7
     backreference                  shift and go to state 10
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
-    string_expr                    shift and go to state 31
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    numrange                       shift and go to state 24
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 35
-    variable_lookup                shift and go to state 32
+    orblock_expr                   shift and go to state 20
+    numrange                       shift and go to state 26
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 37
+    variable_lookup                shift and go to state 34
 
 state 8
 
-    (50) variable_lookup -> VARNAME .
+    (53) variable_lookup -> VARNAME .
 
-    QUESTMARK       reduce using rule 50 (variable_lookup -> VARNAME .)
-    SLASH           reduce using rule 50 (variable_lookup -> VARNAME .)
-    NEWLINE         reduce using rule 50 (variable_lookup -> VARNAME .)
+    QUESTMARK       reduce using rule 53 (variable_lookup -> VARNAME .)
+    SLASH           reduce using rule 53 (variable_lookup -> VARNAME .)
+    NEWLINE         reduce using rule 53 (variable_lookup -> VARNAME .)
 
 
 state 9
 
-    (21) quantifier -> repeat_range .
+    (22) quantifier -> repeat_range .
 
-    WHITESPACE      reduce using rule 21 (quantifier -> repeat_range .)
-    COLON           reduce using rule 21 (quantifier -> repeat_range .)
+    WHITESPACE      reduce using rule 22 (quantifier -> repeat_range .)
+    COLON           reduce using rule 22 (quantifier -> repeat_range .)
 
 
 state 10
 
-    (48) lookup_type -> backreference .
+    (51) lookup_type -> backreference .
 
-    QUESTMARK       reduce using rule 48 (lookup_type -> backreference .)
-    NEWLINE         reduce using rule 48 (lookup_type -> backreference .)
-    SLASH           reduce using rule 48 (lookup_type -> backreference .)
+    QUESTMARK       reduce using rule 51 (lookup_type -> backreference .)
+    SLASH           reduce using rule 51 (lookup_type -> backreference .)
+    NEWLINE         reduce using rule 51 (lookup_type -> backreference .)
 
 
 state 11
 
-    (17) str_b -> UNDERSCORE .
-    (51) variable_lookup -> UNDERSCORE .
+    (18) str_b -> UNDERSCORE .
+    (54) variable_lookup -> UNDERSCORE .
 
-    STRING          reduce using rule 17 (str_b -> UNDERSCORE .)
-    QUESTMARK       reduce using rule 51 (variable_lookup -> UNDERSCORE .)
-    NEWLINE         reduce using rule 51 (variable_lookup -> UNDERSCORE .)
+    STRING          reduce using rule 18 (str_b -> UNDERSCORE .)
+    QUESTMARK       reduce using rule 54 (variable_lookup -> UNDERSCORE .)
+    NEWLINE         reduce using rule 54 (variable_lookup -> UNDERSCORE .)
+    SLASH           reduce using rule 54 (variable_lookup -> UNDERSCORE .)
 
 
 state 12
@@ -483,23 +499,23 @@ state 12
 
 state 13
 
-    (16) str_b -> DOT .
-    (52) variable_lookup -> DOT .
-    (30) numrange -> DOT . DOT
-    (32) numrange -> DOT . DOT NUMBER
+    (17) str_b -> DOT .
+    (55) variable_lookup -> DOT .
+    (31) numrange -> DOT . DOT
+    (33) numrange -> DOT . DOT NUMBER
 
-    STRING          reduce using rule 16 (str_b -> DOT .)
-    QUESTMARK       reduce using rule 52 (variable_lookup -> DOT .)
-    NEWLINE         reduce using rule 52 (variable_lookup -> DOT .)
-    DOT             shift and go to state 36
+    STRING          reduce using rule 17 (str_b -> DOT .)
+    QUESTMARK       reduce using rule 55 (variable_lookup -> DOT .)
+    NEWLINE         reduce using rule 55 (variable_lookup -> DOT .)
+    DOT             shift and go to state 38
 
 
 state 14
 
-    (22) quantifier -> optionalize .
+    (23) quantifier -> optionalize .
 
-    WHITESPACE      reduce using rule 22 (quantifier -> optionalize .)
-    COLON           reduce using rule 22 (quantifier -> optionalize .)
+    WHITESPACE      reduce using rule 23 (quantifier -> optionalize .)
+    COLON           reduce using rule 23 (quantifier -> optionalize .)
 
 
 state 15
@@ -511,130 +527,149 @@ state 15
 
 state 16
 
-    (14) string_expr -> str_b . STRING str_b NEWLINE
+    (15) string_expr -> str_b . STRING str_b NEWLINE
 
-    STRING          shift and go to state 37
+    STRING          shift and go to state 39
 
 
 state 17
 
-    (41) lookup_expr -> lookup . NEWLINE optional_block
+    (44) lookup_expr -> lookup . NEWLINE optional_block
 
-    NEWLINE         shift and go to state 38
+    NEWLINE         shift and go to state 40
 
 
 state 18
 
-    (49) lookup_type -> subroutine_call .
+    (52) lookup_type -> subroutine_call .
 
-    QUESTMARK       reduce using rule 49 (lookup_type -> subroutine_call .)
-    NEWLINE         reduce using rule 49 (lookup_type -> subroutine_call .)
-    SLASH           reduce using rule 49 (lookup_type -> subroutine_call .)
+    QUESTMARK       reduce using rule 52 (lookup_type -> subroutine_call .)
+    SLASH           reduce using rule 52 (lookup_type -> subroutine_call .)
+    NEWLINE         reduce using rule 52 (lookup_type -> subroutine_call .)
 
 
 state 19
 
-    (23) repeat_N_times -> NUMBER . of
-    (26) repeat_range -> NUMBER . backtrack PLUS DOT DOT of
-    (27) repeat_range -> NUMBER . backtrack PLUS DOT DOT NUMBER of
-    (31) numrange -> NUMBER . DOT DOT
-    (33) numrange -> NUMBER . DOT DOT NUMBER
-    (29) of -> . WHITESPACE OF
-    (28) backtrack -> . WHITESPACE LT LT
+    (38) orblock_expr -> ORBEGIN . NEWLINE orblock_items OREND NEWLINE optional_block
 
-    DOT             shift and go to state 42
-    WHITESPACE      shift and go to state 39
+    NEWLINE         shift and go to state 41
 
-    of                             shift and go to state 41
-    backtrack                      shift and go to state 40
 
 state 20
 
-    (54) subroutine_call -> AMPERSAND . VARNAME
+    (12) expression -> orblock_expr .
 
-    VARNAME         shift and go to state 43
+    $end            reduce using rule 12 (expression -> orblock_expr .)
+    DEDENT          reduce using rule 12 (expression -> orblock_expr .)
+    GLOBALMARK      reduce using rule 12 (expression -> orblock_expr .)
+    VARNAME         reduce using rule 12 (expression -> orblock_expr .)
+    DOT             reduce using rule 12 (expression -> orblock_expr .)
+    LT              reduce using rule 12 (expression -> orblock_expr .)
 
 
 state 21
 
-    (42) lookup_expr -> SLASH . lookup_chain NEWLINE optional_block
-    (43) lookup_chain -> . lookup SLASH
-    (44) lookup_chain -> . lookup SLASH lookup_chain
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
+    (24) repeat_N_times -> NUMBER . of
+    (27) repeat_range -> NUMBER . backtrack PLUS DOT DOT of
+    (28) repeat_range -> NUMBER . backtrack PLUS DOT DOT NUMBER of
+    (32) numrange -> NUMBER . DOT DOT
+    (34) numrange -> NUMBER . DOT DOT NUMBER
+    (30) of -> . WHITESPACE OF
+    (29) backtrack -> . WHITESPACE LT LT
 
-    VARNAME         shift and go to state 8
-    UNDERSCORE      shift and go to state 44
     DOT             shift and go to state 45
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    WHITESPACE      shift and go to state 42
 
-    lookup_type                    shift and go to state 28
-    backreference                  shift and go to state 10
-    lookup                         shift and go to state 46
-    subroutine_call                shift and go to state 18
-    lookup_chain                   shift and go to state 47
-    variable_lookup                shift and go to state 32
+    of                             shift and go to state 44
+    backtrack                      shift and go to state 43
 
 state 22
 
-    (9) global_flags -> LPAREN . FLAGSET RPAREN NEWLINE
-    (40) scoped_flags -> LPAREN . FLAGSET RPAREN WHITESPACE
+    (57) subroutine_call -> AMPERSAND . VARNAME
 
-    FLAGSET         shift and go to state 48
+    VARNAME         shift and go to state 46
 
 
 state 23
 
-    (18) quantified_expr -> quantifier . WHITESPACE expression
-    (19) quantified_expr -> quantifier . COLON charclass
+    (45) lookup_expr -> SLASH . lookup_chain NEWLINE optional_block
+    (46) lookup_chain -> . lookup SLASH
+    (47) lookup_chain -> . lookup SLASH lookup_chain
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
 
-    WHITESPACE      shift and go to state 50
-    COLON           shift and go to state 49
+    VARNAME         shift and go to state 8
+    UNDERSCORE      shift and go to state 47
+    DOT             shift and go to state 48
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
+    lookup_type                    shift and go to state 30
+    backreference                  shift and go to state 10
+    lookup                         shift and go to state 49
+    subroutine_call                shift and go to state 18
+    lookup_chain                   shift and go to state 50
+    variable_lookup                shift and go to state 34
 
 state 24
 
-    (24) repeat_range -> numrange . of
-    (25) repeat_range -> numrange . backtrack MINUS of
-    (29) of -> . WHITESPACE OF
-    (28) backtrack -> . WHITESPACE LT LT
+    (9) global_flags -> LPAREN . FLAGSET RPAREN NEWLINE
+    (37) scoped_flags -> LPAREN . FLAGSET RPAREN WHITESPACE
 
-    WHITESPACE      shift and go to state 39
+    FLAGSET         shift and go to state 51
 
-    of                             shift and go to state 52
-    backtrack                      shift and go to state 51
 
 state 25
 
-    (34) optionalize -> QUESTMARK . of
-    (29) of -> . WHITESPACE OF
+    (19) quantified_expr -> quantifier . WHITESPACE expression
+    (20) quantified_expr -> quantifier . COLON charclass
 
-    WHITESPACE      shift and go to state 54
+    WHITESPACE      shift and go to state 53
+    COLON           shift and go to state 52
 
-    of                             shift and go to state 53
 
 state 26
 
-    (13) expression -> quantified_expr .
+    (25) repeat_range -> numrange . of
+    (26) repeat_range -> numrange . backtrack MINUS of
+    (30) of -> . WHITESPACE OF
+    (29) backtrack -> . WHITESPACE LT LT
 
-    $end            reduce using rule 13 (expression -> quantified_expr .)
-    DEDENT          reduce using rule 13 (expression -> quantified_expr .)
-    GLOBALMARK      reduce using rule 13 (expression -> quantified_expr .)
-    VARNAME         reduce using rule 13 (expression -> quantified_expr .)
-    DOT             reduce using rule 13 (expression -> quantified_expr .)
-    LT              reduce using rule 13 (expression -> quantified_expr .)
+    WHITESPACE      shift and go to state 42
 
+    of                             shift and go to state 55
+    backtrack                      shift and go to state 54
 
 state 27
+
+    (35) optionalize -> QUESTMARK . of
+    (30) of -> . WHITESPACE OF
+
+    WHITESPACE      shift and go to state 57
+
+    of                             shift and go to state 56
+
+state 28
+
+    (14) expression -> quantified_expr .
+
+    $end            reduce using rule 14 (expression -> quantified_expr .)
+    DEDENT          reduce using rule 14 (expression -> quantified_expr .)
+    GLOBALMARK      reduce using rule 14 (expression -> quantified_expr .)
+    VARNAME         reduce using rule 14 (expression -> quantified_expr .)
+    DOT             reduce using rule 14 (expression -> quantified_expr .)
+    LT              reduce using rule 14 (expression -> quantified_expr .)
+
+
+state 29
 
     (5) oprex -> NEWLINE INDENT . main_expression DEDENT
     (6) main_expression -> . global_flags expression
@@ -643,52 +678,55 @@ state 27
     (9) global_flags -> . LPAREN FLAGSET RPAREN NEWLINE
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
-    LPAREN          shift and go to state 22
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    LPAREN          shift and go to state 24
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     DOT             shift and go to state 13
     UNDERSCORE      shift and go to state 11
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
     VARNAME         shift and go to state 8
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -698,29 +736,30 @@ state 27
     backreference                  shift and go to state 10
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
-    main_expression                shift and go to state 55
-    string_expr                    shift and go to state 31
+    main_expression                shift and go to state 58
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    numrange                       shift and go to state 24
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 29
-    variable_lookup                shift and go to state 32
+    orblock_expr                   shift and go to state 20
+    numrange                       shift and go to state 26
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 31
+    variable_lookup                shift and go to state 34
 
-state 28
+state 30
 
-    (45) lookup -> lookup_type .
-    (46) lookup -> lookup_type . QUESTMARK
+    (48) lookup -> lookup_type .
+    (49) lookup -> lookup_type . QUESTMARK
 
-    NEWLINE         reduce using rule 45 (lookup -> lookup_type .)
-    SLASH           reduce using rule 45 (lookup -> lookup_type .)
-    QUESTMARK       shift and go to state 56
+    NEWLINE         reduce using rule 48 (lookup -> lookup_type .)
+    SLASH           reduce using rule 48 (lookup -> lookup_type .)
+    QUESTMARK       shift and go to state 59
 
 
-state 29
+state 31
 
     (8) main_expression -> expression .
 
@@ -728,14 +767,14 @@ state 29
     $end            reduce using rule 8 (main_expression -> expression .)
 
 
-state 30
+state 32
 
-    (53) backreference -> EQUALSIGN . VARNAME
+    (56) backreference -> EQUALSIGN . VARNAME
 
-    VARNAME         shift and go to state 57
+    VARNAME         shift and go to state 60
 
 
-state 31
+state 33
 
     (10) expression -> string_expr .
 
@@ -747,35 +786,35 @@ state 31
     LT              reduce using rule 10 (expression -> string_expr .)
 
 
-state 32
-
-    (47) lookup_type -> variable_lookup .
-
-    QUESTMARK       reduce using rule 47 (lookup_type -> variable_lookup .)
-    NEWLINE         reduce using rule 47 (lookup_type -> variable_lookup .)
-    SLASH           reduce using rule 47 (lookup_type -> variable_lookup .)
-
-
-state 33
-
-    (40) scoped_flags -> LPAREN . FLAGSET RPAREN WHITESPACE
-
-    FLAGSET         shift and go to state 58
-
-
 state 34
 
-    (39) flagged_expr -> scoped_flags expression .
+    (50) lookup_type -> variable_lookup .
 
-    $end            reduce using rule 39 (flagged_expr -> scoped_flags expression .)
-    DEDENT          reduce using rule 39 (flagged_expr -> scoped_flags expression .)
-    GLOBALMARK      reduce using rule 39 (flagged_expr -> scoped_flags expression .)
-    VARNAME         reduce using rule 39 (flagged_expr -> scoped_flags expression .)
-    DOT             reduce using rule 39 (flagged_expr -> scoped_flags expression .)
-    LT              reduce using rule 39 (flagged_expr -> scoped_flags expression .)
+    QUESTMARK       reduce using rule 50 (lookup_type -> variable_lookup .)
+    SLASH           reduce using rule 50 (lookup_type -> variable_lookup .)
+    NEWLINE         reduce using rule 50 (lookup_type -> variable_lookup .)
 
 
 state 35
+
+    (37) scoped_flags -> LPAREN . FLAGSET RPAREN WHITESPACE
+
+    FLAGSET         shift and go to state 61
+
+
+state 36
+
+    (36) flagged_expr -> scoped_flags expression .
+
+    $end            reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+    DEDENT          reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+    GLOBALMARK      reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+    VARNAME         reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+    DOT             reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+    LT              reduce using rule 36 (flagged_expr -> scoped_flags expression .)
+
+
+state 37
 
     (6) main_expression -> global_flags expression .
 
@@ -783,190 +822,207 @@ state 35
     $end            reduce using rule 6 (main_expression -> global_flags expression .)
 
 
-state 36
-
-    (30) numrange -> DOT DOT .
-    (32) numrange -> DOT DOT . NUMBER
-
-    WHITESPACE      reduce using rule 30 (numrange -> DOT DOT .)
-    NUMBER          shift and go to state 59
-
-
-state 37
-
-    (14) string_expr -> str_b STRING . str_b NEWLINE
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-
-    NEWLINE         reduce using rule 15 (str_b -> .)
-    DOT             shift and go to state 61
-    UNDERSCORE      shift and go to state 60
-
-    str_b                          shift and go to state 62
-
 state 38
 
-    (41) lookup_expr -> lookup NEWLINE . optional_block
-    (64) optional_block -> . begin_block definitions end_block
-    (65) optional_block -> .
-    (66) begin_block -> . INDENT
+    (31) numrange -> DOT DOT .
+    (33) numrange -> DOT DOT . NUMBER
 
-    $end            reduce using rule 65 (optional_block -> .)
-    DEDENT          reduce using rule 65 (optional_block -> .)
-    GLOBALMARK      reduce using rule 65 (optional_block -> .)
-    VARNAME         reduce using rule 65 (optional_block -> .)
-    DOT             reduce using rule 65 (optional_block -> .)
-    LT              reduce using rule 65 (optional_block -> .)
-    INDENT          shift and go to state 64
+    WHITESPACE      reduce using rule 31 (numrange -> DOT DOT .)
+    NUMBER          shift and go to state 62
 
-    optional_block                 shift and go to state 65
-    begin_block                    shift and go to state 63
 
 state 39
 
-    (29) of -> WHITESPACE . OF
-    (28) backtrack -> WHITESPACE . LT LT
+    (15) string_expr -> str_b STRING . str_b NEWLINE
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
 
-    OF              shift and go to state 66
-    LT              shift and go to state 67
+    NEWLINE         reduce using rule 16 (str_b -> .)
+    DOT             shift and go to state 64
+    UNDERSCORE      shift and go to state 63
 
+    str_b                          shift and go to state 65
 
 state 40
 
-    (26) repeat_range -> NUMBER backtrack . PLUS DOT DOT of
-    (27) repeat_range -> NUMBER backtrack . PLUS DOT DOT NUMBER of
+    (44) lookup_expr -> lookup NEWLINE . optional_block
+    (67) optional_block -> . begin_block definitions end_block
+    (68) optional_block -> .
+    (69) begin_block -> . INDENT
 
-    PLUS            shift and go to state 68
+    $end            reduce using rule 68 (optional_block -> .)
+    DEDENT          reduce using rule 68 (optional_block -> .)
+    GLOBALMARK      reduce using rule 68 (optional_block -> .)
+    VARNAME         reduce using rule 68 (optional_block -> .)
+    DOT             reduce using rule 68 (optional_block -> .)
+    LT              reduce using rule 68 (optional_block -> .)
+    INDENT          shift and go to state 67
 
+    optional_block                 shift and go to state 68
+    begin_block                    shift and go to state 66
 
 state 41
 
-    (23) repeat_N_times -> NUMBER of .
+    (38) orblock_expr -> ORBEGIN NEWLINE . orblock_items OREND NEWLINE optional_block
+    (39) orblock_items -> . or_item
+    (40) orblock_items -> . or_item orblock_items
+    (41) or_item -> . OR string_expr
+    (42) or_item -> . OR lookup NEWLINE
+    (43) or_item -> . OR lookup_chain NEWLINE
 
-    WHITESPACE      reduce using rule 23 (repeat_N_times -> NUMBER of .)
-    COLON           reduce using rule 23 (repeat_N_times -> NUMBER of .)
+    OR              shift and go to state 71
 
+    or_item                        shift and go to state 69
+    orblock_items                  shift and go to state 70
 
 state 42
 
-    (31) numrange -> NUMBER DOT . DOT
-    (33) numrange -> NUMBER DOT . DOT NUMBER
+    (30) of -> WHITESPACE . OF
+    (29) backtrack -> WHITESPACE . LT LT
 
-    DOT             shift and go to state 69
+    OF              shift and go to state 72
+    LT              shift and go to state 73
 
 
 state 43
 
-    (54) subroutine_call -> AMPERSAND VARNAME .
+    (27) repeat_range -> NUMBER backtrack . PLUS DOT DOT of
+    (28) repeat_range -> NUMBER backtrack . PLUS DOT DOT NUMBER of
 
-    QUESTMARK       reduce using rule 54 (subroutine_call -> AMPERSAND VARNAME .)
-    NEWLINE         reduce using rule 54 (subroutine_call -> AMPERSAND VARNAME .)
-    SLASH           reduce using rule 54 (subroutine_call -> AMPERSAND VARNAME .)
+    PLUS            shift and go to state 74
 
 
 state 44
 
-    (51) variable_lookup -> UNDERSCORE .
+    (24) repeat_N_times -> NUMBER of .
 
-    QUESTMARK       reduce using rule 51 (variable_lookup -> UNDERSCORE .)
-    SLASH           reduce using rule 51 (variable_lookup -> UNDERSCORE .)
+    WHITESPACE      reduce using rule 24 (repeat_N_times -> NUMBER of .)
+    COLON           reduce using rule 24 (repeat_N_times -> NUMBER of .)
 
 
 state 45
 
-    (52) variable_lookup -> DOT .
+    (32) numrange -> NUMBER DOT . DOT
+    (34) numrange -> NUMBER DOT . DOT NUMBER
 
-    QUESTMARK       reduce using rule 52 (variable_lookup -> DOT .)
-    SLASH           reduce using rule 52 (variable_lookup -> DOT .)
+    DOT             shift and go to state 75
 
 
 state 46
 
-    (43) lookup_chain -> lookup . SLASH
-    (44) lookup_chain -> lookup . SLASH lookup_chain
+    (57) subroutine_call -> AMPERSAND VARNAME .
 
-    SLASH           shift and go to state 70
+    QUESTMARK       reduce using rule 57 (subroutine_call -> AMPERSAND VARNAME .)
+    NEWLINE         reduce using rule 57 (subroutine_call -> AMPERSAND VARNAME .)
+    SLASH           reduce using rule 57 (subroutine_call -> AMPERSAND VARNAME .)
 
 
 state 47
 
-    (42) lookup_expr -> SLASH lookup_chain . NEWLINE optional_block
+    (54) variable_lookup -> UNDERSCORE .
 
-    NEWLINE         shift and go to state 71
+    QUESTMARK       reduce using rule 54 (variable_lookup -> UNDERSCORE .)
+    SLASH           reduce using rule 54 (variable_lookup -> UNDERSCORE .)
 
 
 state 48
 
-    (9) global_flags -> LPAREN FLAGSET . RPAREN NEWLINE
-    (40) scoped_flags -> LPAREN FLAGSET . RPAREN WHITESPACE
+    (55) variable_lookup -> DOT .
 
-    RPAREN          shift and go to state 72
+    QUESTMARK       reduce using rule 55 (variable_lookup -> DOT .)
+    SLASH           reduce using rule 55 (variable_lookup -> DOT .)
 
 
 state 49
 
-    (19) quantified_expr -> quantifier COLON . charclass
-    (55) charclass -> . charitems NEWLINE optional_block
-    (56) charitems -> . WHITESPACE charitem
-    (57) charitems -> . WHITESPACE charitem charitems
+    (46) lookup_chain -> lookup . SLASH
+    (47) lookup_chain -> lookup . SLASH lookup_chain
 
-    WHITESPACE      shift and go to state 73
+    SLASH           shift and go to state 76
 
-    charitems                      shift and go to state 75
-    charclass                      shift and go to state 74
 
 state 50
 
-    (18) quantified_expr -> quantifier WHITESPACE . expression
+    (45) lookup_expr -> SLASH lookup_chain . NEWLINE optional_block
+
+    NEWLINE         shift and go to state 77
+
+
+state 51
+
+    (9) global_flags -> LPAREN FLAGSET . RPAREN NEWLINE
+    (37) scoped_flags -> LPAREN FLAGSET . RPAREN WHITESPACE
+
+    RPAREN          shift and go to state 78
+
+
+state 52
+
+    (20) quantified_expr -> quantifier COLON . charclass
+    (58) charclass -> . charitems NEWLINE optional_block
+    (59) charitems -> . WHITESPACE charitem
+    (60) charitems -> . WHITESPACE charitem charitems
+
+    WHITESPACE      shift and go to state 79
+
+    charitems                      shift and go to state 81
+    charclass                      shift and go to state 80
+
+state 53
+
+    (19) quantified_expr -> quantifier WHITESPACE . expression
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     DOT             shift and go to state 13
     UNDERSCORE      shift and go to state 11
-    LPAREN          shift and go to state 33
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
+    LPAREN          shift and go to state 35
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
     VARNAME         shift and go to state 8
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -975,481 +1031,596 @@ state 50
     backreference                  shift and go to state 10
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
-    string_expr                    shift and go to state 31
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    numrange                       shift and go to state 24
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 76
-    variable_lookup                shift and go to state 32
-
-state 51
-
-    (25) repeat_range -> numrange backtrack . MINUS of
-
-    MINUS           shift and go to state 77
-
-
-state 52
-
-    (24) repeat_range -> numrange of .
-
-    WHITESPACE      reduce using rule 24 (repeat_range -> numrange of .)
-    COLON           reduce using rule 24 (repeat_range -> numrange of .)
-
-
-state 53
-
-    (34) optionalize -> QUESTMARK of .
-
-    WHITESPACE      reduce using rule 34 (optionalize -> QUESTMARK of .)
-    COLON           reduce using rule 34 (optionalize -> QUESTMARK of .)
-
+    orblock_expr                   shift and go to state 20
+    numrange                       shift and go to state 26
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 82
+    variable_lookup                shift and go to state 34
 
 state 54
 
-    (29) of -> WHITESPACE . OF
+    (26) repeat_range -> numrange backtrack . MINUS of
 
-    OF              shift and go to state 66
+    MINUS           shift and go to state 83
 
 
 state 55
 
-    (5) oprex -> NEWLINE INDENT main_expression . DEDENT
+    (25) repeat_range -> numrange of .
 
-    DEDENT          shift and go to state 78
+    WHITESPACE      reduce using rule 25 (repeat_range -> numrange of .)
+    COLON           reduce using rule 25 (repeat_range -> numrange of .)
 
 
 state 56
 
-    (46) lookup -> lookup_type QUESTMARK .
+    (35) optionalize -> QUESTMARK of .
 
-    NEWLINE         reduce using rule 46 (lookup -> lookup_type QUESTMARK .)
-    SLASH           reduce using rule 46 (lookup -> lookup_type QUESTMARK .)
+    WHITESPACE      reduce using rule 35 (optionalize -> QUESTMARK of .)
+    COLON           reduce using rule 35 (optionalize -> QUESTMARK of .)
 
 
 state 57
 
-    (53) backreference -> EQUALSIGN VARNAME .
+    (30) of -> WHITESPACE . OF
 
-    QUESTMARK       reduce using rule 53 (backreference -> EQUALSIGN VARNAME .)
-    NEWLINE         reduce using rule 53 (backreference -> EQUALSIGN VARNAME .)
-    SLASH           reduce using rule 53 (backreference -> EQUALSIGN VARNAME .)
+    OF              shift and go to state 72
 
 
 state 58
 
-    (40) scoped_flags -> LPAREN FLAGSET . RPAREN WHITESPACE
+    (5) oprex -> NEWLINE INDENT main_expression . DEDENT
 
-    RPAREN          shift and go to state 79
+    DEDENT          shift and go to state 84
 
 
 state 59
 
-    (32) numrange -> DOT DOT NUMBER .
+    (49) lookup -> lookup_type QUESTMARK .
 
-    WHITESPACE      reduce using rule 32 (numrange -> DOT DOT NUMBER .)
+    NEWLINE         reduce using rule 49 (lookup -> lookup_type QUESTMARK .)
+    SLASH           reduce using rule 49 (lookup -> lookup_type QUESTMARK .)
 
 
 state 60
 
-    (17) str_b -> UNDERSCORE .
+    (56) backreference -> EQUALSIGN VARNAME .
 
-    NEWLINE         reduce using rule 17 (str_b -> UNDERSCORE .)
+    QUESTMARK       reduce using rule 56 (backreference -> EQUALSIGN VARNAME .)
+    NEWLINE         reduce using rule 56 (backreference -> EQUALSIGN VARNAME .)
+    SLASH           reduce using rule 56 (backreference -> EQUALSIGN VARNAME .)
 
 
 state 61
 
-    (16) str_b -> DOT .
+    (37) scoped_flags -> LPAREN FLAGSET . RPAREN WHITESPACE
 
-    NEWLINE         reduce using rule 16 (str_b -> DOT .)
+    RPAREN          shift and go to state 85
 
 
 state 62
 
-    (14) string_expr -> str_b STRING str_b . NEWLINE
+    (33) numrange -> DOT DOT NUMBER .
 
-    NEWLINE         shift and go to state 80
+    WHITESPACE      reduce using rule 33 (numrange -> DOT DOT NUMBER .)
 
 
 state 63
 
-    (64) optional_block -> begin_block . definitions end_block
-    (68) definitions -> . definition
-    (69) definitions -> . definition definitions
-    (70) definition -> . assignment
-    (71) definition -> . GLOBALMARK assignment
-    (72) assignment -> . declaration equals assignment
-    (73) assignment -> . declaration equals expression
-    (74) assignment -> . declaration COLON charclass
-    (79) declaration -> . VARNAME
-    (80) declaration -> . DOT VARNAME
-    (81) declaration -> . LT VARNAME GT
-    (82) declaration -> . DOT LT VARNAME GT
+    (18) str_b -> UNDERSCORE .
 
-    GLOBALMARK      shift and go to state 83
-    VARNAME         shift and go to state 84
-    DOT             shift and go to state 88
-    LT              shift and go to state 85
+    NEWLINE         reduce using rule 18 (str_b -> UNDERSCORE .)
 
-    definition                     shift and go to state 81
-    assignment                     shift and go to state 82
-    declaration                    shift and go to state 86
-    definitions                    shift and go to state 87
 
 state 64
 
-    (66) begin_block -> INDENT .
+    (17) str_b -> DOT .
 
-    GLOBALMARK      reduce using rule 66 (begin_block -> INDENT .)
-    VARNAME         reduce using rule 66 (begin_block -> INDENT .)
-    DOT             reduce using rule 66 (begin_block -> INDENT .)
-    LT              reduce using rule 66 (begin_block -> INDENT .)
+    NEWLINE         reduce using rule 17 (str_b -> DOT .)
 
 
 state 65
 
-    (41) lookup_expr -> lookup NEWLINE optional_block .
+    (15) string_expr -> str_b STRING str_b . NEWLINE
 
-    $end            reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
-    DEDENT          reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
-    GLOBALMARK      reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
-    VARNAME         reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
-    DOT             reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
-    LT              reduce using rule 41 (lookup_expr -> lookup NEWLINE optional_block .)
+    NEWLINE         shift and go to state 86
 
 
 state 66
 
-    (29) of -> WHITESPACE OF .
+    (67) optional_block -> begin_block . definitions end_block
+    (71) definitions -> . definition
+    (72) definitions -> . definition definitions
+    (73) definition -> . assignment
+    (74) definition -> . GLOBALMARK assignment
+    (75) assignment -> . declaration equals assignment
+    (76) assignment -> . declaration equals expression
+    (77) assignment -> . declaration COLON charclass
+    (82) declaration -> . VARNAME
+    (83) declaration -> . DOT VARNAME
+    (84) declaration -> . LT VARNAME GT
+    (85) declaration -> . DOT LT VARNAME GT
 
-    WHITESPACE      reduce using rule 29 (of -> WHITESPACE OF .)
-    COLON           reduce using rule 29 (of -> WHITESPACE OF .)
+    GLOBALMARK      shift and go to state 89
+    VARNAME         shift and go to state 90
+    DOT             shift and go to state 94
+    LT              shift and go to state 91
 
+    definition                     shift and go to state 87
+    assignment                     shift and go to state 88
+    declaration                    shift and go to state 92
+    definitions                    shift and go to state 93
 
 state 67
 
-    (28) backtrack -> WHITESPACE LT . LT
+    (69) begin_block -> INDENT .
 
-    LT              shift and go to state 89
+    GLOBALMARK      reduce using rule 69 (begin_block -> INDENT .)
+    VARNAME         reduce using rule 69 (begin_block -> INDENT .)
+    DOT             reduce using rule 69 (begin_block -> INDENT .)
+    LT              reduce using rule 69 (begin_block -> INDENT .)
 
 
 state 68
 
-    (26) repeat_range -> NUMBER backtrack PLUS . DOT DOT of
-    (27) repeat_range -> NUMBER backtrack PLUS . DOT DOT NUMBER of
+    (44) lookup_expr -> lookup NEWLINE optional_block .
 
-    DOT             shift and go to state 90
+    $end            reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
+    DEDENT          reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
+    GLOBALMARK      reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
+    VARNAME         reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
+    DOT             reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
+    LT              reduce using rule 44 (lookup_expr -> lookup NEWLINE optional_block .)
 
 
 state 69
 
-    (31) numrange -> NUMBER DOT DOT .
-    (33) numrange -> NUMBER DOT DOT . NUMBER
+    (39) orblock_items -> or_item .
+    (40) orblock_items -> or_item . orblock_items
+    (39) orblock_items -> . or_item
+    (40) orblock_items -> . or_item orblock_items
+    (41) or_item -> . OR string_expr
+    (42) or_item -> . OR lookup NEWLINE
+    (43) or_item -> . OR lookup_chain NEWLINE
 
-    WHITESPACE      reduce using rule 31 (numrange -> NUMBER DOT DOT .)
-    NUMBER          shift and go to state 91
+    OREND           reduce using rule 39 (orblock_items -> or_item .)
+    OR              shift and go to state 71
 
+    or_item                        shift and go to state 69
+    orblock_items                  shift and go to state 95
 
 state 70
 
-    (43) lookup_chain -> lookup SLASH .
-    (44) lookup_chain -> lookup SLASH . lookup_chain
-    (43) lookup_chain -> . lookup SLASH
-    (44) lookup_chain -> . lookup SLASH lookup_chain
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
+    (38) orblock_expr -> ORBEGIN NEWLINE orblock_items . OREND NEWLINE optional_block
 
-    NEWLINE         reduce using rule 43 (lookup_chain -> lookup SLASH .)
-    VARNAME         shift and go to state 8
-    UNDERSCORE      shift and go to state 44
-    DOT             shift and go to state 45
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    OREND           shift and go to state 96
 
-    lookup_type                    shift and go to state 28
-    backreference                  shift and go to state 10
-    lookup                         shift and go to state 46
-    subroutine_call                shift and go to state 18
-    lookup_chain                   shift and go to state 92
-    variable_lookup                shift and go to state 32
 
 state 71
 
-    (42) lookup_expr -> SLASH lookup_chain NEWLINE . optional_block
-    (64) optional_block -> . begin_block definitions end_block
-    (65) optional_block -> .
-    (66) begin_block -> . INDENT
+    (41) or_item -> OR . string_expr
+    (42) or_item -> OR . lookup NEWLINE
+    (43) or_item -> OR . lookup_chain NEWLINE
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (46) lookup_chain -> . lookup SLASH
+    (47) lookup_chain -> . lookup SLASH lookup_chain
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
 
-    $end            reduce using rule 65 (optional_block -> .)
-    DEDENT          reduce using rule 65 (optional_block -> .)
-    GLOBALMARK      reduce using rule 65 (optional_block -> .)
-    VARNAME         reduce using rule 65 (optional_block -> .)
-    DOT             reduce using rule 65 (optional_block -> .)
-    LT              reduce using rule 65 (optional_block -> .)
-    INDENT          shift and go to state 64
+    STRING          reduce using rule 16 (str_b -> .)
+    DOT             shift and go to state 100
+    UNDERSCORE      shift and go to state 11
+    VARNAME         shift and go to state 8
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
-    optional_block                 shift and go to state 93
-    begin_block                    shift and go to state 63
+    str_b                          shift and go to state 16
+    string_expr                    shift and go to state 97
+    lookup_type                    shift and go to state 30
+    backreference                  shift and go to state 10
+    lookup                         shift and go to state 98
+    subroutine_call                shift and go to state 18
+    lookup_chain                   shift and go to state 99
+    variable_lookup                shift and go to state 34
 
 state 72
 
-    (9) global_flags -> LPAREN FLAGSET RPAREN . NEWLINE
-    (40) scoped_flags -> LPAREN FLAGSET RPAREN . WHITESPACE
+    (30) of -> WHITESPACE OF .
 
-    NEWLINE         shift and go to state 94
-    WHITESPACE      shift and go to state 95
+    WHITESPACE      reduce using rule 30 (of -> WHITESPACE OF .)
+    COLON           reduce using rule 30 (of -> WHITESPACE OF .)
 
 
 state 73
 
-    (56) charitems -> WHITESPACE . charitem
-    (57) charitems -> WHITESPACE . charitem charitems
-    (58) charitem -> . ranged_char
-    (59) charitem -> . single_char
-    (60) charitem -> . period_char
-    (61) ranged_char -> . CHAR DOT DOT CHAR
-    (63) single_char -> . CHAR
-    (62) period_char -> . DOT
+    (29) backtrack -> WHITESPACE LT . LT
 
-    CHAR            shift and go to state 101
-    DOT             shift and go to state 100
+    LT              shift and go to state 101
 
-    single_char                    shift and go to state 99
-    charitem                       shift and go to state 97
-    ranged_char                    shift and go to state 98
-    period_char                    shift and go to state 96
 
 state 74
 
-    (19) quantified_expr -> quantifier COLON charclass .
+    (27) repeat_range -> NUMBER backtrack PLUS . DOT DOT of
+    (28) repeat_range -> NUMBER backtrack PLUS . DOT DOT NUMBER of
 
-    GLOBALMARK      reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
-    VARNAME         reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
-    DOT             reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
-    LT              reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
-    DEDENT          reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
-    $end            reduce using rule 19 (quantified_expr -> quantifier COLON charclass .)
+    DOT             shift and go to state 102
 
 
 state 75
 
-    (55) charclass -> charitems . NEWLINE optional_block
+    (32) numrange -> NUMBER DOT DOT .
+    (34) numrange -> NUMBER DOT DOT . NUMBER
 
-    NEWLINE         shift and go to state 102
+    WHITESPACE      reduce using rule 32 (numrange -> NUMBER DOT DOT .)
+    NUMBER          shift and go to state 103
 
 
 state 76
 
-    (18) quantified_expr -> quantifier WHITESPACE expression .
+    (46) lookup_chain -> lookup SLASH .
+    (47) lookup_chain -> lookup SLASH . lookup_chain
+    (46) lookup_chain -> . lookup SLASH
+    (47) lookup_chain -> . lookup SLASH lookup_chain
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
 
-    GLOBALMARK      reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
-    VARNAME         reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
-    DOT             reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
-    LT              reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
-    DEDENT          reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
-    $end            reduce using rule 18 (quantified_expr -> quantifier WHITESPACE expression .)
+    NEWLINE         reduce using rule 46 (lookup_chain -> lookup SLASH .)
+    VARNAME         shift and go to state 8
+    UNDERSCORE      shift and go to state 47
+    DOT             shift and go to state 48
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
+    lookup_type                    shift and go to state 30
+    backreference                  shift and go to state 10
+    lookup                         shift and go to state 49
+    subroutine_call                shift and go to state 18
+    lookup_chain                   shift and go to state 104
+    variable_lookup                shift and go to state 34
 
 state 77
 
-    (25) repeat_range -> numrange backtrack MINUS . of
-    (29) of -> . WHITESPACE OF
+    (45) lookup_expr -> SLASH lookup_chain NEWLINE . optional_block
+    (67) optional_block -> . begin_block definitions end_block
+    (68) optional_block -> .
+    (69) begin_block -> . INDENT
 
-    WHITESPACE      shift and go to state 54
+    $end            reduce using rule 68 (optional_block -> .)
+    DEDENT          reduce using rule 68 (optional_block -> .)
+    GLOBALMARK      reduce using rule 68 (optional_block -> .)
+    VARNAME         reduce using rule 68 (optional_block -> .)
+    DOT             reduce using rule 68 (optional_block -> .)
+    LT              reduce using rule 68 (optional_block -> .)
+    INDENT          shift and go to state 67
 
-    of                             shift and go to state 103
+    optional_block                 shift and go to state 105
+    begin_block                    shift and go to state 66
 
 state 78
+
+    (9) global_flags -> LPAREN FLAGSET RPAREN . NEWLINE
+    (37) scoped_flags -> LPAREN FLAGSET RPAREN . WHITESPACE
+
+    NEWLINE         shift and go to state 106
+    WHITESPACE      shift and go to state 107
+
+
+state 79
+
+    (59) charitems -> WHITESPACE . charitem
+    (60) charitems -> WHITESPACE . charitem charitems
+    (61) charitem -> . ranged_char
+    (62) charitem -> . single_char
+    (63) charitem -> . period_char
+    (64) ranged_char -> . CHAR DOT DOT CHAR
+    (66) single_char -> . CHAR
+    (65) period_char -> . DOT
+
+    CHAR            shift and go to state 113
+    DOT             shift and go to state 112
+
+    single_char                    shift and go to state 111
+    charitem                       shift and go to state 109
+    ranged_char                    shift and go to state 110
+    period_char                    shift and go to state 108
+
+state 80
+
+    (20) quantified_expr -> quantifier COLON charclass .
+
+    $end            reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+    DEDENT          reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+    GLOBALMARK      reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+    VARNAME         reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+    DOT             reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+    LT              reduce using rule 20 (quantified_expr -> quantifier COLON charclass .)
+
+
+state 81
+
+    (58) charclass -> charitems . NEWLINE optional_block
+
+    NEWLINE         shift and go to state 114
+
+
+state 82
+
+    (19) quantified_expr -> quantifier WHITESPACE expression .
+
+    $end            reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+    DEDENT          reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+    GLOBALMARK      reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+    VARNAME         reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+    DOT             reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+    LT              reduce using rule 19 (quantified_expr -> quantifier WHITESPACE expression .)
+
+
+state 83
+
+    (26) repeat_range -> numrange backtrack MINUS . of
+    (30) of -> . WHITESPACE OF
+
+    WHITESPACE      shift and go to state 57
+
+    of                             shift and go to state 115
+
+state 84
 
     (5) oprex -> NEWLINE INDENT main_expression DEDENT .
 
     $end            reduce using rule 5 (oprex -> NEWLINE INDENT main_expression DEDENT .)
 
 
-state 79
-
-    (40) scoped_flags -> LPAREN FLAGSET RPAREN . WHITESPACE
-
-    WHITESPACE      shift and go to state 95
-
-
-state 80
-
-    (14) string_expr -> str_b STRING str_b NEWLINE .
-
-    GLOBALMARK      reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-    VARNAME         reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-    DOT             reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-    LT              reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-    DEDENT          reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-    $end            reduce using rule 14 (string_expr -> str_b STRING str_b NEWLINE .)
-
-
-state 81
-
-    (68) definitions -> definition .
-    (69) definitions -> definition . definitions
-    (68) definitions -> . definition
-    (69) definitions -> . definition definitions
-    (70) definition -> . assignment
-    (71) definition -> . GLOBALMARK assignment
-    (72) assignment -> . declaration equals assignment
-    (73) assignment -> . declaration equals expression
-    (74) assignment -> . declaration COLON charclass
-    (79) declaration -> . VARNAME
-    (80) declaration -> . DOT VARNAME
-    (81) declaration -> . LT VARNAME GT
-    (82) declaration -> . DOT LT VARNAME GT
-
-    DEDENT          reduce using rule 68 (definitions -> definition .)
-    GLOBALMARK      shift and go to state 83
-    VARNAME         shift and go to state 84
-    DOT             shift and go to state 88
-    LT              shift and go to state 85
-
-    definition                     shift and go to state 81
-    assignment                     shift and go to state 82
-    declaration                    shift and go to state 86
-    definitions                    shift and go to state 104
-
-state 82
-
-    (70) definition -> assignment .
-
-    GLOBALMARK      reduce using rule 70 (definition -> assignment .)
-    VARNAME         reduce using rule 70 (definition -> assignment .)
-    DOT             reduce using rule 70 (definition -> assignment .)
-    LT              reduce using rule 70 (definition -> assignment .)
-    DEDENT          reduce using rule 70 (definition -> assignment .)
-
-
-state 83
-
-    (71) definition -> GLOBALMARK . assignment
-    (72) assignment -> . declaration equals assignment
-    (73) assignment -> . declaration equals expression
-    (74) assignment -> . declaration COLON charclass
-    (79) declaration -> . VARNAME
-    (80) declaration -> . DOT VARNAME
-    (81) declaration -> . LT VARNAME GT
-    (82) declaration -> . DOT LT VARNAME GT
-
-    VARNAME         shift and go to state 84
-    DOT             shift and go to state 88
-    LT              shift and go to state 85
-
-    assignment                     shift and go to state 105
-    declaration                    shift and go to state 86
-
-state 84
-
-    (79) declaration -> VARNAME .
-
-    COLON           reduce using rule 79 (declaration -> VARNAME .)
-    EQUALSIGN       reduce using rule 79 (declaration -> VARNAME .)
-    WHITESPACE      reduce using rule 79 (declaration -> VARNAME .)
-
-
 state 85
 
-    (81) declaration -> LT . VARNAME GT
+    (37) scoped_flags -> LPAREN FLAGSET RPAREN . WHITESPACE
 
-    VARNAME         shift and go to state 106
+    WHITESPACE      shift and go to state 107
 
 
 state 86
 
-    (72) assignment -> declaration . equals assignment
-    (73) assignment -> declaration . equals expression
-    (74) assignment -> declaration . COLON charclass
-    (75) equals -> . EQUALSIGN
-    (76) equals -> . WHITESPACE EQUALSIGN
-    (77) equals -> . EQUALSIGN WHITESPACE
-    (78) equals -> . WHITESPACE EQUALSIGN WHITESPACE
+    (15) string_expr -> str_b STRING str_b NEWLINE .
 
-    COLON           shift and go to state 109
-    EQUALSIGN       shift and go to state 110
-    WHITESPACE      shift and go to state 107
+    OR              reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    OREND           reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    $end            reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    DEDENT          reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    GLOBALMARK      reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    VARNAME         reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    DOT             reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
+    LT              reduce using rule 15 (string_expr -> str_b STRING str_b NEWLINE .)
 
-    equals                         shift and go to state 108
 
 state 87
 
-    (64) optional_block -> begin_block definitions . end_block
-    (67) end_block -> . DEDENT
+    (71) definitions -> definition .
+    (72) definitions -> definition . definitions
+    (71) definitions -> . definition
+    (72) definitions -> . definition definitions
+    (73) definition -> . assignment
+    (74) definition -> . GLOBALMARK assignment
+    (75) assignment -> . declaration equals assignment
+    (76) assignment -> . declaration equals expression
+    (77) assignment -> . declaration COLON charclass
+    (82) declaration -> . VARNAME
+    (83) declaration -> . DOT VARNAME
+    (84) declaration -> . LT VARNAME GT
+    (85) declaration -> . DOT LT VARNAME GT
 
-    DEDENT          shift and go to state 112
+    DEDENT          reduce using rule 71 (definitions -> definition .)
+    GLOBALMARK      shift and go to state 89
+    VARNAME         shift and go to state 90
+    DOT             shift and go to state 94
+    LT              shift and go to state 91
 
-    end_block                      shift and go to state 111
+    definition                     shift and go to state 87
+    assignment                     shift and go to state 88
+    declaration                    shift and go to state 92
+    definitions                    shift and go to state 116
 
 state 88
 
-    (80) declaration -> DOT . VARNAME
-    (82) declaration -> DOT . LT VARNAME GT
+    (73) definition -> assignment .
 
-    VARNAME         shift and go to state 113
-    LT              shift and go to state 114
+    GLOBALMARK      reduce using rule 73 (definition -> assignment .)
+    VARNAME         reduce using rule 73 (definition -> assignment .)
+    DOT             reduce using rule 73 (definition -> assignment .)
+    LT              reduce using rule 73 (definition -> assignment .)
+    DEDENT          reduce using rule 73 (definition -> assignment .)
 
 
 state 89
 
-    (28) backtrack -> WHITESPACE LT LT .
+    (74) definition -> GLOBALMARK . assignment
+    (75) assignment -> . declaration equals assignment
+    (76) assignment -> . declaration equals expression
+    (77) assignment -> . declaration COLON charclass
+    (82) declaration -> . VARNAME
+    (83) declaration -> . DOT VARNAME
+    (84) declaration -> . LT VARNAME GT
+    (85) declaration -> . DOT LT VARNAME GT
 
-    MINUS           reduce using rule 28 (backtrack -> WHITESPACE LT LT .)
-    PLUS            reduce using rule 28 (backtrack -> WHITESPACE LT LT .)
+    VARNAME         shift and go to state 90
+    DOT             shift and go to state 94
+    LT              shift and go to state 91
 
+    assignment                     shift and go to state 117
+    declaration                    shift and go to state 92
 
 state 90
 
-    (26) repeat_range -> NUMBER backtrack PLUS DOT . DOT of
-    (27) repeat_range -> NUMBER backtrack PLUS DOT . DOT NUMBER of
+    (82) declaration -> VARNAME .
 
-    DOT             shift and go to state 115
+    COLON           reduce using rule 82 (declaration -> VARNAME .)
+    EQUALSIGN       reduce using rule 82 (declaration -> VARNAME .)
+    WHITESPACE      reduce using rule 82 (declaration -> VARNAME .)
 
 
 state 91
 
-    (33) numrange -> NUMBER DOT DOT NUMBER .
+    (84) declaration -> LT . VARNAME GT
 
-    WHITESPACE      reduce using rule 33 (numrange -> NUMBER DOT DOT NUMBER .)
+    VARNAME         shift and go to state 118
 
 
 state 92
 
-    (44) lookup_chain -> lookup SLASH lookup_chain .
+    (75) assignment -> declaration . equals assignment
+    (76) assignment -> declaration . equals expression
+    (77) assignment -> declaration . COLON charclass
+    (78) equals -> . EQUALSIGN
+    (79) equals -> . WHITESPACE EQUALSIGN
+    (80) equals -> . EQUALSIGN WHITESPACE
+    (81) equals -> . WHITESPACE EQUALSIGN WHITESPACE
 
-    NEWLINE         reduce using rule 44 (lookup_chain -> lookup SLASH lookup_chain .)
+    COLON           shift and go to state 121
+    EQUALSIGN       shift and go to state 122
+    WHITESPACE      shift and go to state 119
 
+    equals                         shift and go to state 120
 
 state 93
 
-    (42) lookup_expr -> SLASH lookup_chain NEWLINE optional_block .
+    (67) optional_block -> begin_block definitions . end_block
+    (70) end_block -> . DEDENT
 
-    $end            reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
-    DEDENT          reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
-    GLOBALMARK      reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
-    VARNAME         reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
-    DOT             reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
-    LT              reduce using rule 42 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    DEDENT          shift and go to state 124
 
+    end_block                      shift and go to state 123
 
 state 94
+
+    (83) declaration -> DOT . VARNAME
+    (85) declaration -> DOT . LT VARNAME GT
+
+    VARNAME         shift and go to state 125
+    LT              shift and go to state 126
+
+
+state 95
+
+    (40) orblock_items -> or_item orblock_items .
+
+    OREND           reduce using rule 40 (orblock_items -> or_item orblock_items .)
+
+
+state 96
+
+    (38) orblock_expr -> ORBEGIN NEWLINE orblock_items OREND . NEWLINE optional_block
+
+    NEWLINE         shift and go to state 127
+
+
+state 97
+
+    (41) or_item -> OR string_expr .
+
+    OR              reduce using rule 41 (or_item -> OR string_expr .)
+    OREND           reduce using rule 41 (or_item -> OR string_expr .)
+
+
+state 98
+
+    (42) or_item -> OR lookup . NEWLINE
+    (46) lookup_chain -> lookup . SLASH
+    (47) lookup_chain -> lookup . SLASH lookup_chain
+
+    NEWLINE         shift and go to state 128
+    SLASH           shift and go to state 76
+
+
+state 99
+
+    (43) or_item -> OR lookup_chain . NEWLINE
+
+    NEWLINE         shift and go to state 129
+
+
+state 100
+
+    (17) str_b -> DOT .
+    (55) variable_lookup -> DOT .
+
+    STRING          reduce using rule 17 (str_b -> DOT .)
+    QUESTMARK       reduce using rule 55 (variable_lookup -> DOT .)
+    NEWLINE         reduce using rule 55 (variable_lookup -> DOT .)
+    SLASH           reduce using rule 55 (variable_lookup -> DOT .)
+
+
+state 101
+
+    (29) backtrack -> WHITESPACE LT LT .
+
+    MINUS           reduce using rule 29 (backtrack -> WHITESPACE LT LT .)
+    PLUS            reduce using rule 29 (backtrack -> WHITESPACE LT LT .)
+
+
+state 102
+
+    (27) repeat_range -> NUMBER backtrack PLUS DOT . DOT of
+    (28) repeat_range -> NUMBER backtrack PLUS DOT . DOT NUMBER of
+
+    DOT             shift and go to state 130
+
+
+state 103
+
+    (34) numrange -> NUMBER DOT DOT NUMBER .
+
+    WHITESPACE      reduce using rule 34 (numrange -> NUMBER DOT DOT NUMBER .)
+
+
+state 104
+
+    (47) lookup_chain -> lookup SLASH lookup_chain .
+
+    NEWLINE         reduce using rule 47 (lookup_chain -> lookup SLASH lookup_chain .)
+
+
+state 105
+
+    (45) lookup_expr -> SLASH lookup_chain NEWLINE optional_block .
+
+    $end            reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    DEDENT          reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    GLOBALMARK      reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    VARNAME         reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    DOT             reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+    LT              reduce using rule 45 (lookup_expr -> SLASH lookup_chain NEWLINE optional_block .)
+
+
+state 106
 
     (9) global_flags -> LPAREN FLAGSET RPAREN NEWLINE .
 
     SLASH           reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
+    ORBEGIN         reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
     DOT             reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
     UNDERSCORE      reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
     LPAREN          reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
@@ -1463,195 +1634,199 @@ state 94
     DEDENT          reduce using rule 9 (global_flags -> LPAREN FLAGSET RPAREN NEWLINE .)
 
 
-state 95
-
-    (40) scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .
-
-    SLASH           reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    DOT             reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    UNDERSCORE      reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    LPAREN          reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    NUMBER          reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    QUESTMARK       reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    VARNAME         reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    EQUALSIGN       reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    AMPERSAND       reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-    STRING          reduce using rule 40 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
-
-
-state 96
-
-    (60) charitem -> period_char .
-
-    WHITESPACE      reduce using rule 60 (charitem -> period_char .)
-    NEWLINE         reduce using rule 60 (charitem -> period_char .)
-
-
-state 97
-
-    (56) charitems -> WHITESPACE charitem .
-    (57) charitems -> WHITESPACE charitem . charitems
-    (56) charitems -> . WHITESPACE charitem
-    (57) charitems -> . WHITESPACE charitem charitems
-
-    NEWLINE         reduce using rule 56 (charitems -> WHITESPACE charitem .)
-    WHITESPACE      shift and go to state 73
-
-    charitems                      shift and go to state 116
-
-state 98
-
-    (58) charitem -> ranged_char .
-
-    WHITESPACE      reduce using rule 58 (charitem -> ranged_char .)
-    NEWLINE         reduce using rule 58 (charitem -> ranged_char .)
-
-
-state 99
-
-    (59) charitem -> single_char .
-
-    WHITESPACE      reduce using rule 59 (charitem -> single_char .)
-    NEWLINE         reduce using rule 59 (charitem -> single_char .)
-
-
-state 100
-
-    (62) period_char -> DOT .
-
-    WHITESPACE      reduce using rule 62 (period_char -> DOT .)
-    NEWLINE         reduce using rule 62 (period_char -> DOT .)
-
-
-state 101
-
-    (61) ranged_char -> CHAR . DOT DOT CHAR
-    (63) single_char -> CHAR .
-
-    DOT             shift and go to state 117
-    WHITESPACE      reduce using rule 63 (single_char -> CHAR .)
-    NEWLINE         reduce using rule 63 (single_char -> CHAR .)
-
-
-state 102
-
-    (55) charclass -> charitems NEWLINE . optional_block
-    (64) optional_block -> . begin_block definitions end_block
-    (65) optional_block -> .
-    (66) begin_block -> . INDENT
-
-    $end            reduce using rule 65 (optional_block -> .)
-    DEDENT          reduce using rule 65 (optional_block -> .)
-    GLOBALMARK      reduce using rule 65 (optional_block -> .)
-    VARNAME         reduce using rule 65 (optional_block -> .)
-    DOT             reduce using rule 65 (optional_block -> .)
-    LT              reduce using rule 65 (optional_block -> .)
-    INDENT          shift and go to state 64
-
-    begin_block                    shift and go to state 63
-    optional_block                 shift and go to state 118
-
-state 103
-
-    (25) repeat_range -> numrange backtrack MINUS of .
-
-    WHITESPACE      reduce using rule 25 (repeat_range -> numrange backtrack MINUS of .)
-    COLON           reduce using rule 25 (repeat_range -> numrange backtrack MINUS of .)
-
-
-state 104
-
-    (69) definitions -> definition definitions .
-
-    DEDENT          reduce using rule 69 (definitions -> definition definitions .)
-
-
-state 105
-
-    (71) definition -> GLOBALMARK assignment .
-
-    GLOBALMARK      reduce using rule 71 (definition -> GLOBALMARK assignment .)
-    VARNAME         reduce using rule 71 (definition -> GLOBALMARK assignment .)
-    DOT             reduce using rule 71 (definition -> GLOBALMARK assignment .)
-    LT              reduce using rule 71 (definition -> GLOBALMARK assignment .)
-    DEDENT          reduce using rule 71 (definition -> GLOBALMARK assignment .)
-
-
-state 106
-
-    (81) declaration -> LT VARNAME . GT
-
-    GT              shift and go to state 119
-
-
 state 107
 
-    (76) equals -> WHITESPACE . EQUALSIGN
-    (78) equals -> WHITESPACE . EQUALSIGN WHITESPACE
+    (37) scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .
 
-    EQUALSIGN       shift and go to state 120
+    SLASH           reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    ORBEGIN         reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    DOT             reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    UNDERSCORE      reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    LPAREN          reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    NUMBER          reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    QUESTMARK       reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    VARNAME         reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    EQUALSIGN       reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    AMPERSAND       reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
+    STRING          reduce using rule 37 (scoped_flags -> LPAREN FLAGSET RPAREN WHITESPACE .)
 
 
 state 108
 
-    (72) assignment -> declaration equals . assignment
-    (73) assignment -> declaration equals . expression
-    (72) assignment -> . declaration equals assignment
-    (73) assignment -> . declaration equals expression
-    (74) assignment -> . declaration COLON charclass
+    (63) charitem -> period_char .
+
+    WHITESPACE      reduce using rule 63 (charitem -> period_char .)
+    NEWLINE         reduce using rule 63 (charitem -> period_char .)
+
+
+state 109
+
+    (59) charitems -> WHITESPACE charitem .
+    (60) charitems -> WHITESPACE charitem . charitems
+    (59) charitems -> . WHITESPACE charitem
+    (60) charitems -> . WHITESPACE charitem charitems
+
+    NEWLINE         reduce using rule 59 (charitems -> WHITESPACE charitem .)
+    WHITESPACE      shift and go to state 79
+
+    charitems                      shift and go to state 131
+
+state 110
+
+    (61) charitem -> ranged_char .
+
+    WHITESPACE      reduce using rule 61 (charitem -> ranged_char .)
+    NEWLINE         reduce using rule 61 (charitem -> ranged_char .)
+
+
+state 111
+
+    (62) charitem -> single_char .
+
+    WHITESPACE      reduce using rule 62 (charitem -> single_char .)
+    NEWLINE         reduce using rule 62 (charitem -> single_char .)
+
+
+state 112
+
+    (65) period_char -> DOT .
+
+    WHITESPACE      reduce using rule 65 (period_char -> DOT .)
+    NEWLINE         reduce using rule 65 (period_char -> DOT .)
+
+
+state 113
+
+    (64) ranged_char -> CHAR . DOT DOT CHAR
+    (66) single_char -> CHAR .
+
+    DOT             shift and go to state 132
+    WHITESPACE      reduce using rule 66 (single_char -> CHAR .)
+    NEWLINE         reduce using rule 66 (single_char -> CHAR .)
+
+
+state 114
+
+    (58) charclass -> charitems NEWLINE . optional_block
+    (67) optional_block -> . begin_block definitions end_block
+    (68) optional_block -> .
+    (69) begin_block -> . INDENT
+
+    $end            reduce using rule 68 (optional_block -> .)
+    DEDENT          reduce using rule 68 (optional_block -> .)
+    GLOBALMARK      reduce using rule 68 (optional_block -> .)
+    VARNAME         reduce using rule 68 (optional_block -> .)
+    DOT             reduce using rule 68 (optional_block -> .)
+    LT              reduce using rule 68 (optional_block -> .)
+    INDENT          shift and go to state 67
+
+    begin_block                    shift and go to state 66
+    optional_block                 shift and go to state 133
+
+state 115
+
+    (26) repeat_range -> numrange backtrack MINUS of .
+
+    WHITESPACE      reduce using rule 26 (repeat_range -> numrange backtrack MINUS of .)
+    COLON           reduce using rule 26 (repeat_range -> numrange backtrack MINUS of .)
+
+
+state 116
+
+    (72) definitions -> definition definitions .
+
+    DEDENT          reduce using rule 72 (definitions -> definition definitions .)
+
+
+state 117
+
+    (74) definition -> GLOBALMARK assignment .
+
+    GLOBALMARK      reduce using rule 74 (definition -> GLOBALMARK assignment .)
+    VARNAME         reduce using rule 74 (definition -> GLOBALMARK assignment .)
+    DOT             reduce using rule 74 (definition -> GLOBALMARK assignment .)
+    LT              reduce using rule 74 (definition -> GLOBALMARK assignment .)
+    DEDENT          reduce using rule 74 (definition -> GLOBALMARK assignment .)
+
+
+state 118
+
+    (84) declaration -> LT VARNAME . GT
+
+    GT              shift and go to state 134
+
+
+state 119
+
+    (79) equals -> WHITESPACE . EQUALSIGN
+    (81) equals -> WHITESPACE . EQUALSIGN WHITESPACE
+
+    EQUALSIGN       shift and go to state 135
+
+
+state 120
+
+    (75) assignment -> declaration equals . assignment
+    (76) assignment -> declaration equals . expression
+    (75) assignment -> . declaration equals assignment
+    (76) assignment -> . declaration equals expression
+    (77) assignment -> . declaration COLON charclass
     (10) expression -> . string_expr
     (11) expression -> . lookup_expr
-    (12) expression -> . flagged_expr
-    (13) expression -> . quantified_expr
-    (79) declaration -> . VARNAME
-    (80) declaration -> . DOT VARNAME
-    (81) declaration -> . LT VARNAME GT
-    (82) declaration -> . DOT LT VARNAME GT
-    (14) string_expr -> . str_b STRING str_b NEWLINE
-    (41) lookup_expr -> . lookup NEWLINE optional_block
-    (42) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
-    (39) flagged_expr -> . scoped_flags expression
-    (18) quantified_expr -> . quantifier WHITESPACE expression
-    (19) quantified_expr -> . quantifier COLON charclass
-    (15) str_b -> .
-    (16) str_b -> . DOT
-    (17) str_b -> . UNDERSCORE
-    (45) lookup -> . lookup_type
-    (46) lookup -> . lookup_type QUESTMARK
-    (40) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
-    (20) quantifier -> . repeat_N_times
-    (21) quantifier -> . repeat_range
-    (22) quantifier -> . optionalize
-    (47) lookup_type -> . variable_lookup
-    (48) lookup_type -> . backreference
-    (49) lookup_type -> . subroutine_call
-    (23) repeat_N_times -> . NUMBER of
-    (24) repeat_range -> . numrange of
-    (25) repeat_range -> . numrange backtrack MINUS of
-    (26) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
-    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
-    (34) optionalize -> . QUESTMARK of
-    (50) variable_lookup -> . VARNAME
-    (51) variable_lookup -> . UNDERSCORE
-    (52) variable_lookup -> . DOT
-    (53) backreference -> . EQUALSIGN VARNAME
-    (54) subroutine_call -> . AMPERSAND VARNAME
-    (30) numrange -> . DOT DOT
-    (31) numrange -> . NUMBER DOT DOT
-    (32) numrange -> . DOT DOT NUMBER
-    (33) numrange -> . NUMBER DOT DOT NUMBER
+    (12) expression -> . orblock_expr
+    (13) expression -> . flagged_expr
+    (14) expression -> . quantified_expr
+    (82) declaration -> . VARNAME
+    (83) declaration -> . DOT VARNAME
+    (84) declaration -> . LT VARNAME GT
+    (85) declaration -> . DOT LT VARNAME GT
+    (15) string_expr -> . str_b STRING str_b NEWLINE
+    (44) lookup_expr -> . lookup NEWLINE optional_block
+    (45) lookup_expr -> . SLASH lookup_chain NEWLINE optional_block
+    (38) orblock_expr -> . ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block
+    (36) flagged_expr -> . scoped_flags expression
+    (19) quantified_expr -> . quantifier WHITESPACE expression
+    (20) quantified_expr -> . quantifier COLON charclass
+    (16) str_b -> .
+    (17) str_b -> . DOT
+    (18) str_b -> . UNDERSCORE
+    (48) lookup -> . lookup_type
+    (49) lookup -> . lookup_type QUESTMARK
+    (37) scoped_flags -> . LPAREN FLAGSET RPAREN WHITESPACE
+    (21) quantifier -> . repeat_N_times
+    (22) quantifier -> . repeat_range
+    (23) quantifier -> . optionalize
+    (50) lookup_type -> . variable_lookup
+    (51) lookup_type -> . backreference
+    (52) lookup_type -> . subroutine_call
+    (24) repeat_N_times -> . NUMBER of
+    (25) repeat_range -> . numrange of
+    (26) repeat_range -> . numrange backtrack MINUS of
+    (27) repeat_range -> . NUMBER backtrack PLUS DOT DOT of
+    (28) repeat_range -> . NUMBER backtrack PLUS DOT DOT NUMBER of
+    (35) optionalize -> . QUESTMARK of
+    (53) variable_lookup -> . VARNAME
+    (54) variable_lookup -> . UNDERSCORE
+    (55) variable_lookup -> . DOT
+    (56) backreference -> . EQUALSIGN VARNAME
+    (57) subroutine_call -> . AMPERSAND VARNAME
+    (31) numrange -> . DOT DOT
+    (32) numrange -> . NUMBER DOT DOT
+    (33) numrange -> . DOT DOT NUMBER
+    (34) numrange -> . NUMBER DOT DOT NUMBER
 
-    VARNAME         shift and go to state 121
-    DOT             shift and go to state 122
-    LT              shift and go to state 85
-    SLASH           shift and go to state 21
-    STRING          reduce using rule 15 (str_b -> .)
+    VARNAME         shift and go to state 136
+    DOT             shift and go to state 137
+    LT              shift and go to state 91
+    SLASH           shift and go to state 23
+    ORBEGIN         shift and go to state 19
+    STRING          reduce using rule 16 (str_b -> .)
     UNDERSCORE      shift and go to state 11
-    LPAREN          shift and go to state 33
-    NUMBER          shift and go to state 19
-    QUESTMARK       shift and go to state 25
-    EQUALSIGN       shift and go to state 30
-    AMPERSAND       shift and go to state 20
+    LPAREN          shift and go to state 35
+    NUMBER          shift and go to state 21
+    QUESTMARK       shift and go to state 27
+    EQUALSIGN       shift and go to state 32
+    AMPERSAND       shift and go to state 22
 
     scoped_flags                   shift and go to state 4
     repeat_N_times                 shift and go to state 5
@@ -1660,303 +1835,354 @@ state 108
     backreference                  shift and go to state 10
     lookup_expr                    shift and go to state 12
     optionalize                    shift and go to state 14
-    string_expr                    shift and go to state 31
+    string_expr                    shift and go to state 33
     str_b                          shift and go to state 16
     lookup                         shift and go to state 17
     subroutine_call                shift and go to state 18
-    assignment                     shift and go to state 123
-    numrange                       shift and go to state 24
-    declaration                    shift and go to state 86
-    quantifier                     shift and go to state 23
-    quantified_expr                shift and go to state 26
-    lookup_type                    shift and go to state 28
-    expression                     shift and go to state 124
-    variable_lookup                shift and go to state 32
-
-state 109
-
-    (74) assignment -> declaration COLON . charclass
-    (55) charclass -> . charitems NEWLINE optional_block
-    (56) charitems -> . WHITESPACE charitem
-    (57) charitems -> . WHITESPACE charitem charitems
-
-    WHITESPACE      shift and go to state 73
-
-    charitems                      shift and go to state 75
-    charclass                      shift and go to state 125
-
-state 110
-
-    (75) equals -> EQUALSIGN .
-    (77) equals -> EQUALSIGN . WHITESPACE
-
-    VARNAME         reduce using rule 75 (equals -> EQUALSIGN .)
-    DOT             reduce using rule 75 (equals -> EQUALSIGN .)
-    LT              reduce using rule 75 (equals -> EQUALSIGN .)
-    SLASH           reduce using rule 75 (equals -> EQUALSIGN .)
-    UNDERSCORE      reduce using rule 75 (equals -> EQUALSIGN .)
-    LPAREN          reduce using rule 75 (equals -> EQUALSIGN .)
-    NUMBER          reduce using rule 75 (equals -> EQUALSIGN .)
-    QUESTMARK       reduce using rule 75 (equals -> EQUALSIGN .)
-    EQUALSIGN       reduce using rule 75 (equals -> EQUALSIGN .)
-    AMPERSAND       reduce using rule 75 (equals -> EQUALSIGN .)
-    STRING          reduce using rule 75 (equals -> EQUALSIGN .)
-    WHITESPACE      shift and go to state 126
-
-
-state 111
-
-    (64) optional_block -> begin_block definitions end_block .
-
-    $end            reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-    DEDENT          reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-    GLOBALMARK      reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-    VARNAME         reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-    DOT             reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-    LT              reduce using rule 64 (optional_block -> begin_block definitions end_block .)
-
-
-state 112
-
-    (67) end_block -> DEDENT .
-
-    $end            reduce using rule 67 (end_block -> DEDENT .)
-    DEDENT          reduce using rule 67 (end_block -> DEDENT .)
-    GLOBALMARK      reduce using rule 67 (end_block -> DEDENT .)
-    VARNAME         reduce using rule 67 (end_block -> DEDENT .)
-    DOT             reduce using rule 67 (end_block -> DEDENT .)
-    LT              reduce using rule 67 (end_block -> DEDENT .)
-
-
-state 113
-
-    (80) declaration -> DOT VARNAME .
-
-    COLON           reduce using rule 80 (declaration -> DOT VARNAME .)
-    EQUALSIGN       reduce using rule 80 (declaration -> DOT VARNAME .)
-    WHITESPACE      reduce using rule 80 (declaration -> DOT VARNAME .)
-
-
-state 114
-
-    (82) declaration -> DOT LT . VARNAME GT
-
-    VARNAME         shift and go to state 127
-
-
-state 115
-
-    (26) repeat_range -> NUMBER backtrack PLUS DOT DOT . of
-    (27) repeat_range -> NUMBER backtrack PLUS DOT DOT . NUMBER of
-    (29) of -> . WHITESPACE OF
-
-    NUMBER          shift and go to state 129
-    WHITESPACE      shift and go to state 54
-
-    of                             shift and go to state 128
-
-state 116
-
-    (57) charitems -> WHITESPACE charitem charitems .
-
-    NEWLINE         reduce using rule 57 (charitems -> WHITESPACE charitem charitems .)
-
-
-state 117
-
-    (61) ranged_char -> CHAR DOT . DOT CHAR
-
-    DOT             shift and go to state 130
-
-
-state 118
-
-    (55) charclass -> charitems NEWLINE optional_block .
-
-    $end            reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-    DEDENT          reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-    GLOBALMARK      reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-    VARNAME         reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-    DOT             reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-    LT              reduce using rule 55 (charclass -> charitems NEWLINE optional_block .)
-
-
-state 119
-
-    (81) declaration -> LT VARNAME GT .
-
-    COLON           reduce using rule 81 (declaration -> LT VARNAME GT .)
-    EQUALSIGN       reduce using rule 81 (declaration -> LT VARNAME GT .)
-    WHITESPACE      reduce using rule 81 (declaration -> LT VARNAME GT .)
-
-
-state 120
-
-    (76) equals -> WHITESPACE EQUALSIGN .
-    (78) equals -> WHITESPACE EQUALSIGN . WHITESPACE
-
-    VARNAME         reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    DOT             reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    LT              reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    SLASH           reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    UNDERSCORE      reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    LPAREN          reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    NUMBER          reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    QUESTMARK       reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    EQUALSIGN       reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    AMPERSAND       reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    STRING          reduce using rule 76 (equals -> WHITESPACE EQUALSIGN .)
-    WHITESPACE      shift and go to state 131
-
+    orblock_expr                   shift and go to state 20
+    assignment                     shift and go to state 138
+    numrange                       shift and go to state 26
+    declaration                    shift and go to state 92
+    quantifier                     shift and go to state 25
+    quantified_expr                shift and go to state 28
+    lookup_type                    shift and go to state 30
+    expression                     shift and go to state 139
+    variable_lookup                shift and go to state 34
 
 state 121
 
-    (79) declaration -> VARNAME .
-    (50) variable_lookup -> VARNAME .
+    (77) assignment -> declaration COLON . charclass
+    (58) charclass -> . charitems NEWLINE optional_block
+    (59) charitems -> . WHITESPACE charitem
+    (60) charitems -> . WHITESPACE charitem charitems
 
-    COLON           reduce using rule 79 (declaration -> VARNAME .)
-    EQUALSIGN       reduce using rule 79 (declaration -> VARNAME .)
-    WHITESPACE      reduce using rule 79 (declaration -> VARNAME .)
-    QUESTMARK       reduce using rule 50 (variable_lookup -> VARNAME .)
-    NEWLINE         reduce using rule 50 (variable_lookup -> VARNAME .)
+    WHITESPACE      shift and go to state 79
 
+    charitems                      shift and go to state 81
+    charclass                      shift and go to state 140
 
 state 122
 
-    (80) declaration -> DOT . VARNAME
-    (82) declaration -> DOT . LT VARNAME GT
-    (16) str_b -> DOT .
-    (52) variable_lookup -> DOT .
-    (30) numrange -> DOT . DOT
-    (32) numrange -> DOT . DOT NUMBER
+    (78) equals -> EQUALSIGN .
+    (80) equals -> EQUALSIGN . WHITESPACE
 
-    VARNAME         shift and go to state 113
-    LT              shift and go to state 114
-    STRING          reduce using rule 16 (str_b -> DOT .)
-    QUESTMARK       reduce using rule 52 (variable_lookup -> DOT .)
-    NEWLINE         reduce using rule 52 (variable_lookup -> DOT .)
-    DOT             shift and go to state 36
+    VARNAME         reduce using rule 78 (equals -> EQUALSIGN .)
+    DOT             reduce using rule 78 (equals -> EQUALSIGN .)
+    LT              reduce using rule 78 (equals -> EQUALSIGN .)
+    SLASH           reduce using rule 78 (equals -> EQUALSIGN .)
+    ORBEGIN         reduce using rule 78 (equals -> EQUALSIGN .)
+    UNDERSCORE      reduce using rule 78 (equals -> EQUALSIGN .)
+    LPAREN          reduce using rule 78 (equals -> EQUALSIGN .)
+    NUMBER          reduce using rule 78 (equals -> EQUALSIGN .)
+    QUESTMARK       reduce using rule 78 (equals -> EQUALSIGN .)
+    EQUALSIGN       reduce using rule 78 (equals -> EQUALSIGN .)
+    AMPERSAND       reduce using rule 78 (equals -> EQUALSIGN .)
+    STRING          reduce using rule 78 (equals -> EQUALSIGN .)
+    WHITESPACE      shift and go to state 141
 
 
 state 123
 
-    (72) assignment -> declaration equals assignment .
+    (67) optional_block -> begin_block definitions end_block .
 
-    GLOBALMARK      reduce using rule 72 (assignment -> declaration equals assignment .)
-    VARNAME         reduce using rule 72 (assignment -> declaration equals assignment .)
-    DOT             reduce using rule 72 (assignment -> declaration equals assignment .)
-    LT              reduce using rule 72 (assignment -> declaration equals assignment .)
-    DEDENT          reduce using rule 72 (assignment -> declaration equals assignment .)
+    $end            reduce using rule 67 (optional_block -> begin_block definitions end_block .)
+    DEDENT          reduce using rule 67 (optional_block -> begin_block definitions end_block .)
+    GLOBALMARK      reduce using rule 67 (optional_block -> begin_block definitions end_block .)
+    VARNAME         reduce using rule 67 (optional_block -> begin_block definitions end_block .)
+    DOT             reduce using rule 67 (optional_block -> begin_block definitions end_block .)
+    LT              reduce using rule 67 (optional_block -> begin_block definitions end_block .)
 
 
 state 124
 
-    (73) assignment -> declaration equals expression .
+    (70) end_block -> DEDENT .
 
-    GLOBALMARK      reduce using rule 73 (assignment -> declaration equals expression .)
-    VARNAME         reduce using rule 73 (assignment -> declaration equals expression .)
-    DOT             reduce using rule 73 (assignment -> declaration equals expression .)
-    LT              reduce using rule 73 (assignment -> declaration equals expression .)
-    DEDENT          reduce using rule 73 (assignment -> declaration equals expression .)
+    $end            reduce using rule 70 (end_block -> DEDENT .)
+    DEDENT          reduce using rule 70 (end_block -> DEDENT .)
+    GLOBALMARK      reduce using rule 70 (end_block -> DEDENT .)
+    VARNAME         reduce using rule 70 (end_block -> DEDENT .)
+    DOT             reduce using rule 70 (end_block -> DEDENT .)
+    LT              reduce using rule 70 (end_block -> DEDENT .)
 
 
 state 125
 
-    (74) assignment -> declaration COLON charclass .
+    (83) declaration -> DOT VARNAME .
 
-    GLOBALMARK      reduce using rule 74 (assignment -> declaration COLON charclass .)
-    VARNAME         reduce using rule 74 (assignment -> declaration COLON charclass .)
-    DOT             reduce using rule 74 (assignment -> declaration COLON charclass .)
-    LT              reduce using rule 74 (assignment -> declaration COLON charclass .)
-    DEDENT          reduce using rule 74 (assignment -> declaration COLON charclass .)
+    COLON           reduce using rule 83 (declaration -> DOT VARNAME .)
+    EQUALSIGN       reduce using rule 83 (declaration -> DOT VARNAME .)
+    WHITESPACE      reduce using rule 83 (declaration -> DOT VARNAME .)
 
 
 state 126
 
-    (77) equals -> EQUALSIGN WHITESPACE .
+    (85) declaration -> DOT LT . VARNAME GT
 
-    VARNAME         reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    DOT             reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    LT              reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    SLASH           reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    UNDERSCORE      reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    LPAREN          reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    NUMBER          reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    QUESTMARK       reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    EQUALSIGN       reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    AMPERSAND       reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
-    STRING          reduce using rule 77 (equals -> EQUALSIGN WHITESPACE .)
+    VARNAME         shift and go to state 142
 
 
 state 127
 
-    (82) declaration -> DOT LT VARNAME . GT
+    (38) orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE . optional_block
+    (67) optional_block -> . begin_block definitions end_block
+    (68) optional_block -> .
+    (69) begin_block -> . INDENT
 
-    GT              shift and go to state 132
+    $end            reduce using rule 68 (optional_block -> .)
+    DEDENT          reduce using rule 68 (optional_block -> .)
+    GLOBALMARK      reduce using rule 68 (optional_block -> .)
+    VARNAME         reduce using rule 68 (optional_block -> .)
+    DOT             reduce using rule 68 (optional_block -> .)
+    LT              reduce using rule 68 (optional_block -> .)
+    INDENT          shift and go to state 67
 
+    begin_block                    shift and go to state 66
+    optional_block                 shift and go to state 143
 
 state 128
 
-    (26) repeat_range -> NUMBER backtrack PLUS DOT DOT of .
+    (42) or_item -> OR lookup NEWLINE .
 
-    WHITESPACE      reduce using rule 26 (repeat_range -> NUMBER backtrack PLUS DOT DOT of .)
-    COLON           reduce using rule 26 (repeat_range -> NUMBER backtrack PLUS DOT DOT of .)
+    OR              reduce using rule 42 (or_item -> OR lookup NEWLINE .)
+    OREND           reduce using rule 42 (or_item -> OR lookup NEWLINE .)
 
 
 state 129
 
-    (27) repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER . of
-    (29) of -> . WHITESPACE OF
+    (43) or_item -> OR lookup_chain NEWLINE .
 
-    WHITESPACE      shift and go to state 54
+    OR              reduce using rule 43 (or_item -> OR lookup_chain NEWLINE .)
+    OREND           reduce using rule 43 (or_item -> OR lookup_chain NEWLINE .)
 
-    of                             shift and go to state 133
 
 state 130
 
-    (61) ranged_char -> CHAR DOT DOT . CHAR
+    (27) repeat_range -> NUMBER backtrack PLUS DOT DOT . of
+    (28) repeat_range -> NUMBER backtrack PLUS DOT DOT . NUMBER of
+    (30) of -> . WHITESPACE OF
 
-    CHAR            shift and go to state 134
+    NUMBER          shift and go to state 145
+    WHITESPACE      shift and go to state 57
 
+    of                             shift and go to state 144
 
 state 131
 
-    (78) equals -> WHITESPACE EQUALSIGN WHITESPACE .
+    (60) charitems -> WHITESPACE charitem charitems .
 
-    VARNAME         reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    DOT             reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    LT              reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    SLASH           reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    UNDERSCORE      reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    LPAREN          reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    NUMBER          reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    QUESTMARK       reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    EQUALSIGN       reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    AMPERSAND       reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    STRING          reduce using rule 78 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    NEWLINE         reduce using rule 60 (charitems -> WHITESPACE charitem charitems .)
 
 
 state 132
 
-    (82) declaration -> DOT LT VARNAME GT .
+    (64) ranged_char -> CHAR DOT . DOT CHAR
 
-    COLON           reduce using rule 82 (declaration -> DOT LT VARNAME GT .)
-    EQUALSIGN       reduce using rule 82 (declaration -> DOT LT VARNAME GT .)
-    WHITESPACE      reduce using rule 82 (declaration -> DOT LT VARNAME GT .)
+    DOT             shift and go to state 146
 
 
 state 133
 
-    (27) repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .
+    (58) charclass -> charitems NEWLINE optional_block .
 
-    WHITESPACE      reduce using rule 27 (repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .)
-    COLON           reduce using rule 27 (repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .)
+    GLOBALMARK      reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
+    VARNAME         reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
+    DOT             reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
+    LT              reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
+    DEDENT          reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
+    $end            reduce using rule 58 (charclass -> charitems NEWLINE optional_block .)
 
 
 state 134
 
-    (61) ranged_char -> CHAR DOT DOT CHAR .
+    (84) declaration -> LT VARNAME GT .
 
-    WHITESPACE      reduce using rule 61 (ranged_char -> CHAR DOT DOT CHAR .)
-    NEWLINE         reduce using rule 61 (ranged_char -> CHAR DOT DOT CHAR .)
+    COLON           reduce using rule 84 (declaration -> LT VARNAME GT .)
+    EQUALSIGN       reduce using rule 84 (declaration -> LT VARNAME GT .)
+    WHITESPACE      reduce using rule 84 (declaration -> LT VARNAME GT .)
+
+
+state 135
+
+    (79) equals -> WHITESPACE EQUALSIGN .
+    (81) equals -> WHITESPACE EQUALSIGN . WHITESPACE
+
+    VARNAME         reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    DOT             reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    LT              reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    SLASH           reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    ORBEGIN         reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    UNDERSCORE      reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    LPAREN          reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    NUMBER          reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    QUESTMARK       reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    EQUALSIGN       reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    AMPERSAND       reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    STRING          reduce using rule 79 (equals -> WHITESPACE EQUALSIGN .)
+    WHITESPACE      shift and go to state 147
+
+
+state 136
+
+    (82) declaration -> VARNAME .
+    (53) variable_lookup -> VARNAME .
+
+    COLON           reduce using rule 82 (declaration -> VARNAME .)
+    EQUALSIGN       reduce using rule 82 (declaration -> VARNAME .)
+    WHITESPACE      reduce using rule 82 (declaration -> VARNAME .)
+    QUESTMARK       reduce using rule 53 (variable_lookup -> VARNAME .)
+    NEWLINE         reduce using rule 53 (variable_lookup -> VARNAME .)
+
+
+state 137
+
+    (83) declaration -> DOT . VARNAME
+    (85) declaration -> DOT . LT VARNAME GT
+    (17) str_b -> DOT .
+    (55) variable_lookup -> DOT .
+    (31) numrange -> DOT . DOT
+    (33) numrange -> DOT . DOT NUMBER
+
+    VARNAME         shift and go to state 125
+    LT              shift and go to state 126
+    STRING          reduce using rule 17 (str_b -> DOT .)
+    QUESTMARK       reduce using rule 55 (variable_lookup -> DOT .)
+    NEWLINE         reduce using rule 55 (variable_lookup -> DOT .)
+    DOT             shift and go to state 38
+
+
+state 138
+
+    (75) assignment -> declaration equals assignment .
+
+    GLOBALMARK      reduce using rule 75 (assignment -> declaration equals assignment .)
+    VARNAME         reduce using rule 75 (assignment -> declaration equals assignment .)
+    DOT             reduce using rule 75 (assignment -> declaration equals assignment .)
+    LT              reduce using rule 75 (assignment -> declaration equals assignment .)
+    DEDENT          reduce using rule 75 (assignment -> declaration equals assignment .)
+
+
+state 139
+
+    (76) assignment -> declaration equals expression .
+
+    GLOBALMARK      reduce using rule 76 (assignment -> declaration equals expression .)
+    VARNAME         reduce using rule 76 (assignment -> declaration equals expression .)
+    DOT             reduce using rule 76 (assignment -> declaration equals expression .)
+    LT              reduce using rule 76 (assignment -> declaration equals expression .)
+    DEDENT          reduce using rule 76 (assignment -> declaration equals expression .)
+
+
+state 140
+
+    (77) assignment -> declaration COLON charclass .
+
+    GLOBALMARK      reduce using rule 77 (assignment -> declaration COLON charclass .)
+    VARNAME         reduce using rule 77 (assignment -> declaration COLON charclass .)
+    DOT             reduce using rule 77 (assignment -> declaration COLON charclass .)
+    LT              reduce using rule 77 (assignment -> declaration COLON charclass .)
+    DEDENT          reduce using rule 77 (assignment -> declaration COLON charclass .)
+
+
+state 141
+
+    (80) equals -> EQUALSIGN WHITESPACE .
+
+    VARNAME         reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    DOT             reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    LT              reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    SLASH           reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    ORBEGIN         reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    UNDERSCORE      reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    LPAREN          reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    NUMBER          reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    QUESTMARK       reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    EQUALSIGN       reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    AMPERSAND       reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+    STRING          reduce using rule 80 (equals -> EQUALSIGN WHITESPACE .)
+
+
+state 142
+
+    (85) declaration -> DOT LT VARNAME . GT
+
+    GT              shift and go to state 148
+
+
+state 143
+
+    (38) orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .
+
+    $end            reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+    DEDENT          reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+    GLOBALMARK      reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+    VARNAME         reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+    DOT             reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+    LT              reduce using rule 38 (orblock_expr -> ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block .)
+
+
+state 144
+
+    (27) repeat_range -> NUMBER backtrack PLUS DOT DOT of .
+
+    WHITESPACE      reduce using rule 27 (repeat_range -> NUMBER backtrack PLUS DOT DOT of .)
+    COLON           reduce using rule 27 (repeat_range -> NUMBER backtrack PLUS DOT DOT of .)
+
+
+state 145
+
+    (28) repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER . of
+    (30) of -> . WHITESPACE OF
+
+    WHITESPACE      shift and go to state 57
+
+    of                             shift and go to state 149
+
+state 146
+
+    (64) ranged_char -> CHAR DOT DOT . CHAR
+
+    CHAR            shift and go to state 150
+
+
+state 147
+
+    (81) equals -> WHITESPACE EQUALSIGN WHITESPACE .
+
+    VARNAME         reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    DOT             reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    LT              reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    SLASH           reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    ORBEGIN         reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    UNDERSCORE      reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    LPAREN          reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    NUMBER          reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    QUESTMARK       reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    EQUALSIGN       reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    AMPERSAND       reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    STRING          reduce using rule 81 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+
+
+state 148
+
+    (85) declaration -> DOT LT VARNAME GT .
+
+    COLON           reduce using rule 85 (declaration -> DOT LT VARNAME GT .)
+    EQUALSIGN       reduce using rule 85 (declaration -> DOT LT VARNAME GT .)
+    WHITESPACE      reduce using rule 85 (declaration -> DOT LT VARNAME GT .)
+
+
+state 149
+
+    (28) repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .
+
+    WHITESPACE      reduce using rule 28 (repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .)
+    COLON           reduce using rule 28 (repeat_range -> NUMBER backtrack PLUS DOT DOT NUMBER of .)
+
+
+state 150
+
+    (64) ranged_char -> CHAR DOT DOT CHAR .
+
+    WHITESPACE      reduce using rule 64 (ranged_char -> CHAR DOT DOT CHAR .)
+    NEWLINE         reduce using rule 64 (ranged_char -> CHAR DOT DOT CHAR .)
 
