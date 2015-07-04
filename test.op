@@ -1,9 +1,8 @@
 
---/|
--- |_'AM'
--- |alpha
--- |digit/upper/lower/
--- |/
+/choices/BoL/
+    choices = 2 of <<|
+                     |'AM'
+                     |alpha
+                     |digit/upper/lower/
 
-            2 of (ignorecase) 3 of 4 of (ignorecase) 'cat'
-
+    BoL  = alpha

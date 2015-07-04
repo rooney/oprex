@@ -27,12 +27,23 @@ class OprexInternalError(Exception):
 def sanitize(source_code):
     # oprex requires the source code to have leading and trailing blank lines to make
     # "proper look of indentation" when it is a triple-quoted string
+
+    def is_blank_or_comments_only(line):
+        non_comments = line.split('--')[0]
+        return non_comments.strip() == ''
+
     source_lines = regex.split('\r?\n', source_code)
-    if source_lines[0].split('--')[0].strip():
-        raise OprexSyntaxError(1, 'First line must be blank, not: ' + source_lines[0])
-    if source_lines[-1].split('--')[0].strip():
-        numlines = len(source_lines)
-        raise OprexSyntaxError(numlines, 'Last line must be blank, not: ' + source_lines[-1])
+    first_line = source_lines[0]
+    last_line = source_lines[-1]
+
+    if not is_blank_or_comments_only(first_line):
+        raise OprexSyntaxError(1, 'First line must be blank, not: ' + first_line)
+    if not is_blank_or_comments_only(last_line):
+        raise OprexSyntaxError(len(source_lines), 'Last line must be blank, not: ' + last_line)
+
+    # at this point, first and last lines are ensured to be blanks/comments only
+    # we'll make them really empty so regex-for-comments does not need take into consideration first/last-line comments
+    source_lines[0] = source_lines[-1] = ''
     return source_lines
 
 
@@ -47,13 +58,12 @@ reserved = {
 }
 tokens = [
     'AMPERSAND',
-    'OR',
-    'ORBEGIN',
-    'OREND',
+    'BEGIN_ORBLOCK',
     'CHAR',
     'COLON',
     'DEDENT',
     'DOT',
+    'END_OF_ORBLOCK',
     'EQUALSIGN',
     'FLAGSET',
     'GLOBALMARK',
@@ -65,6 +75,7 @@ tokens = [
     'MINUS',
     'NEWLINE',
     'OF',
+    'OR',
     'PLUS',
     'QUESTMARK',
     'RPAREN',
@@ -83,7 +94,6 @@ t_LPAREN     = r'\('
 t_LT         = r'\<'
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
-t_OR         = r'\|'
 t_PLUS       = r'\+'
 t_QUESTMARK  = r'\?'
 t_RPAREN     = r'\)'
@@ -122,7 +132,7 @@ class Block(namedtuple('Block', 'variables starting_lineno')):
                 raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
 
 class Scope(dict):
-    types = ['ROOTSCOPE', 'BLOCKSCOPE', 'FLAGSCOPE']
+    types = ('ROOTSCOPE', 'BLOCKSCOPE', 'FLAGSCOPE')
     ROOTSCOPE, BLOCKSCOPE, FLAGSCOPE = range(3)
     __slots__ = ('starting_lineno', 'type')
     def __init__(self, starting_lineno, type, parent_scope):
@@ -173,7 +183,7 @@ class Expression(unicode):
         grouped = False
         quantifier = None
         if modifier:
-            if modifier.startswith('(?'): # scoped flags/capture/atomic group -- in any case it should be missing the closing paren
+            if modifier.startswith('(?'): # scoped flags/capture/atomic group -- without the closing paren
                 value = modifier + base_value + ')' # add the closing paren
                 grouped = True
             else: # modifier is quantifier
@@ -185,6 +195,9 @@ class Expression(unicode):
         return expr
 
 class StringExpression(Expression):
+    pass
+
+class OrExpression(Expression):
     pass
 
 
@@ -379,15 +392,18 @@ def t_FLAGSET(t):
     return t
 
 
-def t_ORBEGIN(t):
-    r'''/\|'''
+def t_BEGIN_ORBLOCK(t):
+    r'''(<<\|)|(@\|)'''
     t.lexer.set_mode('OR-block')
+    t.lexer.bar_pos = find_column(t) + len(t.value) - 1
     return t
 
 
-def t_OREND(t):
-    r'''\|/'''
-    t.lexer.set_mode('INITIAL')
+def t_OR(t):
+    r'\|'
+    bar_pos = find_column(t)
+    if bar_pos != t.lexer.bar_pos:
+        raise OprexSyntaxError(t.lineno, 'Misaligned OR')
     return t
 
 
@@ -455,13 +471,43 @@ def t_OF(t):
     return t
 
 
-def t_ANY_linemark(t):
-    r'(?m)(((^|[ \t]+)--.*)|[ \t\n])+(\*\)[ \t]*)*' # comments are also captured here
+def t_ANY_comments_whitespace(t):
+    r'''(?mx)
+    (
+        [ \t\n]+
+        (--.*)?  # comments
+    )+
+    (
+        \*\)     # globalmark
+        [ \t]*
+    )*
+    '''
     lines = t.value.split('\n')
-    indentation = lines[-1] # the whitespace characters after the last newline is indentation
+    indentation = lines[-1]
+    is_finale = endpos(t) == len(t.lexer.lexdata)
+    if is_finale: # effectively no indentation
+        indentation = ''
+
     has_globalmark = GLOBALMARK in indentation
     num_newlines = len(lines) - 1
+    has_empty_line = num_newlines > 1
     t.lexer.lineno += num_newlines
+
+    t.extra_tokens = []
+    def add_extras():
+        if add_extras.END_OF_ORBLOCK:
+            t.extra_tokens.append(ExtraToken(t, 'END_OF_ORBLOCK'))
+        if add_extras.INDENT:
+            t.extra_tokens.append(ExtraToken(t, 'INDENT'))
+        for _ in range(add_extras.DEDENT):
+            t.extra_tokens.append(ExtraToken(t, 'DEDENT'))
+        if add_extras.GLOBALMARK:
+            t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', GLOBALMARK))
+
+    add_extras.END_OF_ORBLOCK = False
+    add_extras.INDENT = False
+    add_extras.DEDENT = 0
+    add_extras.GLOBALMARK = False
 
     if num_newlines == 0:
         if GLOBALMARK in t.value: # globalmark must be put at the beginning of a line, i.e. requires newline
@@ -474,13 +520,11 @@ def t_ANY_linemark(t):
     t.type = 'NEWLINE'
     if t.lexer.mode == 'charclass': # NEWLINE ends the charclass-mode state
         t.lexer.set_mode('INITIAL')
-    if endpos(t) == len(t.lexer.lexdata) and not has_globalmark: # this is a just-before-the-end-of-input whitespace
-        return t                                                 # no further processing needed
 
-    t.extra_tokens = deque() # later we will produce these extra tokens:
-    # - GLOBALMARK if has_globalmark
-    # - INDENT if indentation depth is more than previous line's
-    # - DEDENT (can be more than one) if indentation depth is less than previous line's
+    if is_finale or has_empty_line: # empty line ends OR-block
+        if t.lexer.mode == 'OR-block':
+            add_extras.END_OF_ORBLOCK = True
+            t.lexer.set_mode('INITIAL')
 
     def check_indentation_char():
         if indentation == GLOBALMARK:
@@ -498,19 +542,12 @@ def t_ANY_linemark(t):
         except AttributeError: # this is the first indent encountered, record whether it uses space or tab -- further indents must use the same character
             t.lexer.indentchar = indentchar
 
-    def pull_out_globalmark():
+    def strip_globalmark():
         if indentation.count(GLOBALMARK) > 1:
             raise OprexSyntaxError(t.lexer.lineno, 'Syntax error: ' + indentation)
         if not indentation.startswith(GLOBALMARK):
             raise OprexSyntaxError(t.lexer.lineno, "The GLOBALMARK %s must be put at the line's beginning" % GLOBALMARK)
-
-        t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', GLOBALMARK))
         return indentation.replace(GLOBALMARK, '  ' if t.lexer.indentchar == ' ' else '')
-
-    if indentation:
-        check_indentation_char()
-        if has_globalmark:
-            indentation = pull_out_globalmark()
 
     def produce_INDENT_DEDENT():
         indentlen = len(indentation)
@@ -520,21 +557,28 @@ def t_ANY_linemark(t):
 
         # else, there's indentation depth change
         if indentlen > prev: # deeper indentation, start of a new scope
-            t.extra_tokens.appendleft(ExtraToken(t, 'INDENT'))
+            add_extras.INDENT = True
             t.lexer.indent_stack.append(indentlen)
             return
 
         if indentlen < prev: # end of one or more scopes
             while indentlen < prev: # close all scopes having deeper indentation
-                t.extra_tokens.appendleft(ExtraToken(t, 'DEDENT'))
+                add_extras.DEDENT += 1
                 t.lexer.indent_stack.pop()
                 prev = t.lexer.indent_stack[-1]
             if indentlen != prev: # the indentation tries to return to a nonexistent level
                 raise OprexSyntaxError(t.lexer.lineno, 'Indentation error')
 
+    if indentation:
+        check_indentation_char()
+        if has_globalmark:
+            add_extras.GLOBALMARK = True
+            indentation = strip_globalmark()
+
     if t.lexer.mode != 'OR-block':
         produce_INDENT_DEDENT()
 
+    add_extras()
     return t
 
 
@@ -770,7 +814,7 @@ def p_scoped_flags(t):
 
 
 def p_orblock_expr(t):
-    '''orblock_expr : ORBEGIN NEWLINE orblock_items OREND NEWLINE optional_block'''
+    '''orblock_expr : BEGIN_ORBLOCK NEWLINE orblock_items END_OF_ORBLOCK optional_block'''
     current_scope = t.lexer.scopes[-1]
     referenced_varnames = set()
 
@@ -785,7 +829,11 @@ def p_orblock_expr(t):
             return expr
 
     subexpressions = map(expr_from, t[3])
-    t[0] = Expression('|'.join(subexpressions))
+    atomic = t[1].startswith('@')
+    if atomic:
+        t[0] = Expression('|'.join(subexpressions), modifier='(?>')
+    else:
+        t[0] = OrExpression('|'.join(subexpressions))
 
     optional_block_cleanup(
         lexer = t.lexer, 
@@ -838,8 +886,11 @@ def resolve_lookup(lookup, scope):
                 var = scope[lookup.varname]
             except KeyError:
                 raise OprexSyntaxError(lookup.lineno, "'%s' is not defined" % lookup.varname)
+
             if lookup.optional:
                 return quantify(var.value, quantifier=lookup.optional)
+            elif isinstance(var.value, OrExpression):
+                return Expression('(?:%s)' % var.value)
             else:
                 return var.value
 
@@ -1143,12 +1194,14 @@ def p_error(t):
     if t is None:
         raise OprexSyntaxError(None, 'Unexpected end of input')
 
-    if t.type == 'INDENT':
-        raise OprexSyntaxError(t.lineno, 'Unexpected INDENT')
+    errmsg = 'Unexpected %s' % t.type
+    if t.type not in ('INDENT', 'END_OF_ORBLOCK'):
+        errline = t.lexer.source_lines[t.lineno - 1]
+        pointer = ' ' * (find_column(t)-1) + '^'
+        errmsg += '\n' + errline
+        errmsg += '\n' + pointer
 
-    errline = t.lexer.source_lines[t.lineno - 1]
-    pointer = ' ' * (find_column(t)-1) + '^'
-    raise OprexSyntaxError(t.lineno, 'Unexpected %s\n%s\n%s' % (t.type, errline, pointer))
+    raise OprexSyntaxError(t.lineno, errmsg)
 
 
 def find_column(t):
