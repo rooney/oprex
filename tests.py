@@ -83,7 +83,7 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                     world = 'world'
         ''',
-        expect_error='Line 4: Unexpected INDENT')
+        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
 
 
     def test_indentation_error(self):
@@ -92,7 +92,7 @@ class TestErrorHandling(unittest.TestCase):
                 greeting = 'hello'
                  world = 'world'
         ''',
-        expect_error='Line 4: Unexpected INDENT')
+        expect_error="Line 4: 'world' is defined but not used (by its parent expression)")
 
         self.given('''
             root
@@ -116,7 +116,7 @@ class TestErrorHandling(unittest.TestCase):
 
                     world = 'world'
         ''',
-        expect_error='Line 5: Unexpected INDENT')
+        expect_error="Line 5: 'world' is defined but not used (by its parent expression)")
 
         self.given('''
 
@@ -127,7 +127,7 @@ class TestErrorHandling(unittest.TestCase):
 
                  world = 'world'
         ''',
-        expect_error='Line 8: Unexpected INDENT')
+        expect_error="Line 8: 'world' is defined but not used (by its parent expression)")
 
         self.given('''
             /greeting/world/
@@ -1284,22 +1284,22 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             =missing
         ''',
-        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             =missing?
         ''',
-        expect_error="Line 2: Invalid backreference: 'missing' is not defined/not a capture")
+        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             &missing
         ''',
-        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+        expect_error="Line 2: Bad SubroutineCall: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             /&missing/
         ''',
-        expect_error="Line 2: Invalid subroutine call: 'missing' is not defined/not a capture")
+        expect_error="Line 2: Bad SubroutineCall: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             &=invalid_mix
@@ -1318,12 +1318,12 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             =alpha
         ''',
-        expect_error="Line 2: Invalid backreference: 'alpha' is not defined/not a capture")
+        expect_error="Line 2: Bad Backreference: 'alpha' is not defined/not a capturing group")
 
         self.given(u'''
             /alpha/&alpha/
         ''',
-        expect_error="Line 2: Invalid subroutine call: 'alpha' is not defined/not a capture")
+        expect_error="Line 2: Bad SubroutineCall: 'alpha' is not defined/not a capturing group")
 
         self.given(u'''
             /alpha/&alpha/
@@ -1335,7 +1335,7 @@ class TestErrorHandling(unittest.TestCase):
             /bang/=bang/
                 bang: b a n g !
         ''',
-        expect_error="Line 2: Invalid backreference: 'bang' is not defined/not a capture")
+        expect_error="Line 2: Bad Backreference: 'bang' is not defined/not a capturing group")
 
 
     def test_invalid_boundaries(self):

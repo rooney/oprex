@@ -1,8 +1,11 @@
 
-/choices/BoL/
-    choices = 2 of <<|
-                     |'AM'
-                     |alpha
-                     |digit/upper/lower/
+--/choices/BLAH/
+--    choices = 2 of <<|
+--                     |'AM'
+--                     |alpha
+--                     |/digit/upper/lower/
+--    BLAH = alpha
 
-    BoL  = alpha
+            x
+                x: y
+                    y: m i s n g +
