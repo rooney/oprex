@@ -1,11 +1,10 @@
 
---/choices/BLAH/
---    choices = 2 of <<|
---                     |'AM'
---                     |alpha
---                     |/digit/upper/lower/
---    BLAH = alpha
+            /blood_type/rhesus/
+                blood_type = @|
+                              |1 of: A B O
+                              |'AB'
 
-            x
-                x: y
-                    y: m i s n g +
+                rhesus = @|
+                          |'+'
+                          |'-'
+                          | -- allow empty/unknown rhesus

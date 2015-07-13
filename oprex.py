@@ -13,15 +13,15 @@ def oprex(source_code):
     return result
 
 
-class OprexSyntaxError(Exception):
+class OprexError(Exception):
     def __init__(self, lineno, msg):
         msg = msg.replace('\t', ' ')
-        Exception.__init__(self, '\nLine %d: %s' % (lineno, msg))
+        if lineno:
+            msg = 'Line %d: %s' % (lineno, msg)
+        Exception.__init__(self, '\n' + msg)
 
-
-class OprexInternalError(Exception):
-    def __init__(self, lineno, msg):
-        Exception.__init__(self, 'Line %d: %s' % (lineno, msg))
+class OprexSyntaxError(OprexError): pass
+class OprexInternalError(OprexError): pass
 
 
 def sanitize(source_code):
@@ -48,8 +48,8 @@ def sanitize(source_code):
 
 
 states = (
-    ('charclass', 'exclusive'),
-    ('OR-block',  'inclusive'),
+    ('CHARCLASS', 'exclusive'),
+    ('ORBLOCK',   'inclusive'),
 )
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
@@ -315,16 +315,16 @@ def flags_redef_builtins(flags, flag_dependent_builtins, scope):
 
 def t_COLON(t):
     r''':'''
-    t.lexer.set_mode('charclass')
+    t.lexer.start_mode('CHARCLASS')
     return t
 
 
-def t_charclass_DOT(t):
+def t_CHARCLASS_DOT(t):
     r'''\.'''
     return t
 
 
-def t_charclass_op(t):
+def t_CHARCLASS_op(t):
     '''not:|not|and'''
     return CCItem.token(t, 'op', {
         'not:' : '^',
@@ -333,27 +333,27 @@ def t_charclass_op(t):
     }[t.value])
 
 
-def t_charclass_varname(t):
+def t_CHARCLASS_varname(t):
     r'''\w{2,}'''
     return CCItem.token(t, 'include', VariableLookup(t.value, t.lineno, optional=False))
 
 
-def t_charclass_include(t):
+def t_CHARCLASS_include(t):
     r'''\+\w+'''
     return CCItem.token(t, 'include', VariableLookup(t.value[1:], t.lineno, optional=False))
 
 
-def t_charclass_prop(t):
+def t_CHARCLASS_prop(t):
     r'''/\w+(=\w+)?'''
     return CCItem.token(t, 'prop', '\p{%s}' % t.value[1:])
 
 
-def t_charclass_name(t):
+def t_CHARCLASS_name(t):
     r''':[\w-]+'''
     return CCItem.token(t, 'name', '\N{%s}' % t.value[1:].replace('_', ' '))
 
 
-def t_charclass_escape(t):
+def t_CHARCLASS_escape(t):
     r'''(?x)\\
     ( [\\abfnrtv]    # Single-character escapes
     | N\{[^}]+\}     # Unicode character name
@@ -365,12 +365,12 @@ def t_charclass_escape(t):
     return CCItem.token(t, 'escape', t.value)
 
 
-def t_charclass_bad_escape(t):
+def t_CHARCLASS_bad_escape(t):
     r'''\\\S+'''
     raise OprexSyntaxError(t.lineno, 'Bad escape sequence: ' + t.value)
 
 
-def t_charclass_literal(t):
+def t_CHARCLASS_literal(t):
     r'''\S'''
     return CCItem.token(t, 'literal', CharClass.escapes.get(t.value, t.value))
 
@@ -409,16 +409,19 @@ def t_FLAGSET(t):
 
 def t_BEGIN_ORBLOCK(t):
     r'''(<<\|)|(@\|)'''
-    t.lexer.set_mode('OR-block')
+    if t.lexer.mode == 'ORBLOCK':
+        raise OprexSyntaxError(t.lineno, 'ORBLOCK cannot be nested inside another ORBLOCK')
+    t.lexer.start_mode('ORBLOCK')
     t.lexer.bar_pos = find_column(t) + len(t.value) - 1
     return t
 
 
 def t_OR(t):
     r'\|'
-    bar_pos = find_column(t)
-    if bar_pos != t.lexer.bar_pos:
-        raise OprexSyntaxError(t.lineno, 'Misaligned OR')
+    if t.lexer.mode == 'ORBLOCK':
+        bar_pos = find_column(t)
+        if bar_pos != t.lexer.bar_pos:
+            raise OprexSyntaxError(t.lineno, 'Misaligned OR')
     return t
 
 
@@ -479,7 +482,7 @@ def t_VARNAME(t):
 # Otherwise t_linemark will turn the spaces/tabs into WHITESPACE token.
 
 
-def t_OF(t):
+def t_INITIAL_ORBLOCK_OF(t):
     r'[ \t]+of(?=[ \t:])(?![ \t]+(--|\n))' # without this, WHITESPACE VARNAME will be produced instead, requiring making "of" a reserved keyword
     t.type = 'WHITESPACE'
     t.extra_tokens = [ExtraToken(t, 'OF', lexpos=t.lexpos + t.value.index('of'))]
@@ -533,13 +536,13 @@ def t_ANY_comments_whitespace(t):
 
     # else, num_newlines > 0
     t.type = 'NEWLINE'
-    if t.lexer.mode == 'charclass': # NEWLINE ends the charclass-mode state
-        t.lexer.set_mode('INITIAL')
+    if t.lexer.mode == 'CHARCLASS': # NEWLINE ends the charclass-mode
+        t.lexer.end_mode('CHARCLASS')
 
-    if is_finale or has_empty_line: # empty line ends OR-block
-        if t.lexer.mode == 'OR-block':
+    if is_finale or has_empty_line: # empty line ends ORBLOCK
+        if t.lexer.mode == 'ORBLOCK':
             add_extras.END_OF_ORBLOCK = True
-            t.lexer.set_mode('INITIAL')
+            t.lexer.end_mode('ORBLOCK')
 
     def check_indentation_char():
         if indentation == GLOBALMARK:
@@ -590,7 +593,7 @@ def t_ANY_comments_whitespace(t):
             add_extras.GLOBALMARK = True
             indentation = strip_globalmark()
 
-    if t.lexer.mode != 'OR-block':
+    if t.lexer.mode != 'ORBLOCK':
         produce_INDENT_DEDENT()
 
     add_extras()
@@ -902,13 +905,22 @@ def p_orblock_expr(t):
 OrItems = deque
 
 def p_or_items(t):
-    '''or_items : OR expr
-                | OR expr or_items'''
+    '''or_items : OR or_item
+                | OR or_item or_items'''
     try:
         t[0] = t[3]
     except IndexError:
         t[0] = OrItems()
     t[0].appendleft(t[2])
+
+
+def p_or_item(t):
+    '''or_item : expr
+               | NEWLINE''' # an or-item is just newline? == allow the alternation matches empty string
+    if isinstance(t[1], Expr):
+        t[0] = t[1]
+    else:
+        t[0] = StringExpr(value='')
 
 
 class LookupExpr(Expr):
@@ -1236,7 +1248,7 @@ def p_error(t):
         raise OprexSyntaxError(None, 'Unexpected end of input')
 
     errmsg = 'Unexpected %s' % t.type
-    if t.lexer.mode == 'OR-block':
+    if t.lexer.mode == 'ORBLOCK':
         errmsg += ' (forgot to close %s?)' % t.lexer.mode
 
     if t.type not in ('INDENT', 'END_OF_ORBLOCK'):
@@ -1276,14 +1288,16 @@ def build_lexer(source_lines):
 class CustomLexer:
     def __init__(self, real_lexer):
         self.__dict__ = real_lexer.__dict__
-        self.mode = 'INITIAL'
-        real_lexer.set_mode = self.set_mode
         self.real_lexer = real_lexer
+        real_lexer.start_mode = self.start_mode
+        real_lexer.end_mode = self.end_mode
         self.tokens = deque()
+        self.modes = []
+        self.start_mode('INITIAL')
 
     def token(self):
         token = self.get_next_token()
-        # print token
+        #print token
         return token
 
     def get_next_token(self):
@@ -1306,9 +1320,17 @@ class CustomLexer:
     def input(self, input_str):
         self.real_lexer.input(input_str)
 
-    def set_mode(self, mode):
+    def start_mode(self, mode):
         self.mode = mode
-        self.real_lexer.begin(mode)
+        self.modes.append(mode)
+        self.real_lexer.push_state(mode)
+
+    def end_mode(self, mode):
+        if mode != self.mode:
+            raise OprexInternalError(self.lineno, "Trying to end mode '%s' but current mode is '%s'" % (mode, self.mode))
+        self.modes.pop()
+        self.mode = self.modes[-1]
+        self.real_lexer.pop_state()
 
     def begin_a_scope(self, type):
         current_scope = self.scopes[-1]

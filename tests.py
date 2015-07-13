@@ -1508,6 +1508,124 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 2: (version1 version0) compiles to (?V1V0) which is rejected by the regex engine with error message: 8448')
 
 
+    def test_invalid_orblock(self):
+        self.given('''
+            empty_orblock_not_allowed
+                empty_orblock_not_allowed = @|
+        ''',
+        expect_error='Line 4: Unexpected END_OF_ORBLOCK')
+
+        self.given('''
+            /empty_orblock/not_allowed/
+                empty_orblock = @|
+
+                not_allowed = 'NOTALLOWED'
+        ''',
+        expect_error='Line 5: Unexpected END_OF_ORBLOCK')
+
+        self.given('''
+            <<|
+        ''',
+        expect_error='Line 3: Unexpected END_OF_ORBLOCK')
+
+        self.given('''
+            /x/y/
+                x = @|
+                     |'AM'
+                     |'PM'
+                y = 'forgot empty line to terminate the orblock'
+        ''',
+        expect_error='''Line 6: Unexpected VARNAME (forgot to close ORBLOCK?)
+                y = 'forgot empty line to terminate the orblock'
+                ^''')
+
+        self.given('''
+            @|
+             |am
+             |pm
+                am = 'AM'
+                pm = 'PM
+        ''',
+        expect_error='''Line 5: Unexpected VARNAME (forgot to close ORBLOCK?)
+                am = 'AM'
+                ^''')
+
+        self.given('''
+            /trailing/bar/
+                trailing = <<|
+                             |'choice 1'
+                             |'choice 2'
+                             |
+                bar: |
+        ''',
+        expect_error='''Line 7: Unexpected VARNAME (forgot to close ORBLOCK?)
+                bar: |
+                ^''')
+
+        self.given('''
+            <<|
+              |'alignment check'
+             |'this one is bad'
+        ''',
+        expect_error='Line 4: Misaligned OR')
+
+        self.given('''
+            @|
+              |'also misalignment'
+        ''',
+        expect_error='Line 3: Misaligned OR')
+
+        self.given('''
+            orblock_type
+                orblock_type = | -- atomic? backtrack? must specify
+                               |'to be'
+                               |'not to be'
+        ''',
+        expect_error='''Line 3: Unexpected OR
+                orblock_type = | -- atomic? backtrack? must specify
+                               ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <<|'to be'       -- choices should start in second line
+                               |'not to be'
+        ''',
+        expect_error='''Line 3: Unexpected STRING (forgot to close ORBLOCK?)
+                syntax_err = <<|'to be'       -- choices should start in second line
+                                ^''')
+
+        self.given('''
+            nested_orblock
+                nested_orblock = @|
+                                  |'nested orblock not allowed'
+                                  |@|
+                                    |'make it a var'
+                                  |'then lookup'
+        ''',
+        expect_error='Line 5: ORBLOCK cannot be nested inside another ORBLOCK')
+
+        self.given('''
+            nested_orblock
+                nested_orblock = <<|
+                                   |@|
+        ''',
+        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+
+        self.given('''
+            nested_orblock
+                nested_orblock = @|
+                                  |<<|
+        ''',
+        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+
+        self.given('''
+            nested_orblock
+                nested_orblock = <<|
+                                   |<<|
+        ''',
+        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         default_flags = '(?V1mw)'
@@ -3072,6 +3190,136 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'(?V1mwu)(?-w:\n(?w:[\r\n\x0B\x0C\x85\u2028\u2029]))')
 
 
+    def test_orblock_output(self):
+        self.given('''
+            @|
+             |'cat'
+             |'dog'
+        ''',
+        expect_regex='(?>cat|dog)')
+
+        self.given('''
+            <<|
+              |'tea'
+              |'coffee'
+        ''',
+        expect_regex='tea|coffee')
+
+        self.given('''
+            backtrackable_choice
+                backtrackable_choice = <<|
+                                         |'catastrophy'
+                                         |'catass trophy'
+                                         |'cat'
+        ''',
+        expect_regex='catastrophy|catass trophy|cat')
+
+        self.given('''
+            no_backtrack
+                no_backtrack = @|
+                                |'red pill'
+                                |'blue pill'
+        ''',
+        expect_regex='(?>red pill|blue pill)')
+
+        self.given('''
+            /digit/space/ampm/
+                ampm = (ignorecase) <<|
+                                      |'AM'
+                                      |'PM'
+        ''',
+        expect_regex='\d (?i:AM|PM)')
+
+        self.given('''
+            2 of <<|
+                   |'fast'
+                   |'good'
+                   |'cheap'
+        ''',
+        expect_regex='(?:fast|good|cheap){2}')
+
+        self.given('''
+            <<|
+              |2 of 'ma'
+              |2 of 'pa'
+              |2 of 'bolo'
+        ''',
+        expect_regex='(?:ma){2}|(?:pa){2}|(?:bolo){2}')
+
+        self.given('''
+            /blood_type/rhesus/
+                blood_type =<<|
+                              |'AB'
+                              |1 of: A B O
+
+                rhesus = <<|
+                           |'+'
+                           |'-'
+                           | -- allow empty/unknown rhesus
+        ''',
+        expect_regex='(?:AB|[ABO])(?:\+|-|)')
+
+        self.given('''
+            subexpr_types
+                subexpr_types = <<|
+                                  |'string literal'
+                                  |(ignorecase) 1 of: a i u e o
+                                  |2..3 <<- of X
+                                  |/alpha/digit/
+                                  |alpha
+
+                    X = 'X'
+        ''',
+        expect_regex='string literal|(?i:[aiueo])|X{2,3}|[a-zA-Z]\d|[a-zA-Z]')
+
+        self.given('''
+            <<| -- comment here is ok
+              |'android'
+              |'ios'
+        ''',
+        expect_regex='android|ios')
+
+        self.given('''
+            /nature/side/
+                nature = @|
+                          |'lawful ' -- mind the trailing space
+                          |'chaotic ' 
+                          |'neutral '
+                --allow comment on ORBLOCK "breaker" line
+                side = @|
+                        |'good'
+                        |'evil'
+                        |'neutral'
+        ''',
+        expect_regex='(?>lawful |chaotic |neutral )(?>good|evil|neutral)')
+
+        self.given('''
+            any_color_as_long_as_it_is_
+                any_color_as_long_as_it_is_ = <<|
+                                                |'black'
+                                                -- single-entry "choice" is OK
+        ''',
+        expect_regex='black')
+
+        self.given('''-- nested ORBLOCKs
+            <<|
+              |coffee
+              |tea
+              |'cendol'
+
+                coffee = <<|
+                           |'espresso'
+                           |'cappuccino'
+                           |'kopi tubruk'
+
+                tea = <<|
+                        |'earl grey'
+                        |'ocha'
+                        |'teh tarik'
+        ''',
+        expect_regex='espresso|cappuccino|kopi tubruk|earl grey|ocha|teh tarik|cendol')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -3997,6 +4245,160 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['\n'],
         no_match=['\r', '\v', '\f', '\x0b', '\x0C', '\x85', u'\u2028', u'\u2029', '\u2028', r'\u2028'],
         partial_match={'\n\r' : '\n'})
+
+
+    def test_orblock(self):
+        self.given('''
+            @|
+             |'cat'
+             |'dog'
+        ''',
+        expect_full_match=['cat', 'dog'],
+        no_match=['cadog'],
+        partial_match={'catdog' : 'cat', 'catog' : 'cat'})
+
+        self.given('''
+            <<|
+              |'tea'
+              |'coffee'
+        ''',
+        expect_full_match=['tea', 'coffee'],
+        no_match=['tecoffee'],
+        partial_match={'teacoffee' : 'tea', 'teaoffee' : 'tea'})
+
+        self.given('''
+            backtrackable_choice
+                backtrackable_choice = <<|
+                                         |'catastrophy'
+                                         |'catass trophy'
+                                         |'cat'
+        ''',
+        expect_full_match=['catastrophy', 'catass trophy', 'cat'],
+        partial_match={'catastrophy cat' : 'catastrophy', 'catass cat' : 'cat'})
+
+        self.given('''
+            no_backtrack
+                no_backtrack = @|
+                                |'red pill'
+                                |'blue pill'
+        ''',
+        expect_full_match=['red pill', 'blue pill'],
+        no_match=['red blue pill'],
+        partial_match={'red pill pill' : 'red pill'})
+
+        self.given('''
+            /digit/space/ampm/
+                ampm = (ignorecase) <<|
+                                      |'AM'
+                                      |'PM'
+        ''',
+        expect_full_match=['1 AM', '2 pm', '9 pM'],
+        no_match=['10 am', '1 APM', 'PM'],
+        partial_match={'5 aMm ' : '5 aM'})
+
+        self.given('''
+            2 of <<|
+                   |'fast'
+                   |'good'
+                   |'cheap'
+        ''',
+        expect_full_match=['fastgood', 'fastcheap', 'cheapgood', 'cheapfast', 'goodgood', 'cheapcheap'],
+        no_match=['fast', 'good', 'cheap'],
+        partial_match={'goodcheapfast' : 'goodcheap'})
+
+        self.given('''
+            <<|
+              |2 of 'ma'
+              |2 of 'pa'
+              |2 of 'bolo'
+        ''',
+        expect_full_match=['mama', 'papa', 'bolobolo'],
+        no_match=['ma', 'mapa', 'mabolo', 'boloma', 'pabolo'],
+        partial_match={'papabolo' : 'papa', 'mamapapa' : 'mama'})
+
+        self.given('''
+            /blood_type/rhesus/
+                blood_type =<<|
+                              |'AB'
+                              |1 of: A B O
+
+                rhesus = <<|
+                           |'+'
+                           |'-'
+                           | -- allow empty/unknown rhesus
+        ''',
+        expect_full_match=['A', 'A+', 'B', 'B-', 'AB', 'AB+', 'O', 'O-'],
+        no_match=[''],
+        partial_match={'A+B' : 'A+', 'AAA' : 'A'})
+
+        self.given('''
+            subexpr_types
+                subexpr_types = <<|
+                                  |'string literal'
+                                  |(ignorecase) 1 of: a i u e o
+                                  |2..3 <<- of X
+                                  |/alpha/digit/
+                                  |alpha
+
+                    X = 'X'
+        ''',
+        expect_full_match=['string literal', 'E', 'XX', 'R1', 'X'],
+        no_match=['2', '3'],
+        partial_match={'aX' : 'a', 'string Z' : 's', 'YY' : 'Y'})
+
+        self.given('''
+            <<| -- comment here is ok
+              |'android'
+              |'ios'
+        ''',
+        expect_full_match=['android', 'ios'],
+        no_match=['androiios'],
+        partial_match={'androidos' : 'android'})
+
+        self.given('''
+            /nature/side/
+                nature = @|
+                          |'lawful ' -- mind the trailing space
+                          |'chaotic ' 
+                          |'neutral '
+                --allow comment on ORBLOCK "breaker" line
+                side = @|
+                        |'good'
+                        |'evil'
+                        |'neutral'
+        ''',
+        expect_full_match=['lawful good', 'chaotic good', 'chaotic evil', 'neutral evil', 'neutral neutral'],
+        no_match=['neutral', 'neutral ', 'lawful ', 'good', 'evil', 'chaotic chaotic ', 'evilevil', ' '])
+
+        self.given('''
+            any_color_as_long_as_it_is_
+                any_color_as_long_as_it_is_ = <<|
+                                                |'black'
+                                                -- single-entry "choice" is OK
+        ''',
+        expect_full_match=['black'],
+        no_match=[''],
+        partial_match={'blackish' : 'black'})
+
+        self.given('''-- nested ORBLOCKs
+            <<|
+              |coffee
+              |tea
+              |'cendol'
+
+                coffee = <<|
+                           |'espresso'
+                           |'cappuccino'
+                           |'kopi tubruk'
+
+                tea = <<|
+                        |'earl grey'
+                        |'ocha'
+                        |'teh tarik'
+        ''',
+        expect_full_match=['cendol', 'kopi tubruk', 'teh tarik', 'ocha', 'cappuccino'],
+        no_match=['kopi earl grey cendol'],
+        partial_match={'espresso tubruk' : 'espresso'})
 
 
 if __name__ == '__main__':
