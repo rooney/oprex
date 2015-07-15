@@ -1,10 +1,15 @@
 
-            /blood_type/rhesus/
-                blood_type = @|
-                              |1 of: A B O
-                              |'AB'
+            <@>
+                  <yamaha|
+            <!/yang/lain/|
+                         |semakin|
+                                 |/di/depan/>
+                                 |!ketinggalan>
 
-                rhesus = @|
-                          |'+'
-                          |'-'
-                          | -- allow empty/unknown rhesus
+                yamaha = 'yamaha'
+                yang = 'yang'
+                lain = 'lain'
+                semakin = 'semakin'
+                di = 'di'
+                depan = 'depan'
+                ketinggalan = 'ketinggalan'

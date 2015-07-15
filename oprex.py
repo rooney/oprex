@@ -48,8 +48,9 @@ def sanitize(source_code):
 
 
 states = (
-    ('CHARCLASS', 'exclusive'),
-    ('ORBLOCK',   'inclusive'),
+    ('CHARCLASS',  'exclusive'),
+    ('LOOKAROUND', 'inclusive'),
+    ('ORBLOCK',    'inclusive'),
 )
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
@@ -58,13 +59,17 @@ reserved = {
 }
 tokens = [
     'AMPERSAND',
+    'BAR',
+    'BEGIN_LOOKAROUND',
     'BEGIN_ORBLOCK',
     'CHAR',
     'COLON',
     'DEDENT',
     'DOT',
+    'END_OF_LOOKAROUND',
     'END_OF_ORBLOCK',
     'EQUALSIGN',
+    'EXCLAMARK',
     'FLAGSET',
     'GLOBALMARK',
     'GT',
@@ -89,6 +94,7 @@ GLOBALMARK   = '*)'
 t_AMPERSAND  = r'\&'
 t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
+t_EXCLAMARK  = r'\!'
 t_GT         = r'\>'
 t_LPAREN     = r'\('
 t_LT         = r'\<'
@@ -246,8 +252,8 @@ class CCItem(namedtuple('CCItem', 'source type value')):
         return t
 
 
-Builtin   = lambda name, value: Variable(name, Regex(value), lineno=0)
-BuiltinCC = lambda name, value: Variable(name, CharClass(value, is_set_op=False), lineno=0)
+Builtin   = lambda name, value, modifier=None: Variable(name, Regex(value, modifier), lineno=0)
+BuiltinCC = lambda name, value:                Variable(name, CharClass(value, is_set_op=False), lineno=0)
 BUILTINS  = [
     BuiltinCC('alpha',     '[a-zA-Z]'),
     BuiltinCC('upper',     '[A-Z]'),
@@ -270,8 +276,8 @@ FLAG_DEPENDENT_BUILTINS = dict(
             Builtin('EoL', '$'),
         ],
         False : [
-            Builtin('SoL', '(?m:^)'),
-            Builtin('EoL', '(?m:$)'),
+            Builtin('SoL', '^', modifier='(?m:'),
+            Builtin('EoL', '$', modifier='(?m:'),
         ],
     },
     s = { # DOTALL
@@ -279,7 +285,7 @@ FLAG_DEPENDENT_BUILTINS = dict(
             Builtin('any', '.'),
         ],
         False : [
-            Builtin('any', '(?s:.)'),
+        Builtin('any', '.', modifier='(?s:'),
         ],
     },
     w = { # WORD
@@ -407,27 +413,38 @@ def t_FLAGSET(t):
     return t
 
 
+def t_BEGIN_LOOKAROUND(t):
+    r'''<@>'''
+    if t.lexer.mode != 'INITIAL':
+        raise OprexSyntaxError(t.lineno, t.lexer.mode + ' cannot contain LOOKAROUND')
+    t.lexer.start_mode('LOOKAROUND')
+    t.lexer.barpos = None
+    t.lexer.lookaround_parent_indent_depth = t.lexer.indent_stack[-1]
+    return t
+
+
 def t_BEGIN_ORBLOCK(t):
     r'''(<<\|)|(@\|)'''
-    if t.lexer.mode == 'ORBLOCK':
-        raise OprexSyntaxError(t.lineno, 'ORBLOCK cannot be nested inside another ORBLOCK')
+    if t.lexer.mode != 'INITIAL':
+        raise OprexSyntaxError(t.lineno, t.lexer.mode + ' cannot contain ORBLOCK')
     t.lexer.start_mode('ORBLOCK')
-    t.lexer.bar_pos = find_column(t) + len(t.value) - 1
+    t.lexer.barpos = find_column(t) + len(t.value) - 1
     return t
 
 
 def t_OR(t):
     r'\|'
     if t.lexer.mode == 'ORBLOCK':
-        bar_pos = find_column(t)
-        if bar_pos != t.lexer.bar_pos:
+        barpos = find_column(t)
+        if barpos != t.lexer.barpos:
             raise OprexSyntaxError(t.lineno, 'Misaligned OR')
+    elif t.lexer.mode == 'LOOKAROUND':
+        t.type = 'BAR'
     return t
 
 
 ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
-    ( [abfnrtv]   # Single-character escapes
-    | N\{[^}]++\} # Unicode character name
+    ( N\{[^}]++\} # Unicode character name
     | U\d{8}      # 8-digit hex escapes
     | u\d{4}      # 4-digit hex escapes
     | x\d{2}      # 2-digit hex escapes
@@ -515,6 +532,8 @@ def t_ANY_comments_whitespace(t):
     def add_extras():
         if add_extras.END_OF_ORBLOCK:
             t.extra_tokens.append(ExtraToken(t, 'END_OF_ORBLOCK'))
+        if add_extras.END_OF_LOOKAROUND:
+            t.extra_tokens.append(ExtraToken(t, 'END_OF_LOOKAROUND'))
         if add_extras.INDENT:
             t.extra_tokens.append(ExtraToken(t, 'INDENT'))
         for _ in range(add_extras.DEDENT):
@@ -523,6 +542,7 @@ def t_ANY_comments_whitespace(t):
             t.extra_tokens.append(ExtraToken(t, 'GLOBALMARK', GLOBALMARK))
 
     add_extras.END_OF_ORBLOCK = False
+    add_extras.END_OF_LOOKAROUND = False
     add_extras.INDENT = False
     add_extras.DEDENT = 0
     add_extras.GLOBALMARK = False
@@ -539,10 +559,13 @@ def t_ANY_comments_whitespace(t):
     if t.lexer.mode == 'CHARCLASS': # NEWLINE ends the charclass-mode
         t.lexer.end_mode('CHARCLASS')
 
-    if is_finale or has_empty_line: # empty line ends ORBLOCK
+    if is_finale or has_empty_line: # empty line ends ORBLOCK/LOOKAROUND
         if t.lexer.mode == 'ORBLOCK':
             add_extras.END_OF_ORBLOCK = True
             t.lexer.end_mode('ORBLOCK')
+        elif t.lexer.mode == 'LOOKAROUND':
+            add_extras.END_OF_LOOKAROUND = True
+            t.lexer.end_mode('LOOKAROUND')
 
     def check_indentation_char():
         if indentation == GLOBALMARK:
@@ -593,7 +616,7 @@ def t_ANY_comments_whitespace(t):
             add_extras.GLOBALMARK = True
             indentation = strip_globalmark()
 
-    if t.lexer.mode != 'ORBLOCK':
+    if t.lexer.mode == 'INITIAL':
         produce_INDENT_DEDENT()
 
     add_extras()
@@ -695,6 +718,7 @@ def p_expr(t):
             | lookup_expr
             | orblock_expr
             | flagged_expr
+            | lookaround_expr
             | quantified_expr'''
     t[0] = t[1]
 
@@ -831,8 +855,9 @@ def quantify(expr, quantifier):
         unneeded = (
             expr.grouped # already
             or len(expr) == 1
+            or len(expr) == 2 and expr[0] == '\\'
             or isinstance(expr, CharClass)
-            or ESCAPE_SEQUENCE_RE.fullmatch(expr)
+            or ESCAPE_SEQUENCE_RE.match(expr)
         )
         if unneeded:
             return expr # unchanged
@@ -896,7 +921,7 @@ class OrBlockExpr(Expr):
         return regex, references
 
 def p_orblock_expr(t):
-    '''orblock_expr : BEGIN_ORBLOCK NEWLINE or_items END_OF_ORBLOCK'''
+    '''orblock_expr : BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK'''
     t[0] = OrBlockExpr(
         is_atomic = t[1].startswith('@'),
         items = t[3],
@@ -904,23 +929,106 @@ def p_orblock_expr(t):
 
 OrItems = deque
 
-def p_or_items(t):
-    '''or_items : OR or_item
-                | OR or_item or_items'''
+def p_oritems(t):
+    '''oritems : oritem
+               | oritem oritems'''
+    try:
+        t[0] = t[2]
+    except IndexError:
+        t[0] = OrItems()
+    t[0].appendleft(t[1])
+
+
+def p_oritem(t):
+    '''oritem : OR expr
+              | OR NEWLINE''' # --> allow the alternation to match empty string
+    if isinstance(t[2], Expr):
+        t[0] = t[2]
+    else:
+        t[0] = StringExpr(value='')
+
+
+class LookaroundExpr(Expr):
+    def apply(self, scope):
+        subexpressions = []
+        references = []
+
+        for lookitem in self.items:
+            expression, refs = lookitem.expr.apply(scope)
+            subexpressions.append(Regex(expression, modifier=lookitem.type))
+            references.extend(refs)
+
+        regex = Regex(''.join(subexpressions))
+        return regex, references
+
+def p_lookaround_expr(t):
+    '''lookaround_expr : BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND'''
+    t[0] = LookaroundExpr(items=t[3])
+
+LookItems = deque
+
+def p_lookitems(t):
+    '''lookitems : lookitem NEWLINE
+                 | lookitem NEWLINE lookitems'''
     try:
         t[0] = t[3]
     except IndexError:
-        t[0] = OrItems()
-    t[0].appendleft(t[2])
+        t[0] = LookItems()
+    t[0].appendleft(LookItem(*t[1]))
 
 
-def p_or_item(t):
-    '''or_item : expr
-               | NEWLINE''' # an or-item is just newline? == allow the alternation matches empty string
-    if isinstance(t[1], Expr):
-        t[0] = t[1]
-    else:
-        t[0] = StringExpr(value='')
+class LookItem(namedtuple('LookItem', 'type expr')):   
+    __slots__ = ()
+
+def p_lookitem(t):
+    '''lookitem : BAR           lookup GT
+                | BAR EXCLAMARK lookup GT
+                | LT            lookup BAR
+                | LT  EXCLAMARK lookup BAR
+                | BAR           lookup BAR'''
+    last = len(t)-1
+    lookup_expr = t[len(t)-2]
+    is_lookahead = t[last] == '>'
+    is_lookbehind = t[1] == '<'
+    is_negative = t[2] == '!'
+
+    def check_alignment():
+        def check(index):
+            barpos = find_column(t, index)
+            if barpos != t.lexer.barpos:
+                raise OprexSyntaxError(t.lineno(0), 'Misaligned |')
+
+        if t.lexer.barpos is None: # the lookaround just started, this is the first item
+            t.lexer.barpos = find_column(t, last if t[last] == '|' else 1)
+        else:
+            if is_lookahead:
+                check(1)
+            elif is_lookbehind:
+                check(last)
+            else:
+                check(1)
+                t.lexer.barpos = find_column(t, last)
+
+    def check_indentation():
+        indent_depth = find_column(t, 1)
+        if indent_depth <= t.lexer.lookaround_parent_indent_depth: # might look confusing
+            raise OprexSyntaxError(t.lineno(1), 'needs deeper indentation')
+
+    check_alignment()
+    check_indentation()
+
+    if is_lookahead:
+        if is_negative:
+            t[0] = '(?!', lookup_expr
+        else:
+            t[0] = '(?=', lookup_expr
+    elif is_lookbehind:
+        if is_negative:
+            t[0] = '(?<!', lookup_expr
+        else:
+            t[0] = '(?<=', lookup_expr
+    else: # the base expr
+        t[0] = '', lookup_expr
 
 
 class LookupExpr(Expr):
@@ -957,15 +1065,19 @@ class LookupExpr(Expr):
 
 
 def p_lookup_expr(t):
-    '''lookup_expr : lookup             NEWLINE
-                   | SLASH lookup_chain NEWLINE'''
+    '''lookup_expr : lookup NEWLINE'''
+    t[0] = t[1]
+
+def p_lookup(t):
+    '''lookup : SLASH lookup_chain
+              |       lookup_item'''
     t[0] = LookupExpr(items=t[2] if t[1] == '/' else [t[1]])
 
 LookupChain = deque
 
 def p_lookup_chain(t):
-    '''lookup_chain : lookup SLASH
-                    | lookup SLASH lookup_chain'''
+    '''lookup_chain : lookup_item SLASH
+                    | lookup_item SLASH lookup_chain'''
     try:
         t[0] = t[3]
     except IndexError:
@@ -973,9 +1085,9 @@ def p_lookup_chain(t):
     t[0].appendleft(t[1])
 
 
-def p_lookup(t):
-    '''lookup : lookup_type
-              | lookup_type QUESTMARK'''
+def p_lookup_item(t):
+    '''lookup_item : lookup_type
+                   | lookup_type QUESTMARK'''
     LookupClass, varname = t[1]
     has_questmark = len(t) == 3
     t[0] = LookupClass(varname, t.lineno(1), optional='?+' if has_questmark else '')
@@ -1248,10 +1360,10 @@ def p_error(t):
         raise OprexSyntaxError(None, 'Unexpected end of input')
 
     errmsg = 'Unexpected %s' % t.type
-    if t.lexer.mode == 'ORBLOCK':
+    if t.lexer.mode in ('ORBLOCK', 'LOOKAROUND') and t.type == 'VARNAME':
         errmsg += ' (forgot to close %s?)' % t.lexer.mode
 
-    if t.type not in ('INDENT', 'END_OF_ORBLOCK'):
+    if t.type not in ('INDENT', 'END_OF_ORBLOCK', 'END_OF_LOOKAROUND'):
         errline = t.lexer.source_lines[t.lineno - 1]
         pointer = ' ' * (find_column(t)-1) + '^'
         errmsg += '\n' + errline
@@ -1260,11 +1372,12 @@ def p_error(t):
     raise OprexSyntaxError(t.lineno, errmsg)
 
 
-def find_column(t):
-    last_newline = t.lexer.lexdata.rfind('\n', 0, t.lexpos)
+def find_column(t, index=None):
+    lexpos = t.lexpos(index) if index else t.lexpos
+    last_newline = t.lexer.lexdata.rfind('\n', 0, lexpos)
     if last_newline < 0:
         last_newline = 0
-    return t.lexpos - last_newline
+    return lexpos - last_newline
 
 
 lexer0 = lex.lex()

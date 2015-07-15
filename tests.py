@@ -1590,9 +1590,17 @@ class TestErrorHandling(unittest.TestCase):
                 syntax_err = <<|'to be'       -- choices should start in second line
                                |'not to be'
         ''',
-        expect_error='''Line 3: Unexpected STRING (forgot to close ORBLOCK?)
+        expect_error='''Line 3: Unexpected STRING
                 syntax_err = <<|'to be'       -- choices should start in second line
                                 ^''')
+
+        self.given('''
+            <<|
+              |missing/a/slash/
+        ''',
+        expect_error='''Line 3: Unexpected SLASH
+              |missing/a/slash/
+                      ^''')
 
         self.given('''
             nested_orblock
@@ -1602,28 +1610,323 @@ class TestErrorHandling(unittest.TestCase):
                                     |'make it a var'
                                   |'then lookup'
         ''',
-        expect_error='Line 5: ORBLOCK cannot be nested inside another ORBLOCK')
+        expect_error='Line 5: ORBLOCK cannot contain ORBLOCK')
 
         self.given('''
             nested_orblock
                 nested_orblock = <<|
                                    |@|
         ''',
-        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+        expect_error='Line 4: ORBLOCK cannot contain ORBLOCK')
 
         self.given('''
             nested_orblock
                 nested_orblock = @|
                                   |<<|
         ''',
-        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+        expect_error='Line 4: ORBLOCK cannot contain ORBLOCK')
 
         self.given('''
             nested_orblock
                 nested_orblock = <<|
                                    |<<|
         ''',
-        expect_error='Line 4: ORBLOCK cannot be nested inside another ORBLOCK')
+        expect_error='Line 4: ORBLOCK cannot contain ORBLOCK')
+
+        self.given('''
+            orblock_containing_lookblock
+                orblock_containing_lookblock = <<|
+                                                 |<@>
+                                                   |!/allowed/>
+        ''',
+        expect_error='Line 4: ORBLOCK cannot contain LOOKAROUND')
+
+
+    def test_invalid_lookaround(self):
+        self.given('''
+            empty_lookaround_not_allowed
+                empty_lookaround_not_allowed = <@>
+        ''',
+        expect_error='Line 4: Unexpected END_OF_LOOKAROUND')
+
+        self.given('''
+            /empty_lookaround/not_allowed/
+                empty_lookaround = <@>
+
+                not_allowed = 'NOTALLOWED'
+        ''',
+        expect_error='Line 5: Unexpected END_OF_LOOKAROUND')
+
+        self.given('''
+            <@>
+            |> -- empty lookahead
+        ''',
+        expect_error='''Line 3: Unexpected GT
+            |> -- empty lookahead
+             ^''')
+
+        self.given('''
+            <@>
+            <| -- empty lookbehind
+        ''',
+        expect_error='''Line 3: Unexpected BAR
+            <| -- empty lookbehind
+             ^''')
+
+        self.given('''
+            <@>
+            || -- empty base
+        ''',
+        expect_error='''Line 3: Unexpected BAR
+            || -- empty base
+             ^''')
+
+        self.given('''
+            <@>
+        ''',
+        expect_error='Line 3: Unexpected END_OF_LOOKAROUND')
+
+        self.given('''
+            /x/y/
+                x = <@>
+                    <behind|
+                           |ahead>
+                y = 'forgot empty line to terminate the lookaround'
+        ''',
+        expect_error='''Line 6: Unexpected VARNAME (forgot to close LOOKAROUND?)
+                y = 'forgot empty line to terminate the lookaround'
+                ^''')
+
+        self.given('''
+            <@>
+            <past|
+                 |future>
+                past = 'behind'
+                future = 'ahead'
+        ''',
+        expect_error='''Line 5: Unexpected VARNAME (forgot to close LOOKAROUND?)
+                past = 'behind'
+                ^''')
+
+        self.given('''
+            alignment_check
+                alignment_check = <@>
+                                  <mis|
+                                       |align>
+        ''',
+        expect_error='Line 5: Misaligned |')
+
+        self.given('''
+            <@>
+            <mis|
+                 |align>
+        ''',
+        expect_error='Line 4: Misaligned |')
+
+        self.given('''
+            <@>
+            <mis|
+               |align>
+        ''',
+        expect_error='Line 4: Misaligned |')
+
+        self.given('''
+            <@>
+            <this_is_good|
+                         |alignment|
+             <this_is_bad|
+        ''',
+        expect_error='Line 5: Misaligned |')
+
+        self.given('''
+            <@>
+             |this_is_good>
+             |alignment|
+             |this_is_bad>
+        ''',
+        expect_error='Line 5: Misaligned |')
+
+        self.given('''
+            <@>
+             |wrong|
+             |chaining|
+        ''',
+        expect_error='Line 4: Misaligned |')
+
+        self.given('''
+            check_indent
+                check_indent = <@>
+                                |/this/line/OK/|
+          </this/line/needs/deeper/indentation/|
+        ''',
+        expect_error='Line 5: needs deeper indentation')
+
+        self.given('''
+            check_indent
+                check_indent = <@>
+                                       |this_line_OK|
+               </this/line/needs/deeper/indentation/|
+        ''',
+        expect_error='Line 5: needs deeper indentation')
+
+        self.given('''
+            check_indent
+                check_indent = <@>
+               <this_line_needs_deeper_indentation|
+                                                  |/this/one/OK/|
+        ''',
+        expect_error='Line 4: needs deeper indentation')
+
+        self.given('''
+                <@>
+               |/more/indent/please/|
+        ''',
+        expect_error='Line 3: needs deeper indentation')
+
+        self.given('''
+                <@>
+               |more_indent_please>
+        ''',
+        expect_error='Line 3: needs deeper indentation')
+
+        self.given('''
+                <@>
+               <!enough_indent|
+        ''',
+        expect_error='Line 3: needs deeper indentation')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>|ahead>
+        ''',
+        expect_error='''Line 3: Unexpected BAR
+                syntax_err = <@>|ahead>
+                                ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             <missing/a/slash/|
+        ''',
+        expect_error='''Line 4: Unexpected SLASH
+                             <missing/a/slash/|
+                                     ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             </missing/a/slash|
+        ''',
+        expect_error='''Line 4: Unexpected BAR
+                             </missing/a/slash|
+                                              ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             <!missing/a/slash/|
+        ''',
+        expect_error='''Line 4: Unexpected SLASH
+                             <!missing/a/slash/|
+                                      ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             |!missing/a/slash>
+        ''',
+        expect_error='''Line 4: Unexpected SLASH
+                             |!missing/a/slash>
+                                      ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             |missing/slashes|
+        ''',
+        expect_error='''Line 4: Unexpected SLASH
+                             |missing/slashes|
+                                     ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             </ahead/behind/>
+        ''',
+        expect_error='''Line 4: Unexpected GT
+                             </ahead/behind/>
+                                            ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             <behind<
+        ''',
+        expect_error='''Line 4: Unexpected LT
+                             <behind<
+                                    ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             </missing/bar/
+        ''',
+        expect_error='''Line 4: Unexpected NEWLINE
+                             </missing/bar/
+                                           ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             /missing/bar/>
+        ''',
+        expect_error='''Line 4: Unexpected SLASH
+                             /missing/bar/>
+                             ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             !/missing/bar/>
+        ''',
+        expect_error='''Line 4: Unexpected EXCLAMARK
+                             !/missing/bar/>
+                             ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             missing_bar>
+        ''',
+        expect_error='''Line 4: Unexpected VARNAME (forgot to close LOOKAROUND?)
+                             missing_bar>
+                             ^''')
+
+        self.given('''
+            syntax_err
+                syntax_err = <@>
+                             |missing_bar_or_gt
+        ''',
+        expect_error='''Line 4: Unexpected NEWLINE
+                             |missing_bar_or_gt
+                                               ^''')
+
+        self.given('''
+            nested_orblock
+                nested_orblock = <@>
+                                  |nested_lookaround>
+                                  |<@>
+                                    |!allowed>
+        ''',
+        expect_error='Line 5: LOOKAROUND cannot contain LOOKAROUND')
+
+        self.given('''
+            lookblock_containing_orblock
+                lookblock_containing_orblock = <@>
+                                                @|
+                                                 |"can't"
+        ''',
+        expect_error='Line 4: LOOKAROUND cannot contain ORBLOCK')
 
 
 class TestOutput(unittest.TestCase):
@@ -3320,6 +3623,140 @@ class TestOutput(unittest.TestCase):
         expect_regex='espresso|cappuccino|kopi tubruk|earl grey|ocha|teh tarik|cendol')
 
 
+    def test_lookaround_output(self):
+        self.given('''
+            <@>
+                  <yamaha|
+            <!/yang/lain/|
+                         |semakin|
+                                 |/di/depan/>
+                                 |!ketinggalan>
+
+                yamaha = 'yamaha'
+                yang = 'yang'
+                lain = 'lain'
+                semakin = 'semakin'
+                di = 'di'
+                depan = 'depan'
+                ketinggalan = 'ketinggalan'
+        ''',
+        expect_regex='(?<=yamaha)(?<!yanglain)semakin(?=didepan)(?!ketinggalan)')
+
+        self.given('''
+            lookaround_but_not
+                lookaround_but_not = <@>
+                                      |alpha| -- possible, though pointless
+        ''',
+        expect_regex='[a-zA-Z]')
+
+        self.given('''
+            <@>
+                |anyam>
+                |anyaman|
+                 <nyaman|
+
+                anyam = 'anyam'
+                anyaman = 'anyaman'
+                nyaman = 'nyaman'
+        ''',
+        expect_regex='(?=anyam)anyaman(?<=nyaman)')
+
+        self.given('''
+            <@>
+            |mixed_case>
+            |has_number>
+            |has_symbol>
+            |/SoS/len_8_to_255/EoS/|
+
+                len_8_to_255 = 8..255 of any
+                mixed_case = <@>
+                                |has_upper>
+                                |has_lower>
+
+                    has_upper = /non_uppers?/upper/
+                        non_uppers = 1.. of: not: upper
+                    has_lower = /non_lowers?/lower/
+                        non_lowers = 1.. of: not: lower
+
+                has_number = /non_digits?/digit/
+                    non_digits = 1.. of: not: digit
+                has_symbol = /non_symbols?/symbol/
+                    symbol: not: /Alphanumeric
+                    non_symbols = 1.. of: not: symbol
+        ''',
+        expect_regex='(?=(?=[^A-Z]*+[A-Z])(?=[^a-z]*+[a-z]))(?=[^\d]*+\d)(?=[^\P{Alphanumeric}]*+\P{Alphanumeric})\A(?s:.){8,255}+\Z')
+
+        self.given('''
+            word_ends_with_s
+                word_ends_with_s = <@>
+                    |wordchars|
+                            <s|
+
+                    wordchars = 1.. of wordchar
+                    s = 's'
+        ''',
+        expect_regex='\w++(?<=s)')
+
+        self.given('''
+            un_x_able
+                un_x_able = <@>
+                    |un>
+                    |unxable|
+                       <able|
+
+                    un = 'un'
+                    unxable = 1.. of wordchar
+                    able = 'able'
+        ''',
+        expect_regex='(?=un)\w++(?<=able)')
+
+        self.given('''
+            escape
+                escape = <@>
+                    <backslash|
+                              |any|
+        ''',
+        expect_regex=r'(?<=\\)(?s:.)')
+
+        self.given('''
+            money_digits
+                money_digits = <<|
+                                 |dollar_digits
+                                 |digits_buck
+
+                    dollar_digits = <@>
+                        <dollar|
+                               |digits|
+
+                        dollar = '$'
+*)                      <digits> = 1.. of digit
+
+                    digits_buck = <@>
+                        |digits|
+                               |buck>
+
+                        buck = ' buck'
+        ''',
+        expect_regex='(?<=\$)(?P<digits>\d++)|(?P<digits>\d++)(?= buck)')
+
+        self.given('''
+            /begin/msg/end/
+                begin = .'BEGIN'.
+                end = .'END'.
+                msg = 1.. of <<|
+                               |1.. of: not: E
+                               |E_not_END
+
+                    E_not_END = <@>
+                        |E|
+                          |!ND>
+
+                        E = .'E'
+                        ND = 'ND'.
+        ''',
+        expect_regex=r'\bBEGIN\b(?:[^E]++|\bE(?!ND\b))++\bEND\b')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -4399,6 +4836,176 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['cendol', 'kopi tubruk', 'teh tarik', 'ocha', 'cappuccino'],
         no_match=['kopi earl grey cendol'],
         partial_match={'espresso tubruk' : 'espresso'})
+
+
+    def test_lookaround(self):
+        self.given('''
+            actually_no_lookaround
+                actually_no_lookaround = <@>
+                    |alpha|
+                          |digit|
+                                |upper|
+                                      |lower|
+        ''',
+        expect_full_match=['a1Aa'])
+
+        self.given('''
+            <@>
+                  <yamaha|
+            <!/yang/lain/|
+                         |semakin|
+                                 |/di/depan/>
+                                 |!ketinggalan>
+
+                yamaha = 'yamaha'
+                yang = 'yang'
+                lain = 'lain'
+                semakin = 'semakin'
+                di = 'di'
+                depan = 'depan'
+                ketinggalan = 'ketinggalan'
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['yanglainsemakinketinggalan'],
+        partial_match={'yamahasemakindidepan' : 'semakin'})
+
+        self.given('''
+            <@>
+                |anyam>
+                |anyaman|
+                 <nyaman|
+
+                anyam = 'anyam'
+                anyaman = 'anyaman'
+                nyaman = 'nyaman'
+        ''',
+        expect_full_match=['anyaman'],
+        partial_match={'anyamanyamannyaman' : 'anyaman'})
+
+        self.given('''
+            <@>
+            |mixed_case>
+            |has_number>
+            |has_symbol>
+            |/SoS/len_8_to_255/EoS/|
+
+                len_8_to_255 = 8..255 of any
+                mixed_case = <@>
+                                |has_upper>
+                                |has_lower>
+
+                    has_upper = /non_uppers?/upper/
+                        non_uppers = 1.. of: not: upper
+                    has_lower = /non_lowers?/lower/
+                        non_lowers = 1.. of: not: lower
+
+                has_number = /non_digits?/digit/
+                    non_digits = 1.. of: not: digit
+                has_symbol = /non_symbols?/symbol/
+                    symbol: not: /Alphanumeric
+                    non_symbols = 1.. of: not: symbol
+        ''',
+        expect_full_match=['AAaa11!!'],
+        no_match=['$h0RT', 'noNumber!', 'noSymb0l', 'n0upcase!', 'N0LOWCASE!'])
+
+        self.given('''
+            word_ends_with_s
+                word_ends_with_s = <@>
+                    |wordchars|
+                            <s|
+
+                    wordchars = 1.. of wordchar
+                    s = 's'
+        ''',
+        expect_full_match=['boss'],
+        no_match=['sassy'])
+
+        self.given('''
+            un_x_able
+                un_x_able = <@>
+                    |un>
+                    |unxable|
+                       <able|
+
+                    un = 'un'
+                    unxable = 1.. of wordchar
+                    able = 'able'
+        ''',
+        expect_full_match=['undoable', 'unable'])
+
+        self.given('''
+            escape
+                escape = <@>
+                    <backslash|
+                              |any|
+        ''',
+        fn=regex.search,
+        no_match=['\t', '\\'],
+        partial_match={r'\t' : 't', '\z': 'z', '\\\\':'\\', r'\r\n' : 'r', r'r\n' : 'n', '\wow' : 'w', '\\\'' : '\''})
+
+        self.given('''
+            money_digits
+                money_digits = <<|
+                                 |dollar_digits
+                                 |digits_buck
+
+                    dollar_digits = <@>
+                        <dollar|
+                               |digits|
+
+                        dollar = '$'
+*)                      <digits> = 1.. of digit
+
+                    digits_buck = <@>
+                        |digits|
+                               |buck>
+
+                        buck = ' buck'
+        ''',
+        fn=regex.search,
+        no_match=['123', '4 pm'],
+        partial_match={
+            '$1'        : '1',
+            '$234'      : '234',
+            '500 bucks' : '500',
+            '1 buck'    : '1',
+        })
+
+        self.given('''
+            /begin/msg/end/
+                begin = .'BEGIN'.
+                end = .'END'.
+                msg = 1.. of <<|
+                               |1.. of: not: E
+                               |E_not_END
+
+                    E_not_END = <<|
+                                  |check_ahead
+                                  |check_behind
+
+                        check_ahead = <@>
+                            |E|
+                              |!ND>
+
+*)                          E = 'E'
+                            ND = 'ND'.
+
+                        check_behind = <@>
+                              <!.|
+                                 |E|
+
+        ''',
+        fn=regex.search,
+        expect_full_match=[
+            'BEGIN END', 
+            'BEGIN hey END',
+            'BEGIN BEGINNER FIRE-BENDER BEND ENDER END',
+        ],
+        no_match=['BEGINNER FIRE-BENDER', 'begin hey end', 'BEGINEND'],
+        partial_match={
+            'BEGIN huge wooden horse END brad pitt' : 'BEGIN huge wooden horse END'
+        })
 
 
 if __name__ == '__main__':
