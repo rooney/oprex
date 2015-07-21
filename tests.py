@@ -1351,9 +1351,9 @@ class TestErrorHandling(unittest.TestCase):
             /.cat/
                 cat = 'cat'
         ''',
-        expect_error='''Line 2: Unexpected VARNAME
+        expect_error='''Line 2: Unexpected DOT
             /.cat/
-              ^''')
+             ^''')
 
         self.given(u'''
             /cat_/
@@ -3114,9 +3114,9 @@ class TestOutput(unittest.TestCase):
 
     def test_wordchar_boundary_output(self):
         self.given('''
-            /wordchar/./_/
+            /wordchar/WOB/_/BOW/EOW/
         ''',
-        expect_regex=r'\w\b\B')
+        expect_regex=r'\w\b\B\m\M')
 
         self.given('''
             realworld_wordchar
@@ -3131,13 +3131,19 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\bcat\b')
 
         self.given('''
-            /./cat/./
+            /WOB/cat/WOB/
                 cat = 'cat'
         ''',
         expect_regex=r'\bcat\b')
 
         self.given('''
-            /./cat/./
+            /BOW/cat/EOW/
+                cat = 'cat'
+        ''',
+        expect_regex=r'\mcat\M')
+
+        self.given('''
+            /WOB/cat/WOB/
                 cat = .'cat'.
         ''',
         expect_regex=r'\b\bcat\b\b')
@@ -3166,36 +3172,36 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\B')
 
         self.given('''
-            .
+            WOB
         ''',
         expect_regex=r'\b')
 
         self.given('''
-            2 of .
+            2 of WOB
         ''',
         expect_regex=r'\b{2}')
 
         self.given('''
             bdry
-                .bdry = .
+                .bdry = WOB
         ''',
         expect_regex=r'(?>\b)')
 
         self.given('''
             bdry
-                <bdry> = .
+                <bdry> = WOB
         ''',
         expect_regex=r'(?P<bdry>\b)')
 
         self.given('''
             bdries
-                bdries = 1 of 2 of 3 of .
+                bdries = 1 of 2 of 3 of WOB
         ''',
         expect_regex=r'\b{6}')
 
         self.given('''
             bdries?
-                bdries = 1.. of .
+                bdries = 1.. of WOB
         ''',
         expect_regex=r'\b*+')
 
@@ -3403,20 +3409,20 @@ class TestOutput(unittest.TestCase):
     def test_flag_dependent_charclass_output(self):
         self.given('''
             (-multiline)
-            /SoL/EoL/line2/SoS/EoS/
-                line2 = (multiline) /SoL/EoL/SoS/EoS/
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (multiline) /BOL/EOL/BOS/EOS/
         ''',
         expect_regex='(?V1w-m)(?m:^)(?m:$)(?m:^$\A\Z)\A\Z')
 
         self.given('''
-            /SoL/EoL/line2/SoS/EoS/
-                line2 = (-multiline) /SoL/EoL/SoS/EoS/
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (-multiline) /BOL/EOL/BOS/EOS/
         ''',
         expect_regex='^$(?-m:(?m:^)(?m:$)\A\Z)\A\Z')
 
         self.given('''
-            /SoL/EoL/SoS/EoS/line2/
-                line2 = (dotall) /SoL/EoL/SoS/EoS/ -- should be unaffected
+            /BOL/EOL/BOS/EOS/line2/
+                line2 = (dotall) /BOL/EOL/BOS/EOS/ -- should be unaffected
         ''',
         expect_regex='^$\A\Z(?s:^$\A\Z)')
 
@@ -3666,7 +3672,7 @@ class TestOutput(unittest.TestCase):
             |mixed_case>
             |has_number>
             |has_symbol>
-            |/SoS/len_8_to_255/EoS/|
+            |/BOS/len_8_to_255/EOS/|
 
                 len_8_to_255 = 8..255 of any
                 mixed_case = <@>
@@ -4363,7 +4369,13 @@ class TestMatches(unittest.TestCase):
 
     def test_wordchar_boundary(self):
         self.given('''
-            /wordchar/./_/
+            /wordchar/WOB/_/
+        ''',
+        expect_full_match=[],
+        no_match=['a', 'b', 'Z', '_'])
+
+        self.given('''
+            /EOW/wordchar/BOW/
         ''',
         expect_full_match=[],
         no_match=['a', 'b', 'Z', '_'])
@@ -4439,7 +4451,7 @@ class TestMatches(unittest.TestCase):
         partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
 
         self.given('''
-            /./cat/./
+            /WOB/cat/WOB/
                 cat = 'cat'
         ''',
         fn=regex.search,
@@ -4448,7 +4460,25 @@ class TestMatches(unittest.TestCase):
         partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
 
         self.given('''
-            /./cat/./
+            /WOB/cat/WOB/
+                cat = .'cat'.
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'catasthrope', 'complicated', 'garfield'],
+        partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            /BOW/cat/EOW/
+                cat = 'cat'
+        ''',
+        fn=regex.search,
+        expect_full_match=['cat'],
+        no_match=['tomcat', 'catasthrope', 'complicated', 'garfield'],
+        partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
+
+        self.given('''
+            /BOW/cat/EOW/
                 cat = .'cat'.
         ''',
         fn=regex.search,
@@ -4888,7 +4918,7 @@ class TestMatches(unittest.TestCase):
             |mixed_case>
             |has_number>
             |has_symbol>
-            |/SoS/len_8_to_255/EoS/|
+            |/BOS/len_8_to_255/EOS/|
 
                 len_8_to_255 = 8..255 of any
                 mixed_case = <@>
@@ -4992,7 +5022,7 @@ class TestMatches(unittest.TestCase):
                             ND = 'ND'.
 
                         check_behind = <@>
-                              <!.|
+                            <!WOB|
                                  |E|
 
         ''',
@@ -5002,9 +5032,10 @@ class TestMatches(unittest.TestCase):
             'BEGIN hey END',
             'BEGIN BEGINNER FIRE-BENDER BEND ENDER END',
         ],
-        no_match=['BEGINNER FIRE-BENDER', 'begin hey end', 'BEGINEND'],
+        no_match=['BEGINNER FIRE-BENDER', 'begin hey end', 'BEGINEND', 'BEGIN ...'],
         partial_match={
-            'BEGIN huge wooden horse END brad pitt' : 'BEGIN huge wooden horse END'
+            'BEGIN huge wooden horse END brad pitt' : 'BEGIN huge wooden horse END',
+            'BEGINNER BEGIN ENDANGERED END' : 'BEGIN ENDANGERED END',
         })
 
 

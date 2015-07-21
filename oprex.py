@@ -263,21 +263,23 @@ BUILTINS  = [
     BuiltinCC('backslash', r'\\'),
     BuiltinCC('whitechar', r'\s'),
     BuiltinCC('wordchar',  r'\w'),
-    Builtin('.',           r'\b'),
+    Builtin('BOW',         r'\m'),
+    Builtin('EOW',         r'\M'),
+    Builtin('WOB',         r'\b'),
     Builtin('_',           r'\B'),
-    Builtin('SoS',         r'\A'),
-    Builtin('EoS',         r'\Z'),
+    Builtin('BOS',         r'\A'),
+    Builtin('EOS',         r'\Z'),
     Builtin('uany',        r'\X'),
 ]
 FLAG_DEPENDENT_BUILTINS = dict(
     m = { # MULTILINE
         True  : [
-            Builtin('SoL', '^'),
-            Builtin('EoL', '$'),
+            Builtin('BOL', '^'),
+            Builtin('EOL', '$'),
         ],
         False : [
-            Builtin('SoL', '^', modifier='(?m:'),
-            Builtin('EoL', '$', modifier='(?m:'),
+            Builtin('BOL', '^', modifier='(?m:'),
+            Builtin('EOL', '$', modifier='(?m:'),
         ],
     },
     s = { # DOTALL
@@ -444,7 +446,8 @@ def t_OR(t):
 
 
 ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
-    ( N\{[^}]++\} # Unicode character name
+    ( .
+    | N\{[^}]++\} # Unicode character name
     | U\d{8}      # 8-digit hex escapes
     | u\d{4}      # 4-digit hex escapes
     | x\d{2}      # 2-digit hex escapes
@@ -855,7 +858,6 @@ def quantify(expr, quantifier):
         unneeded = (
             expr.grouped # already
             or len(expr) == 1
-            or len(expr) == 2 and expr[0] == '\\'
             or isinstance(expr, CharClass)
             or ESCAPE_SEQUENCE_RE.match(expr)
         )
@@ -1102,8 +1104,7 @@ def p_lookup_type(t):
 
 def p_variable_lookup(t):
     '''variable_lookup : VARNAME
-                       | UNDERSCORE
-                       | DOT'''
+                       | UNDERSCORE'''
     t[0] = VariableLookup, t[1]
 
 
