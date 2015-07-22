@@ -1,15 +1,3 @@
 
-            <@>
-                  <yamaha|
-            <!/yang/lain/|
-                         |semakin|
-                                 |/di/depan/>
-                                 |!ketinggalan>
-
-                yamaha = 'yamaha'
-                yang = 'yang'
-                lain = 'lain'
-                semakin = 'semakin'
-                di = 'di'
-                depan = 'depan'
-                ketinggalan = 'ketinggalan'
+non-digits
+    digits = 1 <<+..9 of digit

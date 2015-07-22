@@ -79,6 +79,7 @@ tokens = [
     'LT',
     'MINUS',
     'NEWLINE',
+    'NON',
     'OF',
     'OR',
     'PLUS',
@@ -118,6 +119,9 @@ class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture ato
 
 class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
     __slots__ = ()
+
+class NegatedLookup(VariableLookup):
+    pass
 
 class Backreference(namedtuple('Backreference', 'varname lineno optional')):
     __slots__ = ()
@@ -196,7 +200,7 @@ class Expr:
 
 
 class Regex(unicode):
-    __slots__ = ('grouped', 'quantifier')
+    __slots__ = ('base_value', 'grouped', 'quantifier')
     def __new__(cls, base_value, modifier=None): # modifier can be one of: quantifier, scoped flags, or grouping
         value = base_value
         grouped = False
@@ -209,6 +213,7 @@ class Regex(unicode):
                 quantifier = modifier
                 value += quantifier
         expr = unicode.__new__(cls, value)
+        expr.base_value = base_value
         expr.grouped = grouped
         expr.quantifier = quantifier
         return expr
@@ -255,21 +260,25 @@ class CCItem(namedtuple('CCItem', 'source type value')):
 Builtin   = lambda name, value, modifier=None: Variable(name, Regex(value, modifier), lineno=0)
 BuiltinCC = lambda name, value:                Variable(name, CharClass(value, is_set_op=False), lineno=0)
 BUILTINS  = [
-    BuiltinCC('alpha',     '[a-zA-Z]'),
-    BuiltinCC('upper',     '[A-Z]'),
-    BuiltinCC('lower',     '[a-z]'),
-    BuiltinCC('alnum',     '[a-zA-Z0-9]'),
-    BuiltinCC('digit',     r'\d'),
-    BuiltinCC('backslash', r'\\'),
-    BuiltinCC('whitechar', r'\s'),
-    BuiltinCC('wordchar',  r'\w'),
-    Builtin('BOW',         r'\m'),
-    Builtin('EOW',         r'\M'),
-    Builtin('WOB',         r'\b'),
-    Builtin('_',           r'\B'),
-    Builtin('BOS',         r'\A'),
-    Builtin('EOS',         r'\Z'),
-    Builtin('uany',        r'\X'),
+    BuiltinCC('alpha',         r'[a-zA-Z]'),
+    BuiltinCC('upper',         r'[A-Z]'),
+    BuiltinCC('lower',         r'[a-z]'),
+    BuiltinCC('alnum',         r'[a-zA-Z0-9]'),
+    BuiltinCC('padchar',       r'[ \t]'),
+    BuiltinCC('backslash',     r'\\'),
+    BuiltinCC('digit',         r'\d'),
+    BuiltinCC('non-digit',     r'\D'),
+    BuiltinCC('whitechar',     r'\s'),
+    BuiltinCC('non-whitechar', r'\S'),
+    BuiltinCC('wordchar',      r'\w'),
+    BuiltinCC('non-wordchar',  r'\W'),
+    Builtin('BOW',             r'\m'),
+    Builtin('EOW',             r'\M'),
+    Builtin('WOB',             r'\b'),
+    Builtin('non-WOB',         r'\B'),
+    Builtin('BOS',             r'\A'),
+    Builtin('EOS',             r'\Z'),
+    Builtin('uany',            r'\X'),
 ]
 FLAG_DEPENDENT_BUILTINS = dict(
     m = { # MULTILINE
@@ -284,10 +293,12 @@ FLAG_DEPENDENT_BUILTINS = dict(
     },
     s = { # DOTALL
         True  : [
-            Builtin('any', '.'),
+            Builtin('any',          '.'),
+            Builtin('non-linechar', '.', modifier='(?-s:'),
         ],
         False : [
-        Builtin('any', '.', modifier='(?s:'),
+            Builtin('any',          '.', modifier='(?s:'),
+            Builtin('non-linechar', '.'),
         ],
     },
     w = { # WORD
@@ -489,6 +500,11 @@ def t_STRING(t):
         raise OprexSyntaxError(t.lineno, e.message)
     else:
         return t
+
+
+def t_NON(t):
+    'non-'
+    return t
 
 
 def t_VARNAME(t):
@@ -852,14 +868,14 @@ def quantify(expr, quantifier):
             return '{%d}' % (n1 * n2)                       # --> optimize "hex{2}{3}" into "hex{6}"
 
     def strip_old_quantifier():
-        return expr[:-len(expr.quantifier)]
+        return expr.base_value
 
     def put_in_group():
         unneeded = (
             expr.grouped # already
             or len(expr) == 1
             or isinstance(expr, CharClass)
-            or ESCAPE_SEQUENCE_RE.match(expr)
+            or ESCAPE_SEQUENCE_RE.fullmatch(expr)
         )
         if unneeded:
             return expr # unchanged
@@ -1040,29 +1056,64 @@ class LookupExpr(Expr):
         def resolve(lookup):
             def var_lookup():
                 try:
-                    var = scope[lookup.varname]
+                    return scope[lookup.varname].value
                 except KeyError:
                     raise OprexSyntaxError(lookup.lineno, "'%s' is not defined" % lookup.varname)
 
-                if lookup.optional:
-                    return quantify(var.value, quantifier=lookup.optional)
-                elif isinstance(var.value, Alternation) and not is_single_lookup:
-                    return Regex(var.value, modifier='(?:')
-                else:
-                    return var.value
+            def negated_lookup():
+                try:
+                    return scope['non-' + lookup.varname].value
+                except KeyError:
+                    value = var_lookup()
 
-            if isinstance(lookup, VariableLookup):
-                return var_lookup()
-            elif isinstance(lookup, Backreference): 
+                def negated(charclass):
+                    if charclass.startswith('[^'):
+                        negated_value = charclass.replace('[^', '[', 1)
+                    elif charclass.startswith('['):
+                        negated_value = charclass.replace('[', '[^', 1)
+                    elif charclass.startswith(r'\p{'):
+                        negated_value = charclass.replace(r'\p{', r'\P{', 1)
+                    elif charclass.startswith(r'\P{'):
+                        negated_value = charclass.replace(r'\P{', r'\p{', 1)
+                    else:
+                        negated_value = {
+                            r'\d' : r'\D',
+                            r'\D' : r'\d',
+                            r'\s' : r'\S',
+                            r'\S' : r'\s',
+                            r'\w' : r'\W',
+                            r'\W' : r'\w',
+                            r'\W' : r'\w',
+                             '-'  : r'[^\-]',
+                        }.get(charclass, '[^%s]' % charclass)
+
+                    return CharClass(value=negated_value, is_set_op=charclass.is_set_op)
+
+                if isinstance(value, CharClass):
+                    return negated(value)
+                else:
+                    raise OprexSyntaxError(lookup.lineno, "'non-%s': '%s' must be a character-class" % (lookup.varname, lookup.varname))
+
+            if isinstance(lookup, Backreference): 
                 return Regex('(?P=%s)%s' % (lookup.varname, lookup.optional))
             elif isinstance(lookup, SubroutineCall): 
                 return Regex('(?&%s)%s' % (lookup.varname, lookup.optional))
+            elif isinstance(lookup, NegatedLookup):
+                value = negated_lookup()
+            elif isinstance(lookup, VariableLookup):
+                value = var_lookup()
+
+            if lookup.optional:
+                return quantify(value, quantifier=lookup.optional)
+            elif isinstance(value, Alternation) and not is_single_lookup:
+                return Regex(value, modifier='(?:')
+            else:
+                return value
 
         if is_single_lookup:
             regex = resolve(self.items[0])
         else:
             regex = Regex(''.join(map(resolve, self.items)))
-
         return regex, self.items
 
 
@@ -1103,9 +1154,12 @@ def p_lookup_type(t):
 
 
 def p_variable_lookup(t):
-    '''variable_lookup : VARNAME
-                       | UNDERSCORE'''
-    t[0] = VariableLookup, t[1]
+    '''variable_lookup : varname
+                       | NON varname'''
+    if t[1] == 'non-':
+        t[0] = NegatedLookup, t[2]
+    else:
+        t[0] = VariableLookup, t[1]
 
 
 def p_backreference(t):
@@ -1116,6 +1170,12 @@ def p_backreference(t):
 def p_subroutine_call(t):
     '''subroutine_call : AMPERSAND VARNAME'''
     t[0] = SubroutineCall, t[2]
+
+
+def p_varname(t):
+    '''varname : VARNAME
+               | UNDERSCORE'''
+    t[0] = t[1]
 
 
 class CharClassExpr(Expr):

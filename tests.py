@@ -1929,6 +1929,45 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 4: LOOKAROUND cannot contain ORBLOCK')
 
 
+    def test_invalid_non_op(self):
+        self.given('''
+            non-vowel
+                vowel = (ignorecase) 1 of: a i u e o
+        ''',
+        expect_error="Line 2: 'non-vowel': 'vowel' must be a character-class")
+
+        self.given('''
+            non-pin
+                pin = 4..6 of digit
+        ''',
+        expect_error="Line 2: 'non-pin': 'pin' must be a character-class")
+
+        self.given('''
+            non-digits
+                digits = 1.. of digit
+        ''',
+        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+
+        self.given('''
+            non-digits
+                digits = 1.. <<- of digit
+        ''',
+        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+
+        self.given('''
+            non-digits
+                digits = 1 <<+.. of digit
+        ''',
+        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+
+        self.given('''
+            non-non-alpha
+        ''',
+        expect_error='''Line 2: Unexpected NON
+            non-non-alpha
+                ^''')
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         default_flags = '(?V1mw)'
@@ -3114,7 +3153,7 @@ class TestOutput(unittest.TestCase):
 
     def test_wordchar_boundary_output(self):
         self.given('''
-            /wordchar/WOB/_/BOW/EOW/
+            /wordchar/WOB/non-WOB/BOW/EOW/
         ''',
         expect_regex=r'\w\b\B\m\M')
 
@@ -3149,7 +3188,7 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\b\bcat\b\b')
 
         self.given('''
-            /anti/_/
+            /anti/non-WOB/
                 anti = 'anti'
         ''',
         expect_regex=r'anti\B')
@@ -3167,7 +3206,7 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'\Bbloody\B')
 
         self.given('''
-            _
+            non-WOB
         ''',
         expect_regex=r'\B')
 
@@ -3271,6 +3310,11 @@ class TestOutput(unittest.TestCase):
             3.. of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
         ''',
         expect_regex=r'(?:M\N{AMPERSAND}M\N{APOSTROPHE}s){3,}+')
+
+        self.given(ur'''
+            3.. of '\r\n'
+        ''',
+        expect_regex=r'(?:\r\n){3,}+')
 
         self.given(r'''
             '\a\b\f\v\t'
@@ -3649,9 +3693,9 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?<=yamaha)(?<!yanglain)semakin(?=didepan)(?!ketinggalan)')
 
         self.given('''
-            lookaround_but_not
-                lookaround_but_not = <@>
-                                      |alpha| -- possible, though pointless
+            actually_no_lookaround
+                actually_no_lookaround = <@>
+                                        |alpha| -- possible, though pointless
         ''',
         expect_regex='[a-zA-Z]')
 
@@ -3761,6 +3805,51 @@ class TestOutput(unittest.TestCase):
                         ND = 'ND'.
         ''',
         expect_regex=r'\bBEGIN\b(?:[^E]++|\bE(?!ND\b))++\bEND\b')
+
+
+    def test_non_op_output(self):
+        self.given('''
+            /non-alpha/non-digit/non-whitechar/non-wordchar/non-WOB/
+        ''',
+        expect_regex=r'[^a-zA-Z]\D\S\W\B')
+
+        self.given('''
+            non_digits
+                non_digits = 1.. of non-digit
+        ''',
+        expect_regex=r'\D++')
+
+        self.given('''
+            non-alphabetic
+                alphabetic: /Alphabetic
+        ''',
+        expect_regex='\P{Alphabetic}')
+
+        self.given('''
+            non-minus
+                minus: -
+        ''',
+        expect_regex=r'[^\-]')
+
+        self.given('''
+            non-caret
+                caret: ^
+        ''',
+        expect_regex=r'[^\^]')
+
+        self.given('''
+            /non-non_alpha/non-non_digit/
+                non_alpha = non-alpha
+                non_digit = non-digit
+        ''',
+        expect_regex=r'[a-zA-Z]\d')
+
+        self.given('''
+            non-consonant
+                consonant: alpha not vowel
+                    vowel: a i u e o A I U E O
+        ''',
+        expect_regex=r'[^a-zA-Z--aiueoAIUEO]')
 
 
 class TestMatches(unittest.TestCase):
@@ -4369,7 +4458,7 @@ class TestMatches(unittest.TestCase):
 
     def test_wordchar_boundary(self):
         self.given('''
-            /wordchar/WOB/_/
+            /wordchar/WOB/non-WOB/
         ''',
         expect_full_match=[],
         no_match=['a', 'b', 'Z', '_'])
@@ -4487,8 +4576,17 @@ class TestMatches(unittest.TestCase):
         partial_match={'cat videos' : 'cat', 'grumpy cat' : 'cat'})
 
         self.given('''
-            /anti/_/
+            /anti/non-WOB/
                 anti = 'anti'
+        ''',
+        fn=regex.search,
+        expect_full_match=[],
+        no_match=['anti', 'anti-virus', 'rianti cartwright'],
+        partial_match={'antivirus' : 'anti', 'meantime' : 'anti'})
+
+        self.given('''
+            anti_
+                anti_ = 'anti'_
         ''',
         fn=regex.search,
         expect_full_match=[],
@@ -4651,6 +4749,12 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=["M&M'sM&M's"],
         no_match=[r'M\N{AMPERSAND}M\N{APOSTROPHE}s'])
+
+        self.given(ur'''
+            3 of '\t\t'
+        ''',
+        expect_full_match=['\t\t\t\t\t\t'],
+        no_match=['\t\t\t\t'])
 
         self.given(r'''
             '\a\b\f\v\t'
@@ -5037,6 +5141,56 @@ class TestMatches(unittest.TestCase):
             'BEGIN huge wooden horse END brad pitt' : 'BEGIN huge wooden horse END',
             'BEGINNER BEGIN ENDANGERED END' : 'BEGIN ENDANGERED END',
         })
+
+
+    def test_non_op(self):
+        self.given('''
+            /non-alpha/non-digit/non-whitechar/non-wordchar/
+        ''',
+        expect_full_match=['....'])
+
+        self.given('''
+            non_digits
+                non_digits = 1.. of non-digit
+        ''',
+        expect_full_match=['ZERO-ZERO-SEVEN', 'ZEROZEROSEVEN'])
+
+        self.given('''
+            non-alphabetic
+                alphabetic: /Alphabetic
+        ''',
+        expect_full_match=['1', '!'],
+        no_match=['a', u'ä'])
+
+        self.given('''
+            non-minus
+                minus: -
+        ''',
+        expect_full_match=['a', '1', '!'],
+        no_match=['-'])
+
+        self.given('''
+            non-caret
+                caret: ^
+        ''',
+        expect_full_match=['a', '1', '!'],
+        no_match=['^'])
+
+        self.given('''
+            /non-non_alpha/non-non_digit/
+                non_alpha = non-alpha
+                non_digit = non-digit
+        ''',
+        expect_full_match=['a1', 'A9'],
+        no_match=['a', '1', 'Aa', '42', 'A+'])
+
+        self.given('''
+            non-consonant
+                consonant: alpha not vowel
+                    vowel: a i u e o A I U E O
+        ''',
+        expect_full_match=['a', '1', '!'],
+        no_match=['b', 'Z'])
 
 
 if __name__ == '__main__':
