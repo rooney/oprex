@@ -5,7 +5,8 @@ from oprex import oprex, OprexSyntaxError
 
 class TestErrorHandling(unittest.TestCase):
     def given(self, oprex_source, expect_error):
-        expect_error = '\n' + expect_error
+        if expect_error:
+            expect_error = '\n' + expect_error
         try:
             oprex(oprex_source)
         except Exception as err:
@@ -181,12 +182,6 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error="Line 2: 'unicorns' is not defined")
 
-        self.given('''
-            unicorn
-                unicorn = unicorn
-        ''',
-        expect_error="Line 3: 'unicorn' is not defined")
-
 
     def test_illegal_variable_name(self):
         self.given('''
@@ -226,7 +221,40 @@ class TestErrorHandling(unittest.TestCase):
             dejavu
                 dejavu = dejavu = 'Déjà vu'
         ''',
-        expect_error="Line 3: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
+        expect_error="Line 3: Names must be unique within a scope, 'dejavu' is already declared (previous declaration at line 3)")
+
+        self.given(u'''
+            dejavu
+                dejavu = 'Déjà vu'
+                dejavu = dejavu
+        ''',
+        expect_error="Line 4: Names must be unique within a scope, 'dejavu' is already defined (previous definition at line 3)")
+
+        self.given(u'''
+            /de/jade/
+                de = 'de'
+                jade = /ja/de/
+                    ja = 'JA'
+                    de = 'DE'
+        ''',
+        expect_error="Line 6: Names must be unique within a scope, 'de' is already defined (previous definition at line 3)")
+
+        self.given(u'''
+            /deja/de/
+                deja = /de/ja/
+                    de = 'de'  -- different scope
+                    ja = 'JA'
+                de = 'DE'      -- different scope, so should be no error
+        ''',
+        expect_error='')
+
+        self.given(u'''
+            chicken
+                chicken = /egg/hatches/
+                    egg = /chicken/lays/
+                        chicken = /velociraptor/evolves/
+        ''',
+        expect_error="Line 5: Names must be unique within a scope, 'chicken' is already declared (previous declaration at line 3)")
 
         self.given('''
             /subject/predicate/object/
@@ -262,6 +290,12 @@ class TestErrorHandling(unittest.TestCase):
                     doe = 'doe'
         ''',
         expect_error="Line 6: 'doe' is defined but not used (by its parent expression)")
+
+        self.given('''
+            non-vowel
+                vowel: a i u e o
+        ''',
+        expect_error='') # vowel should be counted as used
 
 
     def test_unclosed_literal(self):
@@ -1284,58 +1318,23 @@ class TestErrorHandling(unittest.TestCase):
         self.given(u'''
             =missing
         ''',
-        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
+        expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             =missing?
         ''',
-        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
-
-        self.given(u'''
-            &missing
-        ''',
-        expect_error="Line 2: Bad SubroutineCall: 'missing' is not defined/not a capturing group")
-
-        self.given(u'''
-            /&missing/
-        ''',
-        expect_error="Line 2: Bad SubroutineCall: 'missing' is not defined/not a capturing group")
-
-        self.given(u'''
-            &=invalid_mix
-        ''',
-        expect_error='''Line 2: Unexpected EQUALSIGN
-            &=invalid_mix
-             ^''')
-
-        self.given(u'''
-            =&invalid_mix
-        ''',
-        expect_error='''Line 2: Unexpected AMPERSAND
-            =&invalid_mix
-             ^''')
+        expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
 
         self.given(u'''
             =alpha
         ''',
-        expect_error="Line 2: Bad Backreference: 'alpha' is not defined/not a capturing group")
-
-        self.given(u'''
-            /alpha/&alpha/
-        ''',
-        expect_error="Line 2: Bad SubroutineCall: 'alpha' is not defined/not a capturing group")
-
-        self.given(u'''
-            /alpha/&alpha/
-                alpha: a..z A..Z
-        ''',
-        expect_error="Line 3: 'alpha' is a built-in variable and cannot be redefined")
+        expect_error="Line 2: Bad backreference: 'alpha' is not defined/not a capturing group")
 
         self.given(u'''
             /bang/=bang/
                 bang: b a n g !
         ''',
-        expect_error="Line 2: Bad Backreference: 'bang' is not defined/not a capturing group")
+        expect_error="Line 2: Bad backreference: 'bang' is not defined/not a capturing group")
 
 
     def test_invalid_boundaries(self):
@@ -3144,12 +3143,6 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='(?P=bang)?+(?P<bang>[bang!])')
 
-        self.given(u'''
-            /bang/&bang/
-                <bang>: b a n g !
-        ''',
-        expect_regex='(?P<bang>[bang!])(?&bang)')
-
 
     def test_wordchar_boundary_output(self):
         self.given('''
@@ -3852,6 +3845,46 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'[^a-zA-Z--aiueoAIUEO]')
 
 
+    def test_recursion_output(self):
+        self.given('''
+            singularity
+                singularity = singularity
+        ''',
+        expect_regex='(?P<singularity>(?&singularity))')
+
+        self.given('''
+            /BOS/palindrome/EOS/
+                palindrome = <<|
+                               |/letter/palindrome/=letter/
+                               |/letter/=letter/
+                               |alpha
+
+                    <letter>: alpha
+        ''',
+        expect_regex='\A(?P<palindrome>(?P<letter>[a-zA-Z])(?&palindrome)(?P=letter)|(?P<letter>[a-zA-Z])(?P=letter)|[a-zA-Z])\Z')
+
+        self.given('''
+            csv
+                csv = /value?/more_values?/
+                    value = 1.. of non-separator
+*)                      separator: ,
+                    more_values = /separator/value?/more_values?/
+        ''',
+        expect_regex='[^,]*+(?P<more_values>,[^,]*+(?:(?&more_values)?+)?+)?+')
+
+        self.given('''
+            text_in_parens
+                text_in_parens = /open/text/close/
+                    open: (
+                    close: )
+                    text = 1.. of <<|
+                                    |non-open
+                                    |non-close
+                                    |text_in_parens
+        ''',
+        expect_regex='(?P<text_in_parens>\((?:[^\(]|[^\)]|(?&text_in_parens))++\))')
+
+
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -4447,13 +4480,6 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['b', 'a', 'n', 'g', '!'],
         no_match=['', 'clang!'],
         partial_match={'ba' : 'b', 'bb' : 'b', 'aa' : 'a', 'nn' : 'n', 'gg' : 'g', '!!' : '!', 'bang!' : 'b'})
-
-        self.given(u'''
-            /bang/&bang/
-                <bang>: b a n g !
-        ''',
-        expect_full_match=['bb', 'aa', 'nn', 'gg', '!!', 'ba', 'ng', 'b!', '!g'],
-        no_match=['', 'b', 'a'])
 
 
     def test_wordchar_boundary(self):
@@ -5191,6 +5217,64 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', '1', '!'],
         no_match=['b', 'Z'])
+
+
+    def test_recursion(self):
+        self.given('''
+            /BOS/palindrome/EOS/
+                palindrome = <<|
+                               |/letter/palindrome/=letter/
+                               |/letter/=letter/
+                               |alpha
+
+                    <letter>: alpha
+        ''',
+        expect_full_match=['a', 'aa', 'aaa', 'aaaa', 'aaaaaa', 'kayak', 'amanaplanacanalpanama', 'amorroma', 'racecar', 'tacocat', 'wasitacaroracatisaw', 'noxinnixon', 'dammitimmad'],
+        no_match=['', 'kayaking', 'racecars', 'akayak', 'aracecar', 'lala', 'lalala'])
+
+        self.given('''
+            csv
+                csv = <@>
+                    |/value?/more_values?/|
+                               <!/BOS/EOS/|
+
+                        value = 1.. of non-separator
+*)                          separator: ,
+                        more_values = /separator/value?/more_values?/
+        ''',
+        expect_full_match=[
+            'single value', 
+            'value,value', 'value, value, value', 
+            'has,,,,empties', 'has,,empty', 'trailing,empty,', 'trailing,empties,,,,', ',,,,leading empties', ',leading empties', ',,,,'],
+        no_match=[''])
+
+        self.given('''
+            text_in_parens
+                text_in_parens = /open/text?/close/
+                    open: (
+                    close: )
+                    text = 1.. of <<|
+                                    |non-open
+                                    |non-close
+                                    |text_in_parens
+        ''',
+        expect_full_match=[
+            '(EST)', 
+            '((citation needed))', 
+            '()', 
+            '(())', 
+            '((()))', 
+            '(for example, if I (meaning myself) write like this)', 
+            '(f (g (h)))', 
+            '(((f) g) h)',
+        ],
+        no_match=['(', ')', ')(', '(()', '((())', '((()', 'f(x)'],
+        partial_match={
+            '(do-something a) ; or else' : '(do-something a)',
+            '())'   : '()',
+            '()))'  : '()',
+            '(()))' : '(())',
+        })
 
 
 if __name__ == '__main__':

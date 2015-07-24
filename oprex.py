@@ -58,7 +58,6 @@ reserved = {
     '_' : 'UNDERSCORE',
 }
 tokens = [
-    'AMPERSAND',
     'BAR',
     'BEGIN_LOOKAROUND',
     'BEGIN_ORBLOCK',
@@ -92,7 +91,6 @@ tokens = [
 ] + reserved.values()
 
 GLOBALMARK   = '*)'
-t_AMPERSAND  = r'\&'
 t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
 t_EXCLAMARK  = r'\!'
@@ -114,19 +112,22 @@ class Variable(namedtuple('Variable', 'name value lineno')):
         return self.lineno == 0
 
 
-class VariableDeclaration(namedtuple('VariableDeclaration', 'varname capture atomic')):   
-    __slots__ = ()
+class VariableDeclaration:
+    __slots__ = ('varname lineno capture atomic')
+    def __init__(self, varname, lineno, capture, atomic):
+        self.varname = varname
+        self.capture = capture
+        self.lineno = lineno
+        self.atomic = atomic
+
 
 class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
     __slots__ = ()
 
-class NegatedLookup(VariableLookup):
-    pass
-
-class Backreference(namedtuple('Backreference', 'varname lineno optional')):
+class NegatedLookup(namedtuple('NegatedLookup', 'varname lineno optional')):
     __slots__ = ()
 
-class SubroutineCall(namedtuple('SubroutineCall', 'varname lineno optional')):
+class Backreference(namedtuple('Backreference', 'varname lineno optional')):
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
@@ -723,10 +724,10 @@ def p_expression(t):
     expression, references = expr.apply(current_scope)
     reffed_varnames = set()
     for ref in references:
-        if isinstance(ref, VariableLookup):
+        if isinstance(ref, Backreference):
+            t.lexer.backreferences.append(ref)
+        else:
             reffed_varnames.add(ref.varname)
-        else: # backreference/subroutine call
-            t.lexer.capture_refs.append(ref)
 
     optional_subblock_cleanup(t.lexer, t[2], reffed_varnames)
     t[0] = expression
@@ -1055,9 +1056,12 @@ class LookupExpr(Expr):
 
         def resolve(lookup):
             def var_lookup():
-                try:
+                if lookup.varname in scope:
                     return scope[lookup.varname].value
-                except KeyError:
+                elif lookup.varname in self.ongoing_declarations:
+                    self.ongoing_declarations[lookup.varname].capture = True
+                    return Regex('(?&%s)%s' % (lookup.varname, lookup.optional)) 
+                else:
                     raise OprexSyntaxError(lookup.lineno, "'%s' is not defined" % lookup.varname)
 
             def negated_lookup():
@@ -1096,8 +1100,6 @@ class LookupExpr(Expr):
 
             if isinstance(lookup, Backreference): 
                 return Regex('(?P=%s)%s' % (lookup.varname, lookup.optional))
-            elif isinstance(lookup, SubroutineCall): 
-                return Regex('(?&%s)%s' % (lookup.varname, lookup.optional))
             elif isinstance(lookup, NegatedLookup):
                 value = negated_lookup()
             elif isinstance(lookup, VariableLookup):
@@ -1124,7 +1126,10 @@ def p_lookup_expr(t):
 def p_lookup(t):
     '''lookup : SLASH lookup_chain
               |       lookup_item'''
-    t[0] = LookupExpr(items=t[2] if t[1] == '/' else [t[1]])
+    t[0] = LookupExpr(
+        items = t[2] if t[1] == '/' else [t[1]], 
+        ongoing_declarations = t.lexer.ongoing_declarations,
+    )
 
 LookupChain = deque
 
@@ -1137,7 +1142,6 @@ def p_lookup_chain(t):
         t[0] = LookupChain()
     t[0].appendleft(t[1])
 
-
 def p_lookup_item(t):
     '''lookup_item : lookup_type
                    | lookup_type QUESTMARK'''
@@ -1145,31 +1149,23 @@ def p_lookup_item(t):
     has_questmark = len(t) == 3
     t[0] = LookupClass(varname, t.lineno(1), optional='?+' if has_questmark else '')
 
-
 def p_lookup_type(t):
     '''lookup_type : variable_lookup
-                   | backreference
-                   | subroutine_call'''
+                   | negated_lookup
+                   | backreference'''
     t[0] = t[1]
 
-
 def p_variable_lookup(t):
-    '''variable_lookup : varname
-                       | NON varname'''
-    if t[1] == 'non-':
-        t[0] = NegatedLookup, t[2]
-    else:
-        t[0] = VariableLookup, t[1]
+    '''variable_lookup : varname'''
+    t[0] = VariableLookup, t[1]
 
+def p_negated_lookup(t):
+    '''negated_lookup : NON varname'''
+    t[0] = NegatedLookup, t[2]
 
 def p_backreference(t):
     '''backreference : EQUALSIGN VARNAME'''
     t[0] = Backreference, t[2]
-
-
-def p_subroutine_call(t):
-    '''subroutine_call : AMPERSAND VARNAME'''
-    t[0] = SubroutineCall, t[2]
 
 
 def p_varname(t):
@@ -1368,7 +1364,7 @@ def p_definition(t):
                 scope[var.name] = var
         else: # already defined
             raise OprexSyntaxError(t.lineno(1),
-                "'%s' is a built-in variable and cannot be redefined" % var.name
+                "'%s' is a non-redefinable built-in variable" % var.name
                 if prev_def.is_builtin() else
                     "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
                         % (var.name, prev_def.lineno))
@@ -1384,6 +1380,7 @@ def p_assignment(t):
                   | declaration COLON  charclass  optional_subblock'''
     declaration = t[1]
     lineno = t.lineno(1)
+    del t.lexer.ongoing_declarations[declaration.varname]
     if isinstance(t[3], Assignment):
         assignment = t[3]
         assignment.declarations.append(declaration)
@@ -1413,7 +1410,16 @@ def p_declaration(t):
     capture = t[len(t)-1] == '>'
     varname = t[len(t)-2] if capture else t[len(t)-1]
     atomic  = t[1] == '.'
-    t[0] = VariableDeclaration(varname, capture, atomic)
+    try:
+        ongoing = t.lexer.ongoing_declarations[varname]
+    except KeyError: # no parent declaration with the same name, safe to declare
+        declaration = VariableDeclaration(varname, t.lineno(0), capture, atomic)
+        t.lexer.ongoing_declarations[varname] = declaration
+        t[0] = declaration
+    else:
+        raise OprexError(t.lineno(0), 
+            "Names must be unique within a scope, '%s' is already declared (previous declaration at line %d)" % (varname, ongoing.lineno)
+        )
 
 
 def p_error(t):
@@ -1447,8 +1453,9 @@ def build_lexer(source_lines):
     lexer.source_lines = source_lines
     lexer.input('\n'.join(source_lines)) # all newlines are now just \n, simplifying the lexer
     lexer.indent_stack = [0] # for keeping track of indentation depths
+    lexer.ongoing_declarations = {}
     lexer.capture_names = set()
-    lexer.capture_refs = []
+    lexer.backreferences = []
     lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS
 
     root_scope = Scope(type=Scope.ROOTSCOPE, starting_lineno=0, parent_scope=None)
@@ -1526,9 +1533,9 @@ def parse(lexer):
 
 def cleanup(lexer):
     def check_captures():
-        for ref in lexer.capture_refs:
+        for ref in lexer.backreferences:
             if ref.varname not in lexer.capture_names:
-                errmsg = "Bad %s: '%s' is not defined/not a capturing group" % (ref.__class__.__name__, ref.varname)
+                errmsg = "Bad backreference: '%s' is not defined/not a capturing group" % ref.varname
                 raise OprexSyntaxError(ref.lineno, errmsg)
 
     def check_unclosed_scope():
