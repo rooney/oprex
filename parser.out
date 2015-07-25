@@ -96,8 +96,8 @@ Rule 90    equals -> EQUALSIGN WHITESPACE
 Rule 91    equals -> WHITESPACE EQUALSIGN WHITESPACE
 Rule 92    declaration -> VARNAME
 Rule 93    declaration -> DOT VARNAME
-Rule 94    declaration -> LT VARNAME GT
-Rule 95    declaration -> DOT LT VARNAME GT
+Rule 94    declaration -> LBRACKET VARNAME RBRACKET
+Rule 95    declaration -> DOT LBRACKET VARNAME RBRACKET
 
 Terminals, with rules where they appear
 
@@ -114,10 +114,11 @@ EQUALSIGN            : 65 88 89 90 91
 EXCLAMARK            : 49 51
 FLAGSET              : 9 39
 GLOBALMARK           : 84
-GT                   : 48 49 94 95
+GT                   : 48 49
 INDENT               : 5 79
+LBRACKET             : 94 95
 LPAREN               : 9 39
-LT                   : 31 31 50 51 94 95
+LT                   : 31 31 50 51
 MINUS                : 28
 NEWLINE              : 3 4 5 9 17 40 44 45 46 47 53 68
 NON                  : 64
@@ -126,6 +127,7 @@ OF                   : 32
 OR                   : 43 44
 PLUS                 : 29 30
 QUESTMARK            : 37 59
+RBRACKET             : 94 95
 RPAREN               : 9 39
 SLASH                : 54 56 57
 STRING               : 17
@@ -326,7 +328,7 @@ state 5
     GLOBALMARK      reduce using rule 14 (expr -> flagged_expr .)
     VARNAME         reduce using rule 14 (expr -> flagged_expr .)
     DOT             reduce using rule 14 (expr -> flagged_expr .)
-    LT              reduce using rule 14 (expr -> flagged_expr .)
+    LBRACKET        reduce using rule 14 (expr -> flagged_expr .)
 
 
 state 6
@@ -483,7 +485,7 @@ state 12
     GLOBALMARK      reduce using rule 12 (expr -> lookup_expr .)
     VARNAME         reduce using rule 12 (expr -> lookup_expr .)
     DOT             reduce using rule 12 (expr -> lookup_expr .)
-    LT              reduce using rule 12 (expr -> lookup_expr .)
+    LBRACKET        reduce using rule 12 (expr -> lookup_expr .)
 
 
 state 13
@@ -638,7 +640,7 @@ state 21
     GLOBALMARK      reduce using rule 13 (expr -> orblock_expr .)
     VARNAME         reduce using rule 13 (expr -> orblock_expr .)
     DOT             reduce using rule 13 (expr -> orblock_expr .)
-    LT              reduce using rule 13 (expr -> orblock_expr .)
+    LBRACKET        reduce using rule 13 (expr -> orblock_expr .)
 
 
 state 22
@@ -716,7 +718,7 @@ state 29
     GLOBALMARK      reduce using rule 16 (expr -> quantified_expr .)
     VARNAME         reduce using rule 16 (expr -> quantified_expr .)
     DOT             reduce using rule 16 (expr -> quantified_expr .)
-    LT              reduce using rule 16 (expr -> quantified_expr .)
+    LBRACKET        reduce using rule 16 (expr -> quantified_expr .)
 
 
 state 30
@@ -820,7 +822,7 @@ state 31
     GLOBALMARK      reduce using rule 78 (optional_subblock -> .)
     VARNAME         reduce using rule 78 (optional_subblock -> .)
     DOT             reduce using rule 78 (optional_subblock -> .)
-    LT              reduce using rule 78 (optional_subblock -> .)
+    LBRACKET        reduce using rule 78 (optional_subblock -> .)
     INDENT          shift and go to state 63
 
     optional_subblock              shift and go to state 65
@@ -850,7 +852,7 @@ state 33
     GLOBALMARK      reduce using rule 15 (expr -> lookaround_expr .)
     VARNAME         reduce using rule 15 (expr -> lookaround_expr .)
     DOT             reduce using rule 15 (expr -> lookaround_expr .)
-    LT              reduce using rule 15 (expr -> lookaround_expr .)
+    LBRACKET        reduce using rule 15 (expr -> lookaround_expr .)
 
 
 state 34
@@ -920,7 +922,7 @@ state 38
     GLOBALMARK      reduce using rule 11 (expr -> string_expr .)
     VARNAME         reduce using rule 11 (expr -> string_expr .)
     DOT             reduce using rule 11 (expr -> string_expr .)
-    LT              reduce using rule 11 (expr -> string_expr .)
+    LBRACKET        reduce using rule 11 (expr -> string_expr .)
 
 
 state 39
@@ -1027,7 +1029,7 @@ state 49
     GLOBALMARK      reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
     VARNAME         reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
     DOT             reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
-    LT              reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
+    LBRACKET        reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
     DEDENT          reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
     $end            reduce using rule 53 (lookup_expr -> lookup NEWLINE .)
 
@@ -1044,7 +1046,7 @@ state 50
     GLOBALMARK      reduce using rule 38 (flagged_expr -> scoped_flags expr .)
     VARNAME         reduce using rule 38 (flagged_expr -> scoped_flags expr .)
     DOT             reduce using rule 38 (flagged_expr -> scoped_flags expr .)
-    LT              reduce using rule 38 (flagged_expr -> scoped_flags expr .)
+    LBRACKET        reduce using rule 38 (flagged_expr -> scoped_flags expr .)
 
 
 state 51
@@ -1242,7 +1244,7 @@ state 63
     GLOBALMARK      reduce using rule 79 (begin_subblock -> INDENT .)
     VARNAME         reduce using rule 79 (begin_subblock -> INDENT .)
     DOT             reduce using rule 79 (begin_subblock -> INDENT .)
-    LT              reduce using rule 79 (begin_subblock -> INDENT .)
+    LBRACKET        reduce using rule 79 (begin_subblock -> INDENT .)
 
 
 state 64
@@ -1257,13 +1259,13 @@ state 64
     (87) assignment -> . declaration COLON charclass optional_subblock
     (92) declaration -> . VARNAME
     (93) declaration -> . DOT VARNAME
-    (94) declaration -> . LT VARNAME GT
-    (95) declaration -> . DOT LT VARNAME GT
+    (94) declaration -> . LBRACKET VARNAME RBRACKET
+    (95) declaration -> . DOT LBRACKET VARNAME RBRACKET
 
     GLOBALMARK      shift and go to state 94
     VARNAME         shift and go to state 95
     DOT             shift and go to state 99
-    LT              shift and go to state 96
+    LBRACKET        shift and go to state 96
 
     definition                     shift and go to state 92
     declaration                    shift and go to state 93
@@ -1279,7 +1281,7 @@ state 65
     GLOBALMARK      reduce using rule 10 (expression -> expr optional_subblock .)
     VARNAME         reduce using rule 10 (expression -> expr optional_subblock .)
     DOT             reduce using rule 10 (expression -> expr optional_subblock .)
-    LT              reduce using rule 10 (expression -> expr optional_subblock .)
+    LBRACKET        reduce using rule 10 (expression -> expr optional_subblock .)
 
 
 state 66
@@ -1610,7 +1612,7 @@ state 88
     GLOBALMARK      reduce using rule 22 (quantified_expr -> quantifier COLON charclass .)
     VARNAME         reduce using rule 22 (quantified_expr -> quantifier COLON charclass .)
     DOT             reduce using rule 22 (quantified_expr -> quantifier COLON charclass .)
-    LT              reduce using rule 22 (quantified_expr -> quantifier COLON charclass .)
+    LBRACKET        reduce using rule 22 (quantified_expr -> quantifier COLON charclass .)
 
 
 state 89
@@ -1632,7 +1634,7 @@ state 90
     GLOBALMARK      reduce using rule 21 (quantified_expr -> quantifier WHITESPACE expr .)
     VARNAME         reduce using rule 21 (quantified_expr -> quantifier WHITESPACE expr .)
     DOT             reduce using rule 21 (quantified_expr -> quantifier WHITESPACE expr .)
-    LT              reduce using rule 21 (quantified_expr -> quantifier WHITESPACE expr .)
+    LBRACKET        reduce using rule 21 (quantified_expr -> quantifier WHITESPACE expr .)
 
 
 state 91
@@ -1655,14 +1657,14 @@ state 92
     (87) assignment -> . declaration COLON charclass optional_subblock
     (92) declaration -> . VARNAME
     (93) declaration -> . DOT VARNAME
-    (94) declaration -> . LT VARNAME GT
-    (95) declaration -> . DOT LT VARNAME GT
+    (94) declaration -> . LBRACKET VARNAME RBRACKET
+    (95) declaration -> . DOT LBRACKET VARNAME RBRACKET
 
     DEDENT          reduce using rule 81 (definitions -> definition .)
     GLOBALMARK      shift and go to state 94
     VARNAME         shift and go to state 95
     DOT             shift and go to state 99
-    LT              shift and go to state 96
+    LBRACKET        shift and go to state 96
 
     definition                     shift and go to state 92
     assignment                     shift and go to state 97
@@ -1693,12 +1695,12 @@ state 94
     (87) assignment -> . declaration COLON charclass optional_subblock
     (92) declaration -> . VARNAME
     (93) declaration -> . DOT VARNAME
-    (94) declaration -> . LT VARNAME GT
-    (95) declaration -> . DOT LT VARNAME GT
+    (94) declaration -> . LBRACKET VARNAME RBRACKET
+    (95) declaration -> . DOT LBRACKET VARNAME RBRACKET
 
     VARNAME         shift and go to state 95
     DOT             shift and go to state 99
-    LT              shift and go to state 96
+    LBRACKET        shift and go to state 96
 
     assignment                     shift and go to state 131
     declaration                    shift and go to state 93
@@ -1714,7 +1716,7 @@ state 95
 
 state 96
 
-    (94) declaration -> LT . VARNAME GT
+    (94) declaration -> LBRACKET . VARNAME RBRACKET
 
     VARNAME         shift and go to state 132
 
@@ -1726,7 +1728,7 @@ state 97
     GLOBALMARK      reduce using rule 83 (definition -> assignment .)
     VARNAME         reduce using rule 83 (definition -> assignment .)
     DOT             reduce using rule 83 (definition -> assignment .)
-    LT              reduce using rule 83 (definition -> assignment .)
+    LBRACKET        reduce using rule 83 (definition -> assignment .)
     DEDENT          reduce using rule 83 (definition -> assignment .)
 
 
@@ -1742,10 +1744,10 @@ state 98
 state 99
 
     (93) declaration -> DOT . VARNAME
-    (95) declaration -> DOT . LT VARNAME GT
+    (95) declaration -> DOT . LBRACKET VARNAME RBRACKET
 
-    VARNAME         shift and go to state 135
-    LT              shift and go to state 136
+    VARNAME         shift and go to state 136
+    LBRACKET        shift and go to state 135
 
 
 state 100
@@ -1819,7 +1821,7 @@ state 105
     GLOBALMARK      reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
     VARNAME         reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
     DOT             reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
-    LT              reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
+    LBRACKET        reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
     DEDENT          reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
     $end            reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
     OR              reduce using rule 17 (string_expr -> str_b STRING str_b NEWLINE .)
@@ -1838,7 +1840,7 @@ state 106
     GLOBALMARK      reduce using rule 40 (orblock_expr -> BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK .)
     VARNAME         reduce using rule 40 (orblock_expr -> BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK .)
     DOT             reduce using rule 40 (orblock_expr -> BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK .)
-    LT              reduce using rule 40 (orblock_expr -> BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK .)
+    LBRACKET        reduce using rule 40 (orblock_expr -> BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK .)
 
 
 state 107
@@ -1919,7 +1921,7 @@ state 113
     GLOBALMARK      reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
     VARNAME         reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
     DOT             reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
-    LT              reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
+    LBRACKET        reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
     DEDENT          reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
     OR              reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
     END_OF_ORBLOCK  reduce using rule 45 (lookaround_expr -> BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND .)
@@ -2082,7 +2084,7 @@ state 125
     GLOBALMARK      reduce using rule 68 (charclass -> charitems NEWLINE .)
     VARNAME         reduce using rule 68 (charclass -> charitems NEWLINE .)
     DOT             reduce using rule 68 (charclass -> charitems NEWLINE .)
-    LT              reduce using rule 68 (charclass -> charitems NEWLINE .)
+    LBRACKET        reduce using rule 68 (charclass -> charitems NEWLINE .)
     DEDENT          reduce using rule 68 (charclass -> charitems NEWLINE .)
     $end            reduce using rule 68 (charclass -> charitems NEWLINE .)
     OR              reduce using rule 68 (charclass -> charitems NEWLINE .)
@@ -2114,8 +2116,8 @@ state 128
     (10) expression -> . expr optional_subblock
     (92) declaration -> . VARNAME
     (93) declaration -> . DOT VARNAME
-    (94) declaration -> . LT VARNAME GT
-    (95) declaration -> . DOT LT VARNAME GT
+    (94) declaration -> . LBRACKET VARNAME RBRACKET
+    (95) declaration -> . DOT LBRACKET VARNAME RBRACKET
     (11) expr -> . string_expr
     (12) expr -> . lookup_expr
     (13) expr -> . orblock_expr
@@ -2161,7 +2163,7 @@ state 128
 
     VARNAME         shift and go to state 148
     DOT             shift and go to state 149
-    LT              shift and go to state 96
+    LBRACKET        shift and go to state 96
     BEGIN_ORBLOCK   shift and go to state 16
     BEGIN_LOOKAROUND shift and go to state 23
     STRING          reduce using rule 18 (str_b -> .)
@@ -2217,7 +2219,7 @@ state 130
 
     VARNAME         reduce using rule 88 (equals -> EQUALSIGN .)
     DOT             reduce using rule 88 (equals -> EQUALSIGN .)
-    LT              reduce using rule 88 (equals -> EQUALSIGN .)
+    LBRACKET        reduce using rule 88 (equals -> EQUALSIGN .)
     BEGIN_ORBLOCK   reduce using rule 88 (equals -> EQUALSIGN .)
     BEGIN_LOOKAROUND reduce using rule 88 (equals -> EQUALSIGN .)
     UNDERSCORE      reduce using rule 88 (equals -> EQUALSIGN .)
@@ -2238,15 +2240,15 @@ state 131
     GLOBALMARK      reduce using rule 84 (definition -> GLOBALMARK assignment .)
     VARNAME         reduce using rule 84 (definition -> GLOBALMARK assignment .)
     DOT             reduce using rule 84 (definition -> GLOBALMARK assignment .)
-    LT              reduce using rule 84 (definition -> GLOBALMARK assignment .)
+    LBRACKET        reduce using rule 84 (definition -> GLOBALMARK assignment .)
     DEDENT          reduce using rule 84 (definition -> GLOBALMARK assignment .)
 
 
 state 132
 
-    (94) declaration -> LT VARNAME . GT
+    (94) declaration -> LBRACKET VARNAME . RBRACKET
 
-    GT              shift and go to state 154
+    RBRACKET        shift and go to state 154
 
 
 state 133
@@ -2258,7 +2260,7 @@ state 133
     GLOBALMARK      reduce using rule 80 (end_subblock -> DEDENT .)
     VARNAME         reduce using rule 80 (end_subblock -> DEDENT .)
     DOT             reduce using rule 80 (end_subblock -> DEDENT .)
-    LT              reduce using rule 80 (end_subblock -> DEDENT .)
+    LBRACKET        reduce using rule 80 (end_subblock -> DEDENT .)
 
 
 state 134
@@ -2268,25 +2270,25 @@ state 134
     GLOBALMARK      reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
     VARNAME         reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
     DOT             reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
-    LT              reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
+    LBRACKET        reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
     DEDENT          reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
     $end            reduce using rule 77 (optional_subblock -> begin_subblock definitions end_subblock .)
 
 
 state 135
 
+    (95) declaration -> DOT LBRACKET . VARNAME RBRACKET
+
+    VARNAME         shift and go to state 155
+
+
+state 136
+
     (93) declaration -> DOT VARNAME .
 
     COLON           reduce using rule 93 (declaration -> DOT VARNAME .)
     EQUALSIGN       reduce using rule 93 (declaration -> DOT VARNAME .)
     WHITESPACE      reduce using rule 93 (declaration -> DOT VARNAME .)
-
-
-state 136
-
-    (95) declaration -> DOT LT . VARNAME GT
-
-    VARNAME         shift and go to state 155
 
 
 state 137
@@ -2372,7 +2374,7 @@ state 147
 
     VARNAME         reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
     DOT             reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
-    LT              reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
+    LBRACKET        reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
     BEGIN_ORBLOCK   reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
     BEGIN_LOOKAROUND reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
     UNDERSCORE      reduce using rule 89 (equals -> WHITESPACE EQUALSIGN .)
@@ -2401,13 +2403,13 @@ state 148
 state 149
 
     (93) declaration -> DOT . VARNAME
-    (95) declaration -> DOT . LT VARNAME GT
+    (95) declaration -> DOT . LBRACKET VARNAME RBRACKET
     (19) str_b -> DOT .
     (33) numrange -> DOT . DOT
     (35) numrange -> DOT . DOT NUMBER
 
-    VARNAME         shift and go to state 135
-    LT              shift and go to state 136
+    VARNAME         shift and go to state 136
+    LBRACKET        shift and go to state 135
     STRING          reduce using rule 19 (str_b -> DOT .)
     DOT             shift and go to state 46
 
@@ -2419,7 +2421,7 @@ state 150
     GLOBALMARK      reduce using rule 85 (assignment -> declaration equals assignment .)
     VARNAME         reduce using rule 85 (assignment -> declaration equals assignment .)
     DOT             reduce using rule 85 (assignment -> declaration equals assignment .)
-    LT              reduce using rule 85 (assignment -> declaration equals assignment .)
+    LBRACKET        reduce using rule 85 (assignment -> declaration equals assignment .)
     DEDENT          reduce using rule 85 (assignment -> declaration equals assignment .)
 
 
@@ -2430,7 +2432,7 @@ state 151
     GLOBALMARK      reduce using rule 86 (assignment -> declaration equals expression .)
     VARNAME         reduce using rule 86 (assignment -> declaration equals expression .)
     DOT             reduce using rule 86 (assignment -> declaration equals expression .)
-    LT              reduce using rule 86 (assignment -> declaration equals expression .)
+    LBRACKET        reduce using rule 86 (assignment -> declaration equals expression .)
     DEDENT          reduce using rule 86 (assignment -> declaration equals expression .)
 
 
@@ -2444,7 +2446,7 @@ state 152
     GLOBALMARK      reduce using rule 78 (optional_subblock -> .)
     VARNAME         reduce using rule 78 (optional_subblock -> .)
     DOT             reduce using rule 78 (optional_subblock -> .)
-    LT              reduce using rule 78 (optional_subblock -> .)
+    LBRACKET        reduce using rule 78 (optional_subblock -> .)
     DEDENT          reduce using rule 78 (optional_subblock -> .)
     INDENT          shift and go to state 63
 
@@ -2457,7 +2459,7 @@ state 153
 
     VARNAME         reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
     DOT             reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
-    LT              reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
+    LBRACKET        reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
     BEGIN_ORBLOCK   reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
     BEGIN_LOOKAROUND reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
     UNDERSCORE      reduce using rule 90 (equals -> EQUALSIGN WHITESPACE .)
@@ -2472,18 +2474,18 @@ state 153
 
 state 154
 
-    (94) declaration -> LT VARNAME GT .
+    (94) declaration -> LBRACKET VARNAME RBRACKET .
 
-    COLON           reduce using rule 94 (declaration -> LT VARNAME GT .)
-    EQUALSIGN       reduce using rule 94 (declaration -> LT VARNAME GT .)
-    WHITESPACE      reduce using rule 94 (declaration -> LT VARNAME GT .)
+    COLON           reduce using rule 94 (declaration -> LBRACKET VARNAME RBRACKET .)
+    EQUALSIGN       reduce using rule 94 (declaration -> LBRACKET VARNAME RBRACKET .)
+    WHITESPACE      reduce using rule 94 (declaration -> LBRACKET VARNAME RBRACKET .)
 
 
 state 155
 
-    (95) declaration -> DOT LT VARNAME . GT
+    (95) declaration -> DOT LBRACKET VARNAME . RBRACKET
 
-    GT              shift and go to state 163
+    RBRACKET        shift and go to state 163
 
 
 state 156
@@ -2530,7 +2532,7 @@ state 161
 
     VARNAME         reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
     DOT             reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
-    LT              reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
+    LBRACKET        reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
     BEGIN_ORBLOCK   reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
     BEGIN_LOOKAROUND reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
     UNDERSCORE      reduce using rule 91 (equals -> WHITESPACE EQUALSIGN WHITESPACE .)
@@ -2550,17 +2552,17 @@ state 162
     GLOBALMARK      reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
     VARNAME         reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
     DOT             reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
-    LT              reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
+    LBRACKET        reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
     DEDENT          reduce using rule 87 (assignment -> declaration COLON charclass optional_subblock .)
 
 
 state 163
 
-    (95) declaration -> DOT LT VARNAME GT .
+    (95) declaration -> DOT LBRACKET VARNAME RBRACKET .
 
-    COLON           reduce using rule 95 (declaration -> DOT LT VARNAME GT .)
-    EQUALSIGN       reduce using rule 95 (declaration -> DOT LT VARNAME GT .)
-    WHITESPACE      reduce using rule 95 (declaration -> DOT LT VARNAME GT .)
+    COLON           reduce using rule 95 (declaration -> DOT LBRACKET VARNAME RBRACKET .)
+    EQUALSIGN       reduce using rule 95 (declaration -> DOT LBRACKET VARNAME RBRACKET .)
+    WHITESPACE      reduce using rule 95 (declaration -> DOT LBRACKET VARNAME RBRACKET .)
 
 
 state 164

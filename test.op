@@ -5,4 +5,4 @@
                    |/letter/=letter/
                    |alpha
 
-        <letter>: alpha
+        [letter]: alpha

@@ -74,6 +74,7 @@ tokens = [
     'GT',
     'INDENT',
     'NUMBER',
+    'LBRACKET',
     'LPAREN',
     'LT',
     'MINUS',
@@ -83,6 +84,7 @@ tokens = [
     'OR',
     'PLUS',
     'QUESTMARK',
+    'RBRACKET',
     'RPAREN',
     'SLASH',
     'STRING',
@@ -95,12 +97,14 @@ t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
 t_EXCLAMARK  = r'\!'
 t_GT         = r'\>'
+t_LBRACKET   = r'\['
 t_LPAREN     = r'\('
 t_LT         = r'\<'
 t_MINUS      = r'\-'
 t_NUMBER     = r'\d+'
 t_PLUS       = r'\+'
 t_QUESTMARK  = r'\?'
+t_RBRACKET   = r'\]'
 t_RPAREN     = r'\)'
 t_SLASH      = r'\/'
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
@@ -1403,11 +1407,11 @@ def p_equals(t):
 
 
 def p_declaration(t):
-    '''declaration :        VARNAME
-                   | DOT    VARNAME
-                   |     LT VARNAME GT
-                   | DOT LT VARNAME GT'''
-    capture = t[len(t)-1] == '>'
+    '''declaration :              VARNAME
+                   | DOT          VARNAME
+                   |     LBRACKET VARNAME RBRACKET
+                   | DOT LBRACKET VARNAME RBRACKET'''
+    capture = t[len(t)-1] == ']'
     varname = t[len(t)-2] if capture else t[len(t)-1]
     atomic  = t[1] == '.'
     try:
