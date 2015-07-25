@@ -1281,6 +1281,48 @@ class TestErrorHandling(unittest.TestCase):
             1..2 of alpha
                  ^''')
 
+        self.given('''
+            .. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            .. of alpha
+             ^''')
+
+        self.given('''
+            ..1 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            ..1 of alpha
+             ^''')
+
+        self.given('''
+            ..2 <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            ..2 <<- of alpha
+             ^''')
+
+        self.given('''
+            @.. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            @.. of alpha
+              ^''')
+
+        self.given('''
+            @..1 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            @..1 of alpha
+              ^''')
+
+        self.given('''
+            @..2 <<- of alpha
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            @..2 <<- of alpha
+              ^''')
+
 
     def test_commenting_error(self):
         self.given('''
@@ -2715,7 +2757,7 @@ class TestOutput(unittest.TestCase):
             /extra/extra?/
                 [extra] = 'icing'
         ''',
-        expect_regex='(?P<extra>icing)(?P<extra>icing)?+')
+        expect_regex='(?P<extra>icing)(?P<extra>icing)?')
 
         self.given('''
             /defcon/level/
@@ -2730,7 +2772,7 @@ class TestOutput(unittest.TestCase):
                     [L] = 'Left'
                     [R] = 'Right'
         ''',
-        expect_regex=r'(?P<captured>(?P<L>Left)(?P<R>Right))?+')
+        expect_regex=r'(?P<captured>(?P<L>Left)(?P<R>Right))?')
 
         self.given('''
             uncaptured?
@@ -2738,7 +2780,7 @@ class TestOutput(unittest.TestCase):
                     [L] = 'Left'
                     [R] = 'Right'
         ''',
-        expect_regex=r'(?:(?P<L>Left)?+(?P<R>Right))?+')
+        expect_regex=r'(?:(?P<L>Left)?(?P<R>Right))?')
 
 
     def test_atomic_grouping_output(self):
@@ -2753,22 +2795,22 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'(?>[a-zA-Z]\d)')
 
         self.given('''
-            @/digits/even/
-                digits = 0.. <<- of digit
+            @/digits?/even/
+                digits = 1.. <<- of digit
                 even: 0 2 4 6 8
         ''',
         expect_regex=r'(?>\d*[02468])')
 
         self.given('''
-            ./digits/even/.
-                digits = 0.. <<- of digit
+            ./digits?/even/.
+                digits = 1.. <<- of digit
                 even: 0 2 4 6 8
         ''',
         expect_regex=r'\A\d*[02468]\Z')
 
         self.given('''
-            //digits/even//
-                digits = 0.. <<- of digit
+            //digits?/even//
+                digits = 1.. <<- of digit
                 even: 0 2 4 6 8
         ''',
         expect_regex=r'^\d*[02468]$')
@@ -2888,11 +2930,6 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{2}')
 
         self.given('''
-            @.. of alpha
-        ''',
-        expect_regex='[a-zA-Z]*+')
-
-        self.given('''
             @0.. of alpha
         ''',
         expect_regex='[a-zA-Z]*+')
@@ -2908,19 +2945,9 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{2,}+')
 
         self.given('''
-            @..2 of alpha
-        ''',
-        expect_regex='[a-zA-Z]{,2}+')
-
-        self.given('''
             @0..2 of alpha
         ''',
         expect_regex='[a-zA-Z]{,2}+')
-
-        self.given('''
-            @..1 of alpha
-        ''',
-        expect_regex='[a-zA-Z]?+')
 
         self.given('''
             @0..1 of alpha
@@ -2931,11 +2958,6 @@ class TestOutput(unittest.TestCase):
             @3..4 of alpha
         ''',
         expect_regex='[a-zA-Z]{3,4}+')
-
-        self.given('''
-            .. <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]*')
 
         self.given('''
             0.. <<- of alpha
@@ -2953,19 +2975,9 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{2,}')
 
         self.given('''
-            ..2 <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]{,2}')
-
-        self.given('''
             0..2 <<- of alpha
         ''',
         expect_regex='[a-zA-Z]{,2}')
-
-        self.given('''
-            ..1 <<- of alpha
-        ''',
-        expect_regex='[a-zA-Z]?')
 
         self.given('''
             0..1 <<- of alpha
@@ -3025,33 +3037,33 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             alphas?
-                alphas = @.. of alpha
+                alphas = @0.. of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]*+)?+')
+        expect_regex='(?:[a-zA-Z]*+)?')
 
         self.given('''
             opt_alpha?
                 opt_alpha = ? of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?+)?+')
+        expect_regex='(?:[a-zA-Z]?+)?')
 
         self.given('''
             opt_alpha?
                 opt_alpha = @0..1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?+)?+')
+        expect_regex='(?:[a-zA-Z]?+)?')
 
         self.given('''
             opt_alpha?
                 opt_alpha = 0..1 <<- of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]?)?+')
+        expect_regex='(?:[a-zA-Z]?)?')
 
         self.given('''
             opt_alpha?
                 opt_alpha = 0 <<+..1 of alpha
         ''',
-        expect_regex='(?:[a-zA-Z]??)?+')
+        expect_regex='(?:[a-zA-Z]??)?')
 
         self.given('''
             ? of ? of alpha
@@ -3330,13 +3342,13 @@ class TestOutput(unittest.TestCase):
             /bang/=bang?/
                 [bang]: b a n g !
         ''',
-        expect_regex='(?P<bang>[bang!])(?P=bang)?+')
+        expect_regex='(?P<bang>[bang!])(?P=bang)?')
         
         self.given(u'''
             /=bang?/bang/
                 [bang]: b a n g !
         ''',
-        expect_regex='(?P=bang)?+(?P<bang>[bang!])')
+        expect_regex='(?P=bang)?(?P<bang>[bang!])')
 
 
     def test_wordchar_boundary_output(self):
@@ -3589,7 +3601,7 @@ class TestOutput(unittest.TestCase):
             hex?
                 hex = (ignorecase) 1 of: +digit a..f
         ''',
-        expect_regex=r'(?i:[\da-f])?+')
+        expect_regex=r'(?i:[\da-f])?')
 
         self.given('''
             (ignorecase) 2 of 'yadda'
@@ -4065,7 +4077,7 @@ class TestOutput(unittest.TestCase):
 *)                      separator: ,
                     more_values = /separator/value?/more_values?/
         ''',
-        expect_regex='[^,]*+(?P<more_values>,[^,]*+(?:(?&more_values)?+)?+)?+')
+        expect_regex='[^,]*+(?P<more_values>,[^,]*+(?:(?&more_values)?)?)?')
 
         self.given('''
             text_in_parens

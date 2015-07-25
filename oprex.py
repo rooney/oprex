@@ -841,14 +841,13 @@ def p_of(t):
 
 
 def p_numrange(t):
-    '''numrange :        DOT DOT
-                | NUMBER DOT DOT
-                |        DOT DOT NUMBER
+    '''numrange : NUMBER DOT DOT
                 | NUMBER DOT DOT NUMBER'''
-    def number_or_empty(str):
-        return str if str != '.' else ''
-    min = number_or_empty(t[1])
-    max = number_or_empty(t[len(t)-1])
+    min = t[1]
+    try:
+        max = t[4]
+    except IndexError:
+        max = ''
     t[0] = min, max
 
 
@@ -865,10 +864,12 @@ def quantify(expr, quantifier):
 
     def merge_quantifiers():
         try:
-            return {               # The purpose of this is so we can write x* as (x+)? e.g.
-                 '? of +'  : '*' , #     digits?
-                '?+ of ++' : '*+', #         digits = 1.. of digit
-                '?? of +?' : '*?', # without making the regex output suboptimal
+            return {               
+                 '? of +'  : '*' ,  ## The purpose of this is so we can write x* as (x+)? e.g.
+                '?+ of ++' : '*+',  ##     digits?
+                '?? of +?' : '*?',  ##         digits = 1.. of digit
+                 '? of ++' : '*+',  ## without making the regex output suboptimal
+                 '? of +?' : '*?',
             }[quantifier + ' of ' + expr.quantifier]
         except KeyError: # not a "? of +" operation, try merge repeats e.g.
             n1 = int(expr.quantifier.strip('{').strip('}')) # colorhex = 3 of byte
@@ -1194,7 +1195,7 @@ def p_lookup_item(t):
                    | lookup_type QUESTMARK'''
     LookupClass, varname = t[1]
     has_questmark = len(t) == 3
-    t[0] = LookupClass(varname, t.lineno(1), optional='?+' if has_questmark else '')
+    t[0] = LookupClass(varname, t.lineno(1), optional='?' if has_questmark else '')
 
 def p_lookup_type(t):
     '''lookup_type : variable_lookup
