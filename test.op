@@ -1,8 +1,2 @@
 
-/BOS/palindrome/EOS/
-    palindrome = <<|
-                   |/letter/palindrome/=letter/
-                   |/letter/=letter/
-                   |alpha
-
-        [letter]: alpha
+@/WOB/

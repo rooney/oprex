@@ -58,6 +58,7 @@ reserved = {
     '_' : 'UNDERSCORE',
 }
 tokens = [
+    'AT',
     'BAR',
     'BEGIN_LOOKAROUND',
     'BEGIN_ORBLOCK',
@@ -93,6 +94,7 @@ tokens = [
 ] + reserved.values()
 
 GLOBALMARK   = '*)'
+t_AT         = r'\@'
 t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
 t_EXCLAMARK  = r'\!'
@@ -117,12 +119,11 @@ class Variable(namedtuple('Variable', 'name value lineno')):
 
 
 class VariableDeclaration:
-    __slots__ = ('varname lineno capture atomic')
-    def __init__(self, varname, lineno, capture, atomic):
+    __slots__ = ('varname lineno capture')
+    def __init__(self, varname, lineno, capture):
         self.varname = varname
+        self.lineno  = lineno
         self.capture = capture
-        self.lineno = lineno
-        self.atomic = atomic
 
 
 class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
@@ -271,6 +272,7 @@ BUILTINS  = [
     BuiltinCC('alnum',         r'[a-zA-Z0-9]'),
     BuiltinCC('padchar',       r'[ \t]'),
     BuiltinCC('backslash',     r'\\'),
+    BuiltinCC('tab',           r'\t'),
     BuiltinCC('digit',         r'\d'),
     BuiltinCC('non-digit',     r'\D'),
     BuiltinCC('whitechar',     r'\s'),
@@ -317,11 +319,9 @@ FLAG_DEPENDENT_BUILTINS = dict(
     x = { # VERBOSE
         True  : [
             BuiltinCC('space',  '[ ]'),
-            BuiltinCC('tab',   r'[\t]'),
         ],
         False : [
             BuiltinCC('space',  ' '),
-            BuiltinCC('tab',   r'\t'),
         ],
     },
 )
@@ -1100,7 +1100,7 @@ class LookupExpr(Expr):
                 if isinstance(value, CharClass):
                     return negated(value)
                 else:
-                    raise OprexSyntaxError(lookup.lineno, "'non-%s': '%s' must be a character-class" % (lookup.varname, lookup.varname))
+                    raise OprexSyntaxError(lookup.lineno, "'non-%s': '%s' is not a character-class" % (lookup.varname, lookup.varname))
 
             if isinstance(lookup, Backreference): 
                 return Regex('(?P=%s)%s' % (lookup.varname, lookup.optional))
@@ -1120,6 +1120,8 @@ class LookupExpr(Expr):
             regex = resolve(self.items[0])
         else:
             regex = Regex(''.join(map(resolve, self.items)))
+        if self.atomize:
+            regex = Regex(regex, modifier='(?>')
         return regex, self.items
 
 
@@ -1128,12 +1130,23 @@ def p_lookup_expr(t):
     t[0] = t[1]
 
 def p_lookup(t):
-    '''lookup : SLASH lookup_chain
-              |       lookup_item'''
-    t[0] = LookupExpr(
-        items = t[2] if t[1] == '/' else [t[1]], 
-        ongoing_declarations = t.lexer.ongoing_declarations,
-    )
+    '''lookup : opt_atomizer SLASH lookup_chain
+              |                    lookup_item'''
+    if len(t) == 2:
+        items = [t[1]]
+        atomize = False
+    else:
+        atomize = t[1] is not None
+        items = t[3]
+    t[0] = LookupExpr(items=items, atomize=atomize, ongoing_declarations=t.lexer.ongoing_declarations)
+
+
+def p_opt_atomizer(t):
+    '''opt_atomizer :
+                    | AT'''
+    if len(t) == 2:
+        t[0] = t[1]
+
 
 LookupChain = deque
 
@@ -1353,8 +1366,6 @@ def p_definition(t):
         def make_var():
             varname = declaration.varname
             value = assignment.value
-            if declaration.atomic:
-                value = Regex(value, modifier='(?>')
             if declaration.capture:
                 value = Regex(value, modifier='(?P<%s>' % varname)
                 t.lexer.capture_names.add(varname)
@@ -1407,17 +1418,14 @@ def p_equals(t):
 
 
 def p_declaration(t):
-    '''declaration :              VARNAME
-                   | DOT          VARNAME
-                   |     LBRACKET VARNAME RBRACKET
-                   | DOT LBRACKET VARNAME RBRACKET'''
-    capture = t[len(t)-1] == ']'
-    varname = t[len(t)-2] if capture else t[len(t)-1]
-    atomic  = t[1] == '.'
+    '''declaration :          VARNAME
+                   | LBRACKET VARNAME RBRACKET'''
+    capture = t[1] == '['
+    varname = t[2] if capture else t[1]
     try:
         ongoing = t.lexer.ongoing_declarations[varname]
     except KeyError: # no parent declaration with the same name, safe to declare
-        declaration = VariableDeclaration(varname, t.lineno(0), capture, atomic)
+        declaration = VariableDeclaration(varname, t.lineno(0), capture)
         t.lexer.ongoing_declarations[varname] = declaration
         t[0] = declaration
     else:

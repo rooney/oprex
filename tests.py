@@ -298,6 +298,15 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='') # vowel should be counted as used
 
 
+    def test_invalid_atomizer(self):
+        self.given('''
+            @alpha -- atomizer only applicable to chained lookup
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            @alpha -- atomizer only applicable to chained lookup
+             ^''')
+
+
     def test_unclosed_literal(self):
         self.given('''
             mcd
@@ -1072,14 +1081,14 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_invalid_quantifier(self):
-        self.given(u'''
+        self.given('''
             3 of
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 of
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 of          
                 of = 'trailing spaces above after the "of"'
         ''',
@@ -1087,171 +1096,171 @@ class TestErrorHandling(unittest.TestCase):
             3 of          
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 of -- 3 of what?
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 of -- 3 of what?
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 of-- 3 of what?
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 of-- 3 of what?
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 of of--
         ''',
         expect_error='''Line 2: Unexpected MINUS
             3 of of--
                    ^''')
 
-        self.given(u'''
+        self.given('''
             3 alpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 alpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 ofalpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 ofalpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             3of alpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3of alpha
              ^''')
 
-        self.given(u'''
+        self.given('''
             3 o falpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 o falpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             3 office alpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             3 office alpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             3. of alpha
         ''',
         expect_error='''Line 2: Unexpected WHITESPACE
             3. of alpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             3... of alpha
         ''',
         expect_error='''Line 2: Unexpected DOT
             3... of alpha
                ^''')
 
-        self.given(u'''
+        self.given('''
             3+ of alpha
         ''',
         expect_error='''Line 2: Unexpected PLUS
             3+ of alpha
              ^''')
 
-        self.given(u'''
+        self.given('''
             3+3 of alpha
         ''',
         expect_error='''Line 2: Unexpected PLUS
             3+3 of alpha
              ^''')
 
-        self.given(u'''
+        self.given('''
             3..2 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             2..2 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             1..1 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             0..0 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             1 ..3 of alpha
         ''',
         expect_error='''Line 2: Unexpected DOT
             1 ..3 of alpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             1.. 3 of alpha
         ''',
         expect_error='''Line 2: Unexpected NUMBER
             1.. 3 of alpha
                 ^''')
 
-        self.given(u'''
+        self.given('''
             1 .. of alpha
         ''',
         expect_error='''Line 2: Unexpected DOT
             1 .. of alpha
               ^''')
 
-        self.given(u'''
+        self.given('''
             1 <<- of alpha
         ''',
         expect_error='''Line 2: Unexpected MINUS
             1 <<- of alpha
                 ^''')
 
-        self.given(u'''
+        self.given('''
             1 <<+ of alpha
         ''',
         expect_error='''Line 2: Unexpected WHITESPACE
             1 <<+ of alpha
                  ^''')
 
-        self.given(u'''
+        self.given('''
             1 <<+..0 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             0 <<+..0 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             1 <<+..1 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             2 <<+..2 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             2..1 <<- of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
-        self.given(u'''
+        self.given('''
             ? <<- of alpha
         ''',
         expect_error='''Line 2: Unexpected LT
@@ -1260,14 +1269,14 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_commenting_error(self):
-        self.given(u'''
+        self.given('''
             - this comment is missing another - prefix
         ''',
         expect_error='''Line 2: Unexpected MINUS
             - this comment is missing another - prefix
             ^''')
 
-        self.given(u'''
+        self.given('''
             1 of vowel - this comment is missing another - prefix
                 vowel: a i u e o 
         ''',
@@ -1275,7 +1284,7 @@ class TestErrorHandling(unittest.TestCase):
             1 of vowel - this comment is missing another - prefix
                       ^''')
 
-        self.given(u'''
+        self.given('''
             1 of vowel- this comment is missing another - prefix
                 vowel: a i u e o 
         ''',
@@ -1283,13 +1292,13 @@ class TestErrorHandling(unittest.TestCase):
             1 of vowel- this comment is missing another - prefix
                       ^''')
 
-        self.given(u'''
+        self.given('''
             1 of vowel
                 vowel: a i u e o - this comment is missing another - prefix
         ''',
         expect_error="Line 3: Cannot include 'this': not defined")
 
-        self.given(u'''
+        self.given('''
             1 of vowel
                 vowel: a i u e o- this comment is missing another - prefix
         ''',
@@ -1315,22 +1324,22 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_invalid_reference(self):
-        self.given(u'''
+        self.given('''
             =missing
         ''',
         expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
 
-        self.given(u'''
+        self.given('''
             =missing?
         ''',
         expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
 
-        self.given(u'''
+        self.given('''
             =alpha
         ''',
         expect_error="Line 2: Bad backreference: 'alpha' is not defined/not a capturing group")
 
-        self.given(u'''
+        self.given('''
             /bang/=bang/
                 bang: b a n g !
         ''',
@@ -1338,7 +1347,7 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_invalid_boundaries(self):
-        self.given(u'''
+        self.given('''
             /cat./
                 cat = 'cat'
         ''',
@@ -1346,7 +1355,7 @@ class TestErrorHandling(unittest.TestCase):
             /cat./
                 ^''')
 
-        self.given(u'''
+        self.given('''
             /.cat/
                 cat = 'cat'
         ''',
@@ -1354,13 +1363,13 @@ class TestErrorHandling(unittest.TestCase):
             /.cat/
              ^''')
 
-        self.given(u'''
+        self.given('''
             /cat_/
                 cat = 'cat'
         ''',
         expect_error="Line 2: 'cat_' is not defined")
 
-        self.given(u'''
+        self.given('''
             /cat/
                 cat = 'cat' .
         ''',
@@ -1368,7 +1377,7 @@ class TestErrorHandling(unittest.TestCase):
                 cat = 'cat' .
                            ^''')
 
-        self.given(u'''
+        self.given('''
             /cat/
                 cat = 'cat'__
         ''',
@@ -1376,7 +1385,7 @@ class TestErrorHandling(unittest.TestCase):
                 cat = 'cat'__
                            ^''')
 
-        self.given(u'''
+        self.given('''
             /_/
                 _ = 'underscore'
         ''',
@@ -1384,7 +1393,7 @@ class TestErrorHandling(unittest.TestCase):
                 _ = 'underscore'
                 ^''')
 
-        self.given(u'''
+        self.given('''
             /_./
         ''',
         expect_error='''Line 2: Unexpected DOT
@@ -1393,74 +1402,74 @@ class TestErrorHandling(unittest.TestCase):
 
 
     def test_invalid_flags(self):
-        self.given(u'''
+        self.given('''
             (pirate) 'carribean'
         ''',
         expect_error="Line 2: Unknown flag 'pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-        self.given(u'''
+        self.given('''
             (-pirate) 'carribean'
         ''',
         expect_error="Line 2: Unknown flag '-pirate'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-        self.given(u'''
+        self.given('''
             (--ignorecase) 'carribean'
         ''',
         expect_error="Line 2: Unknown flag '--ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
  
-        self.given(u'''
+        self.given('''
             (unicode-ignorecase)
             alpha
         ''',
         expect_error="Line 2: Unknown flag 'unicode-ignorecase'. Supported flags are: ascii bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse unicode verbose version0 version1 word")
 
-        self.given(u'''
+        self.given('''
             (unicode) alpha
         ''',
         expect_error="Line 2: 'unicode' is a global flag and must be set using global flag syntax, not scoped.")
 
-        self.given(u'''
+        self.given('''
             (ignorecase)alpha
         ''',
         expect_error='''Line 2: Unexpected VARNAME
             (ignorecase)alpha
                         ^''')
 
-        self.given(u'''
+        self.given('''
             (ignorecase)
              alpha
         ''',
         expect_error='Line 3: Unexpected INDENT')
 
-        self.given(u'''
+        self.given('''
             (ignorecase -ignorecase) alpha
         ''',
         expect_error='Line 2: (ignorecase -ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
  
-        self.given(u'''
+        self.given('''
             (-ignorecase ignorecase) alpha
         ''',
         expect_error='Line 2: (-ignorecase ignorecase) compiles to (?i-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 10')
  
-        self.given(u'''
+        self.given('''
             (-ignorecase ignorecase unicode)
             alpha
         ''',
         expect_error='Line 2: (-ignorecase ignorecase unicode) compiles to (?iu-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
  
-        self.given(u'''
+        self.given('''
             (-ignorecase unicode ignorecase)
             alpha
         ''',
         expect_error='Line 2: (-ignorecase unicode ignorecase) compiles to (?ui-i) which is rejected by the regex engine with error message: bad inline flags: flag turned on and off at position 11')
  
-        self.given(u'''
+        self.given('''
             (-unicode)
             alpha
         ''',
         expect_error='Line 2: (-unicode) compiles to (?-u) which is rejected by the regex engine with error message: bad inline flags: cannot turn off global flag at position 9')
  
-        self.given(u'''
+        self.given('''
             (ignorecase)
             (-ignorecase)
         ''',
@@ -1468,7 +1477,7 @@ class TestErrorHandling(unittest.TestCase):
             (-ignorecase)
                          ^''')
  
-        self.given(u'''
+        self.given('''
             (unicode ignorecase)
             (-ignorecase)
         ''',
@@ -1476,32 +1485,32 @@ class TestErrorHandling(unittest.TestCase):
             (-ignorecase)
                          ^''')
 
-        self.given(u'''
+        self.given('''
             (ascii unicode)
         ''',
         expect_error='Line 2: (ascii unicode) compiles to (?au) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-        self.given(u'''
+        self.given('''
             (unicode ascii)
         ''',
         expect_error='Line 2: (unicode ascii) compiles to (?ua) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-        self.given(u'''
+        self.given('''
             (ascii locale)
         ''',
         expect_error='Line 2: (ascii locale) compiles to (?aL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-        self.given(u'''
+        self.given('''
             (unicode locale)
         ''',
         expect_error='Line 2: (unicode locale) compiles to (?uL) which is rejected by the regex engine with error message: ASCII, LOCALE and UNICODE flags are mutually incompatible')
 
-        self.given(u'''
+        self.given('''
             (version0 version1)
         ''',
         expect_error='Line 2: (version0 version1) compiles to (?V0V1) which is rejected by the regex engine with error message: 8448')
 
-        self.given(u'''
+        self.given('''
             (version1 version0)
         ''',
         expect_error='Line 2: (version1 version0) compiles to (?V1V0) which is rejected by the regex engine with error message: 8448')
@@ -1930,34 +1939,44 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_invalid_non_op(self):
         self.given('''
+            non-BOS
+        ''',
+        expect_error="Line 2: 'non-BOS': 'BOS' is not a character-class")
+
+        self.given('''
+            non-any
+        ''',
+        expect_error="Line 2: 'non-any': 'any' is not a character-class")
+
+        self.given('''
             non-vowel
                 vowel = (ignorecase) 1 of: a i u e o
         ''',
-        expect_error="Line 2: 'non-vowel': 'vowel' must be a character-class")
+        expect_error="Line 2: 'non-vowel': 'vowel' is not a character-class")
 
         self.given('''
             non-pin
                 pin = 4..6 of digit
         ''',
-        expect_error="Line 2: 'non-pin': 'pin' must be a character-class")
+        expect_error="Line 2: 'non-pin': 'pin' is not a character-class")
 
         self.given('''
             non-digits
                 digits = 1.. of digit
         ''',
-        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+        expect_error="Line 2: 'non-digits': 'digits' is not a character-class")
 
         self.given('''
             non-digits
                 digits = 1.. <<- of digit
         ''',
-        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+        expect_error="Line 2: 'non-digits': 'digits' is not a character-class")
 
         self.given('''
             non-digits
                 digits = 1 <<+.. of digit
         ''',
-        expect_error="Line 2: 'non-digits': 'digits' must be a character-class")
+        expect_error="Line 2: 'non-digits': 'digits' is not a character-class")
 
         self.given('''
             non-non-alpha
@@ -2645,28 +2664,21 @@ class TestOutput(unittest.TestCase):
 
     def test_atomic_grouping_output(self):
         self.given('''
-            /bomb?/clock/mass/number?/
-                .bomb = 'bomb'
-                .[clock] = 'clock'
-                .mass: M A S s
-                .[number]: n u m b e r
+            @/alpha/ -- possible though pointless
         ''',
-        expect_regex=r'(?>bomb)?+(?P<clock>(?>clock))(?>[MASs])(?P<number>(?>[number]))?+')
+        expect_regex=r'(?>[a-zA-Z])')
 
         self.given('''
-            nonatomic?
-                nonatomic = /L?/R/
-                    .L = 'Left'
-                    .R = 'Right'
+            @/alpha/digit/  -- possible though pointless
         ''',
-        expect_regex=r'(?:(?>Left)?+(?>Right))?+')
+        expect_regex=r'(?>[a-zA-Z]\d)')
 
         self.given('''
-            /yadda/ditto/
-                .[yadda] = 'yadda'
-                ditto = yadda
+            @/digits/even/
+                digits = 0.. <<- of digit
+                even: 0 2 4 6 8
         ''',
-        expect_regex=r'(?P<yadda>(?>yadda))(?P<yadda>(?>yadda))')
+        expect_regex=r'(?>\d*[02468])')
 
 
     def test_builtin_output(self):
@@ -2674,6 +2686,96 @@ class TestOutput(unittest.TestCase):
             /alpha/upper/lower/digit/alnum/
         ''',
         expect_regex=r'[a-zA-Z][A-Z][a-z]\d[a-zA-Z0-9]')
+
+        self.given('''
+            (unicode)
+            /alpha/upper/lower/digit/alnum/
+        ''',
+        expect_regex=r'(?V1mwu)\p{Alphabetic}\p{Uppercase}\p{Lowercase}\d\p{Alphanumeric}')
+
+        self.given('''
+            /BOS/EOS/BOL/EOL/BOW/EOW/WOB/
+        ''',
+        expect_regex=r'\A\Z^$\m\M\b')
+
+        self.given('''
+            (multiline)
+            /BOS/EOS/BOL/EOL/BOW/EOW/WOB/
+        ''',
+        expect_regex=r'(?V1wm)\A\Z^$\m\M\b')
+
+        self.given('''
+            (-multiline)
+            /BOS/EOS/BOL/EOL/BOW/EOW/WOB/
+        ''',
+        expect_regex=r'(?V1w-m)\A\Z(?m:^)(?m:$)\m\M\b')
+
+        self.given('''
+            /any/uany/
+        ''',
+        expect_regex=r'(?s:.)\X')
+
+        self.given('''
+            (dotall)
+            /any/uany/
+        ''',
+        expect_regex=r'(?V1mws).\X')
+
+        self.given('''
+            (-dotall)
+            /any/uany/
+        ''',
+        expect_regex=r'(?V1mw-s)(?s:.)\X')
+
+        self.given('''
+            /backslash/wordchar/whitechar/linechar/padchar/space/tab/
+        ''',
+        expect_regex=r'\\\w\s[\r\n\x0B\x0C][ \t] \t')
+
+        self.given('''
+            (word verbose)
+            /backslash/wordchar/whitechar/linechar/padchar/space/tab/
+        ''',
+        expect_regex=r'(?V1mwx)\\\w\s[\r\n\x0B\x0C][ \t][ ]\t')
+
+        self.given('''
+            (-word -verbose)
+            /backslash/wordchar/whitechar/linechar/padchar/space/tab/
+        ''',
+        expect_regex=r'(?V1m-wx)\\\w\s\n[ \t] \t')
+
+        self.given('''
+            /non-alpha/non-upper/non-lower/non-digit/non-alnum/
+        ''',
+        expect_regex=r'[^a-zA-Z][^A-Z][^a-z]\D[^a-zA-Z0-9]')
+
+        self.given('''
+            (unicode)
+            /non-alpha/non-upper/non-lower/non-digit/non-alnum/
+        ''',
+        expect_regex=r'(?V1mwu)\P{Alphabetic}\P{Uppercase}\P{Lowercase}\D\P{Alphanumeric}')
+
+        self.given('''
+            /non-WOB/
+        ''',
+        expect_regex=r'\B')
+
+        self.given('''
+            /non-backslash/non-wordchar/non-whitechar/non-linechar/non-padchar/non-space/non-tab/
+        ''',
+        expect_regex=r'[^\\]\W\S.[^ \t][^ ][^\t]')
+
+        self.given('''
+            (word verbose)
+            /non-backslash/non-wordchar/non-whitechar/non-linechar/non-padchar/non-space/non-tab/
+        ''',
+        expect_regex=r'(?V1mwx)[^\\]\W\S.[^ \t][^ ][^\t]')
+
+        self.given('''
+            (-word -verbose)
+            /non-backslash/non-wordchar/non-whitechar/non-linechar/non-padchar/non-space/non-tab/
+        ''',
+        expect_regex=r'(?V1m-wx)[^\\]\W\S.[^ \t][^ ][^\t]')
 
 
     def test_quantifier_output(self):
@@ -3215,7 +3317,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             bdry
-                .bdry = WOB
+                bdry = @/WOB/
         ''',
         expect_regex=r'(?>\b)')
 
@@ -3475,7 +3577,7 @@ class TestOutput(unittest.TestCase):
                 spacetab2 = (verbose) /space/tab/
                 spacetab3 = (-verbose) /space/tab/
         ''',
-        expect_regex=r' \t(?x:[ ][\t])(?-x: \t)')
+        expect_regex=r' \t(?x:[ ]\t)(?-x: \t)')
 
         self.given('''
             /spacetab/spacetab2/
@@ -4350,10 +4452,21 @@ class TestMatches(unittest.TestCase):
         no_match=['\N{AMPERSAND}', r'\N{AMPERSAND}', r'\N{BIOHAZARD SIGN}', '☣'])
 
 
+    def test_atomic_grouping(self):
+        self.given('''
+            @/digits/even/
+                digits = 0.. <<- of digit
+                even: 0 2 4 6 8
+        ''',
+        expect_full_match=['0', '8', '10', '42', '178'],
+        no_match=['', '1', '9', '1337'],
+        partial_match={'24681' : '2468', '134579' : '134'})
+
+
     def test_builtin(self):
         self.given('''
             lowhex
-                lowhex: +alpha +alnum +lower not G..Z g..z +upper +digit
+                lowhex: +alpha +alnum +lower not G..Z g..z +upper +digit padchar backslash tab whitechar
         ''',
         expect_full_match=['a', 'b', 'c', 'd', 'e', 'f'],
         no_match=['A', 'B', 'F', 'x', 'X', 'z', 'Z', '0', '1', '9'])
