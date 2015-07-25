@@ -1181,22 +1181,22 @@ class TestErrorHandling(unittest.TestCase):
              ^''')
 
         self.given('''
-            3..2 of alpha
+            @3..2 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
         self.given('''
-            2..2 of alpha
+            @2..2 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
         self.given('''
-            1..1 of alpha
+            @1..1 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
         self.given('''
-            0..0 of alpha
+            @0..0 of alpha
         ''',
         expect_error='Line 2: Repeat max must be > min')
 
@@ -1266,6 +1266,20 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected LT
             ? <<- of alpha
               ^''')
+
+        self.given('''
+            1.. of alpha
+        ''',
+        expect_error='''Line 2: Unexpected OF
+            1.. of alpha
+                ^''')
+
+        self.given('''
+            1..2 of alpha
+        ''',
+        expect_error='''Line 2: Unexpected OF
+            1..2 of alpha
+                 ^''')
 
 
     def test_commenting_error(self):
@@ -1956,13 +1970,13 @@ class TestErrorHandling(unittest.TestCase):
 
         self.given('''
             non-pin
-                pin = 4..6 of digit
+                pin = @4..6 of digit
         ''',
         expect_error="Line 2: 'non-pin': 'pin' is not a character-class")
 
         self.given('''
             non-digits
-                digits = 1.. of digit
+                digits = @1.. of digit
         ''',
         expect_error="Line 2: 'non-digits': 'digits' is not a character-class")
 
@@ -2795,47 +2809,47 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{2}')
 
         self.given('''
-            .. of alpha
+            @.. of alpha
         ''',
         expect_regex='[a-zA-Z]*+')
 
         self.given('''
-            0.. of alpha
+            @0.. of alpha
         ''',
         expect_regex='[a-zA-Z]*+')
 
         self.given('''
-            1.. of alpha
+            @1.. of alpha
         ''',
         expect_regex='[a-zA-Z]++')
 
         self.given('''
-            2.. of alpha
+            @2.. of alpha
         ''',
         expect_regex='[a-zA-Z]{2,}+')
 
         self.given('''
-            ..2 of alpha
+            @..2 of alpha
         ''',
         expect_regex='[a-zA-Z]{,2}+')
 
         self.given('''
-            0..2 of alpha
+            @0..2 of alpha
         ''',
         expect_regex='[a-zA-Z]{,2}+')
 
         self.given('''
-            ..1 of alpha
+            @..1 of alpha
         ''',
         expect_regex='[a-zA-Z]?+')
 
         self.given('''
-            0..1 of alpha
+            @0..1 of alpha
         ''',
         expect_regex='[a-zA-Z]?+')
 
         self.given('''
-            3..4 of alpha
+            @3..4 of alpha
         ''',
         expect_regex='[a-zA-Z]{3,4}+')
 
@@ -2926,13 +2940,13 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             alphas?
-                alphas = 1.. of alpha
+                alphas = @1.. of alpha
         ''',
         expect_regex='[a-zA-Z]*+')
 
         self.given('''
             alphas?
-                alphas = .. of alpha
+                alphas = @.. of alpha
         ''',
         expect_regex='(?:[a-zA-Z]*+)?+')
 
@@ -2944,7 +2958,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             opt_alpha?
-                opt_alpha = 0..1 of alpha
+                opt_alpha = @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)?+')
 
@@ -2966,12 +2980,12 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            ? of 0..1 of alpha
+            ? of @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            0..1 of ? of alpha
+            @0..1 of ? of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)?+')
 
@@ -3001,22 +3015,22 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]{2})?+')
 
         self.given('''
-            ? of 1..3 of alpha
+            ? of @1..3 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{1,3}+)?+')
 
         self.given('''
-            1..3 of ? of alpha
+            @1..3 of ? of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+){1,3}+')
 
         self.given('''
-            1..3 <<- of 5..7 of alpha
+            1..3 <<- of @5..7 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{5,7}+){1,3}')
 
         self.given('''
-            1..3 of 5..7 <<- of alpha
+            @1..3 of 5..7 <<- of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{5,7}){1,3}+')
 
@@ -3041,7 +3055,7 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]{5,7}?){1,3}?')
 
         self.given('''
-            2 of 3..4 of alpha
+            2 of @3..4 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{3,4}+){2}')
 
@@ -3056,7 +3070,7 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]{3,4}?){2}')
 
         self.given('''
-            2..3 of 4 of alpha
+            @2..3 of 4 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{4}){2,3}+')
 
@@ -3093,7 +3107,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             DWORD_speak
-                DWORD_speak = 1.. of 4 of hex
+                DWORD_speak = @1.. of 4 of hex
                     hex: 0..9 A..F
         ''',
         expect_regex='(?:[0-9A-F]{4})++')
@@ -3335,79 +3349,79 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             bdries?
-                bdries = 1.. of WOB
+                bdries = @1.. of WOB
         ''',
         expect_regex=r'\b*+')
 
 
     def test_string_escape_output(self):
         self.given(r'''
-            3.. of '\n'
+            @3.. of '\n'
         ''',
         expect_regex=r'\n{3,}+')
 
         self.given(r'''
-            3.. of '\t'
+            @3.. of '\t'
         ''',
         expect_regex=r'\t{3,}+')
 
         self.given('''
-            3.. of '\t'
+            @3.. of '\t'
         ''',
         expect_regex='\t{3,}+')
 
         self.given(r'''
-            3.. of '\x61'
+            @3.. of '\x61'
         ''',
         expect_regex=r'\x61{3,}+')
 
         self.given('''
-            3.. of '\x61'
+            @3.. of '\x61'
         ''',
         expect_regex='a{3,}+')
 
         self.given(u'''
-            3.. of '\U00000061'
+            @3.. of '\U00000061'
         ''',
         expect_regex='a{3,}+')
 
         self.given(r'''
-            3.. of '\u0061'
+            @3.. of '\u0061'
         ''',
         expect_regex=r'\u0061{3,}+')
 
         self.given(r'''
-            3.. of '\61'
+            @3.. of '\61'
         ''',
         expect_regex=r'\61{3,}+')
 
         self.given(u'''
-            3.. of '\N{AMPERSAND}'
+            @3.. of '\N{AMPERSAND}'
         ''',
         expect_regex='&{3,}+')
 
         self.given(r'''
-            3.. of '\N{AMPERSAND}'
+            @3.. of '\N{AMPERSAND}'
         ''',
         expect_regex=r'\N{AMPERSAND}{3,}+')
 
         self.given(r'''
-            3.. of '\N{LEFTWARDS ARROW}'
+            @3.. of '\N{LEFTWARDS ARROW}'
         ''',
         expect_regex=r'\N{LEFTWARDS ARROW}{3,}+')
 
         self.given(u'''
-            3.. of 'M\N{AMPERSAND}M\\\N{APOSTROPHE}s'
+            @3.. of 'M\N{AMPERSAND}M\\\N{APOSTROPHE}s'
         ''',
         expect_regex="(?:M&M's){3,}+")
 
         self.given(ur'''
-            3.. of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
+            @3.. of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
         ''',
         expect_regex=r'(?:M\N{AMPERSAND}M\N{APOSTROPHE}s){3,}+')
 
         self.given(ur'''
-            3.. of '\r\n'
+            @3.. of '\r\n'
         ''',
         expect_regex=r'(?:\r\n){3,}+')
 
@@ -3488,7 +3502,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
             (ignorecase) /super/uppers/
                 super = 'super'
-                uppers = (-ignorecase) 1.. of upper
+                uppers = (-ignorecase) @1.. of upper
         ''',
         expect_regex='(?i:super(?-i:[A-Z]++))')
 
@@ -3813,21 +3827,21 @@ class TestOutput(unittest.TestCase):
             |has_symbol>
             |/BOS/len_8_to_255/EOS/|
 
-                len_8_to_255 = 8..255 of any
+                len_8_to_255 = @8..255 of any
                 mixed_case = <@>
                                 |has_upper>
                                 |has_lower>
 
                     has_upper = /non_uppers?/upper/
-                        non_uppers = 1.. of: not: upper
+                        non_uppers = @1.. of: not: upper
                     has_lower = /non_lowers?/lower/
-                        non_lowers = 1.. of: not: lower
+                        non_lowers = @1.. of: not: lower
 
                 has_number = /non_digits?/digit/
-                    non_digits = 1.. of: not: digit
+                    non_digits = @1.. of: not: digit
                 has_symbol = /non_symbols?/symbol/
                     symbol: not: /Alphanumeric
-                    non_symbols = 1.. of: not: symbol
+                    non_symbols = @1.. of: not: symbol
         ''',
         expect_regex='(?=(?=[^A-Z]*+[A-Z])(?=[^a-z]*+[a-z]))(?=[^\d]*+\d)(?=[^\P{Alphanumeric}]*+\P{Alphanumeric})\A(?s:.){8,255}+\Z')
 
@@ -3837,7 +3851,7 @@ class TestOutput(unittest.TestCase):
                     |wordchars|
                             <s|
 
-                    wordchars = 1.. of wordchar
+                    wordchars = @1.. of wordchar
                     s = 's'
         ''',
         expect_regex='\w++(?<=s)')
@@ -3850,7 +3864,7 @@ class TestOutput(unittest.TestCase):
                        <able|
 
                     un = 'un'
-                    unxable = 1.. of wordchar
+                    unxable = @1.. of wordchar
                     able = 'able'
         ''',
         expect_regex='(?=un)\w++(?<=able)')
@@ -3874,7 +3888,7 @@ class TestOutput(unittest.TestCase):
                                |digits|
 
                         dollar = '$'
-*)                      [digits] = 1.. of digit
+*)                      [digits] = @1.. of digit
 
                     digits_buck = <@>
                         |digits|
@@ -3888,9 +3902,9 @@ class TestOutput(unittest.TestCase):
             /begin/msg/end/
                 begin = .'BEGIN'.
                 end = .'END'.
-                msg = 1.. of <<|
-                               |1.. of: not: E
-                               |E_not_END
+                msg = @1.. of <<|
+                                |@1.. of: not: E
+                                |E_not_END
 
                     E_not_END = <@>
                         |E|
@@ -3910,7 +3924,7 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             non_digits
-                non_digits = 1.. of non-digit
+                non_digits = @1.. of non-digit
         ''',
         expect_regex=r'\D++')
 
@@ -3968,7 +3982,7 @@ class TestOutput(unittest.TestCase):
         self.given('''
             csv
                 csv = /value?/more_values?/
-                    value = 1.. of non-separator
+                    value = @1.. of non-separator
 *)                      separator: ,
                     more_values = /separator/value?/more_values?/
         ''',
@@ -3979,10 +3993,10 @@ class TestOutput(unittest.TestCase):
                 text_in_parens = /open/text/close/
                     open: (
                     close: )
-                    text = 1.. of <<|
-                                    |non-open
-                                    |non-close
-                                    |text_in_parens
+                    text = @1.. of <<|
+                                     |non-open
+                                     |non-close
+                                     |text_in_parens
         ''',
         expect_regex='(?P<text_in_parens>\((?:[^\(]|[^\)]|(?&text_in_parens))++\))')
 
@@ -4488,13 +4502,13 @@ class TestMatches(unittest.TestCase):
         partial_match={'ABC' : 'AB'})
 
         self.given('''
-            3.. of alpha
+            @3.. of alpha
         ''',
         expect_full_match=['abc', 'DeFGhij'],
         no_match=['', 'Aa4'])
 
         self.given('''
-            4..5 of alpha
+            @4..5 of alpha
         ''',
         expect_full_match=['abcd', 'abcDE'],
         no_match=['', 'ab123'],
@@ -4540,7 +4554,7 @@ class TestMatches(unittest.TestCase):
             /open/content/close/
                 open: (
                 close: )
-                content = 1.. of: +alnum +open +close
+                content = @1.. of: +alnum +open +close
         ''',
         no_match=['(pow)wow(kaching)zzz'])
 
@@ -4554,7 +4568,7 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             DWORD_speak
-                DWORD_speak = 1.. of 4 of hex
+                DWORD_speak = @1.. of 4 of hex
                     hex: 0..9 A..F
         ''',
         expect_full_match=['CAFEBABE', 'DEADBEEF', '0FF1CE95'],
@@ -5163,21 +5177,21 @@ class TestMatches(unittest.TestCase):
             |has_symbol>
             |/BOS/len_8_to_255/EOS/|
 
-                len_8_to_255 = 8..255 of any
+                len_8_to_255 = @8..255 of any
                 mixed_case = <@>
                                 |has_upper>
                                 |has_lower>
 
                     has_upper = /non_uppers?/upper/
-                        non_uppers = 1.. of: not: upper
+                        non_uppers = @1.. of: not: upper
                     has_lower = /non_lowers?/lower/
-                        non_lowers = 1.. of: not: lower
+                        non_lowers = @1.. of: not: lower
 
                 has_number = /non_digits?/digit/
-                    non_digits = 1.. of: not: digit
+                    non_digits = @1.. of: not: digit
                 has_symbol = /non_symbols?/symbol/
                     symbol: not: /Alphanumeric
-                    non_symbols = 1.. of: not: symbol
+                    non_symbols = @1.. of: not: symbol
         ''',
         expect_full_match=['AAaa11!!'],
         no_match=['$h0RT', 'noNumber!', 'noSymb0l', 'n0upcase!', 'N0LOWCASE!'])
@@ -5188,7 +5202,7 @@ class TestMatches(unittest.TestCase):
                     |wordchars|
                             <s|
 
-                    wordchars = 1.. of wordchar
+                    wordchars = @1.. of wordchar
                     s = 's'
         ''',
         expect_full_match=['boss'],
@@ -5202,7 +5216,7 @@ class TestMatches(unittest.TestCase):
                        <able|
 
                     un = 'un'
-                    unxable = 1.. of wordchar
+                    unxable = @1.. of wordchar
                     able = 'able'
         ''',
         expect_full_match=['undoable', 'unable'])
@@ -5228,7 +5242,7 @@ class TestMatches(unittest.TestCase):
                                |digits|
 
                         dollar = '$'
-*)                      [digits] = 1.. of digit
+*)                      [digits] = @1.. of digit
 
                     digits_buck = <@>
                         |digits|
@@ -5249,9 +5263,9 @@ class TestMatches(unittest.TestCase):
             /begin/msg/end/
                 begin = .'BEGIN'.
                 end = .'END'.
-                msg = 1.. of <<|
-                               |1.. of: not: E
-                               |E_not_END
+                msg = @1.. of <<|
+                                |@1.. of: not: E
+                                |E_not_END
 
                     E_not_END = <<|
                                   |check_ahead
@@ -5267,7 +5281,6 @@ class TestMatches(unittest.TestCase):
                         check_behind = <@>
                             <!WOB|
                                  |E|
-
         ''',
         fn=regex.search,
         expect_full_match=[
@@ -5290,7 +5303,7 @@ class TestMatches(unittest.TestCase):
 
         self.given('''
             non_digits
-                non_digits = 1.. of non-digit
+                non_digits = @1.. of non-digit
         ''',
         expect_full_match=['ZERO-ZERO-SEVEN', 'ZEROZEROSEVEN'])
 
@@ -5351,7 +5364,7 @@ class TestMatches(unittest.TestCase):
                     |/value?/more_values?/|
                                <!/BOS/EOS/|
 
-                        value = 1.. of non-separator
+                        value = @1.. of non-separator
 *)                          separator: ,
                         more_values = /separator/value?/more_values?/
         ''',
@@ -5366,10 +5379,10 @@ class TestMatches(unittest.TestCase):
                 text_in_parens = /open/text?/close/
                     open: (
                     close: )
-                    text = 1.. of <<|
-                                    |non-open
-                                    |non-close
-                                    |text_in_parens
+                    text = @1.. of <<|
+                                     |non-open
+                                     |non-close
+                                     |text_in_parens
         ''',
         expect_full_match=[
             '(EST)', 

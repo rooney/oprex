@@ -798,25 +798,28 @@ def p_quantifier(t):
 
 
 def p_repeat_N_times(t):
-    '''repeat_N_times : NUMBER of'''
-    number = t[1]
+    '''repeat_N_times : AT NUMBER of
+                      |    NUMBER of'''
+    number = t[1] if t[1] != '@' else t[2]
     t[0] = Quantifier(base=('{%s}' % number), modifier='')
 
 
 def p_repeat_range(t):
-    '''repeat_range : numrange of
-                    | numrange backtrack MINUS of
-                    | NUMBER   backtrack PLUS  DOT DOT of
-                    | NUMBER   backtrack PLUS  DOT DOT NUMBER of'''
-    possessive = len(t) == 3 # the first form above
+    '''repeat_range : AT numrange of
+                    |    numrange backtrack MINUS of
+                    |    NUMBER   backtrack PLUS  DOT DOT of
+                    |    NUMBER   backtrack PLUS  DOT DOT NUMBER of'''
+    possessive = len(t) == 4 # the first form above
     greedy     = len(t) == 5 # the second form
     lazy       = not possessive and not greedy # third & fourth forms
 
-    if lazy:
+    if possessive:
+        min, max = t[2]
+    elif greedy:
+        min, max = t[1]
+    else: # lazy
         min = t[1]
         max = t[6] if len(t) == 8 else ''
-    else:
-        min, max = t[1]
 
     if not min:
         min = '0'
