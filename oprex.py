@@ -1133,22 +1133,49 @@ def p_lookup_expr(t):
     t[0] = t[1]
 
 def p_lookup(t):
-    '''lookup : opt_atomizer SLASH lookup_chain
-              |                    lookup_item'''
+    '''lookup :             lookup_item
+              | chain_begin lookup_chain chain_end'''
     if len(t) == 2:
         items = [t[1]]
         atomize = False
     else:
-        atomize = t[1] is not None
-        items = t[3]
+        atomize = t[1].startswith('@')
+        items = t[2]
+
+        def sugar_for(varname):
+            return VariableLookup(varname, t.lineno(0), optional='')
+
+        if t[1].endswith('//'):
+            items.appendleft(sugar_for('BOL'))
+        elif t[1].endswith('./'):
+            items.appendleft(sugar_for('BOS'))
+
+        if t[3] == '/':
+            items.append(sugar_for('EOL'))
+        elif t[3] == '.':
+            items.append(sugar_for('EOS'))
+
     t[0] = LookupExpr(items=items, atomize=atomize, ongoing_declarations=t.lexer.ongoing_declarations)
 
 
-def p_opt_atomizer(t):
-    '''opt_atomizer :
-                    | AT'''
-    if len(t) == 2:
+def p_chain_begin(t):
+    '''chain_begin : AT SLASH SLASH
+                   | AT  DOT  SLASH
+                   | AT       SLASH
+                   |    SLASH SLASH
+                   |     DOT  SLASH
+                   |          SLASH'''
+    t[0] = ''.join(t[1:])
+
+
+def p_chain_end(t):
+    '''chain_end : SLASH
+                 | DOT
+                 | '''
+    try:
         t[0] = t[1]
+    except IndexError:
+        t[0] = ''
 
 
 LookupChain = deque

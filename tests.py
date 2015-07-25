@@ -2000,6 +2000,71 @@ class TestErrorHandling(unittest.TestCase):
                 ^''')
 
 
+    def test_invalid_anchor_sugar(self):
+        self.given('''
+            ./
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            ./
+              ^''')
+
+        self.given('''
+            /.
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /.
+             ^''')
+
+        self.given('''
+            .//.
+        ''',
+        expect_error='''Line 2: Unexpected SLASH
+            .//.
+              ^''')
+
+        self.given('''
+            ./alpha./
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            ./alpha./
+                   ^''')
+
+        self.given('''
+            /.alpha/.
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            /.alpha/.
+             ^''')
+
+        self.given('''
+            //
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            //
+              ^''')
+
+        self.given('''
+            ////
+        ''',
+        expect_error='''Line 2: Unexpected SLASH
+            ////
+              ^''')
+
+        self.given('''
+            /alpha//digit/
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            /alpha//digit/
+                    ^''')
+
+        self.given('''
+            /alpha/.digit/
+        ''',
+        expect_error='''Line 2: Unexpected VARNAME
+            /alpha/.digit/
+                    ^''')
+
+
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         default_flags = '(?V1mw)'
@@ -2683,7 +2748,7 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'(?>[a-zA-Z])')
 
         self.given('''
-            @/alpha/digit/  -- possible though pointless
+            @/alpha/digit/ -- possible though pointless
         ''',
         expect_regex=r'(?>[a-zA-Z]\d)')
 
@@ -2693,6 +2758,20 @@ class TestOutput(unittest.TestCase):
                 even: 0 2 4 6 8
         ''',
         expect_regex=r'(?>\d*[02468])')
+
+        self.given('''
+            ./digits/even/.
+                digits = 0.. <<- of digit
+                even: 0 2 4 6 8
+        ''',
+        expect_regex=r'\A\d*[02468]\Z')
+
+        self.given('''
+            //digits/even//
+                digits = 0.. <<- of digit
+                even: 0 2 4 6 8
+        ''',
+        expect_regex=r'^\d*[02468]$')
 
 
     def test_builtin_output(self):
@@ -3825,7 +3904,7 @@ class TestOutput(unittest.TestCase):
             |mixed_case>
             |has_number>
             |has_symbol>
-            |/BOS/len_8_to_255/EOS/|
+            |./len_8_to_255/.|
 
                 len_8_to_255 = @8..255 of any
                 mixed_case = <@>
@@ -3969,7 +4048,7 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?P<singularity>(?&singularity))')
 
         self.given('''
-            /BOS/palindrome/EOS/
+            ./palindrome/.
                 palindrome = <<|
                                |/letter/palindrome/=letter/
                                |/letter/=letter/
@@ -3999,6 +4078,122 @@ class TestOutput(unittest.TestCase):
                                      |text_in_parens
         ''',
         expect_regex='(?P<text_in_parens>\((?:[^\(]|[^\)]|(?&text_in_parens))++\))')
+
+
+    def test_anchor_sugar_output(self):
+        self.given('''
+            //wordchar/
+        ''',
+        expect_regex=r'^\w')
+
+        self.given('''
+            /wordchar//
+        ''',
+        expect_regex=r'\w$')
+
+        self.given('''
+            //wordchar//
+        ''',
+        expect_regex=r'^\w$')
+
+        self.given('''
+            ./wordchar/
+        ''',
+        expect_regex=r'\A\w')
+
+        self.given('''
+            /wordchar/.
+        ''',
+        expect_regex=r'\w\Z')
+
+        self.given('''
+            ./wordchar/.
+        ''',
+        expect_regex=r'\A\w\Z')
+
+        self.given('''
+            ./wordchar//
+        ''',
+        expect_regex=r'\A\w$')
+
+        self.given('''
+            //wordchar/.
+        ''',
+        expect_regex=r'^\w\Z')
+
+        self.given('''
+            @//wordchar/
+        ''',
+        expect_regex=r'(?>^\w)')
+
+        self.given('''
+            @./wordchar/
+        ''',
+        expect_regex=r'(?>\A\w)')
+
+        self.given('''
+            @//wordchar//
+        ''',
+        expect_regex=r'(?>^\w$)')
+
+        self.given('''
+            @./wordchar//
+        ''',
+        expect_regex=r'(?>\A\w$)')
+
+        self.given('''
+            @//wordchar/.
+        ''',
+        expect_regex=r'(?>^\w\Z)')
+
+        self.given('''
+            @./wordchar/.
+        ''',
+        expect_regex=r'(?>\A\w\Z)')
+
+        self.given('''
+            ./wordchar/digit//
+        ''',
+        expect_regex=r'\A\w\d$')
+
+        self.given('''
+            @//wordchar/digit/.
+        ''',
+        expect_regex=r'(?>^\w\d\Z)')
+
+        self.given('''
+            //wordchar/digit//
+        ''',
+        expect_regex=r'^\w\d$')
+
+        self.given('''
+            @./wordchar/digit/.
+        ''',
+        expect_regex=r'(?>\A\w\d\Z)')
+
+        self.given('''
+            <<|
+              |./wordchar//
+              |//wordchar/.
+        ''',
+        expect_regex=r'\A\w$|^\w\Z')
+
+        self.given('''
+            <@>
+             |./wordchar//>
+             |./wordchar/.>
+             |//wordchar//>
+             |./wordchar//>
+             |./wordchar/.|
+                          |//wordchar//|
+                                       |//wordchar/.|
+                                                    |./wordchar//|
+                                                    <./wordchar/.|
+                                                    <//wordchar/.|
+                                                   <@//wordchar//|
+                                                   <@./wordchar//|
+        ''',
+        expect_regex=r'(?=\A\w$)(?=\A\w\Z)(?=^\w$)(?=\A\w$)\A\w\Z^\w$^\w\Z\A\w$(?<=\A\w\Z)(?<=^\w\Z)(?<=(?>^\w$))(?<=(?>\A\w$))')
 
 
 class TestMatches(unittest.TestCase):
@@ -4475,6 +4670,14 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['0', '8', '10', '42', '178'],
         no_match=['', '1', '9', '1337'],
         partial_match={'24681' : '2468', '134579' : '134'})
+
+        self.given('''
+            //digits/even//
+                digits = 0.. <<- of digit
+                even: 0 2 4 6 8
+        ''',
+        expect_full_match=['0', '8', '10', '42', '178'],
+        no_match=['', '1', '9', '1337', '24681', '134579'])
 
 
     def test_builtin(self):
@@ -5175,7 +5378,7 @@ class TestMatches(unittest.TestCase):
             |mixed_case>
             |has_number>
             |has_symbol>
-            |/BOS/len_8_to_255/EOS/|
+            |./len_8_to_255/.|
 
                 len_8_to_255 = @8..255 of any
                 mixed_case = <@>
@@ -5347,7 +5550,7 @@ class TestMatches(unittest.TestCase):
 
     def test_recursion(self):
         self.given('''
-            /BOS/palindrome/EOS/
+            ./palindrome/.
                 palindrome = <<|
                                |/letter/palindrome/=letter/
                                |/letter/=letter/
