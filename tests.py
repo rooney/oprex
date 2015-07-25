@@ -2123,7 +2123,7 @@ class TestErrorHandling(unittest.TestCase):
 
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
-        default_flags = '(?V1mw)'
+        default_flags = '(?V1w)'
         regex_source = oprex(oprex_source)
         regex_source = regex_source.replace(default_flags, '', 1)
         if regex_source != expect_regex:
@@ -2827,7 +2827,7 @@ class TestOutput(unittest.TestCase):
                 digits = 1.. <<- of digit
                 even: 0 2 4 6 8
         ''',
-        expect_regex=r'^\d*[02468]$')
+        expect_regex=r'(?m:^)\d*[02468](?m:$)')
 
 
     def test_builtin_output(self):
@@ -2840,12 +2840,12 @@ class TestOutput(unittest.TestCase):
             (unicode)
             /alpha/upper/lower/digit/alnum/
         ''',
-        expect_regex=r'(?V1mwu)\p{Alphabetic}\p{Uppercase}\p{Lowercase}\d\p{Alphanumeric}')
+        expect_regex=r'(?V1wu)\p{Alphabetic}\p{Uppercase}\p{Lowercase}\d\p{Alphanumeric}')
 
         self.given('''
             /BOS/EOS/BOL/EOL/BOW/EOW/WOB/
         ''',
-        expect_regex=r'\A\Z^$\m\M\b')
+        expect_regex=r'\A\Z(?m:^)(?m:$)\m\M\b')
 
         self.given('''
             (multiline)
@@ -2868,13 +2868,13 @@ class TestOutput(unittest.TestCase):
             (dotall)
             /any/uany/
         ''',
-        expect_regex=r'(?V1mws).\X')
+        expect_regex=r'(?V1ws).\X')
 
         self.given('''
             (-dotall)
             /any/uany/
         ''',
-        expect_regex=r'(?V1mw-s)(?s:.)\X')
+        expect_regex=r'(?V1w-s)(?s:.)\X')
 
         self.given('''
             /backslash/wordchar/whitechar/linechar/padchar/space/tab/
@@ -2885,13 +2885,13 @@ class TestOutput(unittest.TestCase):
             (word verbose)
             /backslash/wordchar/whitechar/linechar/padchar/space/tab/
         ''',
-        expect_regex=r'(?V1mwx)\\\w\s[\r\n\x0B\x0C][ \t][ ]\t')
+        expect_regex=r'(?V1wx)\\\w\s[\r\n\x0B\x0C][ \t][ ]\t')
 
         self.given('''
             (-word -verbose)
             /backslash/wordchar/whitechar/linechar/padchar/space/tab/
         ''',
-        expect_regex=r'(?V1m-wx)\\\w\s\n[ \t] \t')
+        expect_regex=r'(?V1-wx)\\\w\s\n[ \t] \t')
 
         self.given('''
             /non-alpha/non-upper/non-lower/non-digit/non-alnum/
@@ -2902,7 +2902,7 @@ class TestOutput(unittest.TestCase):
             (unicode)
             /non-alpha/non-upper/non-lower/non-digit/non-alnum/
         ''',
-        expect_regex=r'(?V1mwu)\P{Alphabetic}\P{Uppercase}\P{Lowercase}\D\P{Alphanumeric}')
+        expect_regex=r'(?V1wu)\P{Alphabetic}\P{Uppercase}\P{Lowercase}\D\P{Alphanumeric}')
 
         self.given('''
             /non-WOB/
@@ -2918,13 +2918,13 @@ class TestOutput(unittest.TestCase):
             (word verbose)
             /non-backslash/non-wordchar/non-whitechar/non-linechar/non-padchar/non-space/non-tab/
         ''',
-        expect_regex=r'(?V1mwx)[^\\]\W\S.[^ \t][^ ][^\t]')
+        expect_regex=r'(?V1wx)[^\\]\W\S.[^ \t][^ ][^\t]')
 
         self.given('''
             (-word -verbose)
             /non-backslash/non-wordchar/non-whitechar/non-linechar/non-padchar/non-space/non-tab/
         ''',
-        expect_regex=r'(?V1m-wx)[^\\]\W\S.[^ \t][^ ][^\t]')
+        expect_regex=r'(?V1-wx)[^\\]\W\S.[^ \t][^ ][^\t]')
 
 
     def test_quantifier_output(self):
@@ -3524,12 +3524,12 @@ class TestOutput(unittest.TestCase):
         self.given('''
             (unicode)
         ''',
-        expect_regex='(?V1mwu)')
+        expect_regex='(?V1wu)')
 
         self.given('''
             (ascii version0)
         ''',
-        expect_regex='(?mwaV0)')
+        expect_regex='(?waV0)')
 
         self.given('''
             (bestmatch dotall enhancematch fullcase ignorecase locale multiline reverse verbose version1 word)
@@ -3549,34 +3549,34 @@ class TestOutput(unittest.TestCase):
         self.given('''
             (-word)
         ''',
-        expect_regex='(?V1m-w)')
+        expect_regex='(?V1-w)')
 
         self.given('''
             (ignorecase)
         ''',
-        expect_regex='(?V1mwi)')
+        expect_regex='(?V1wi)')
 
         self.given('''
             (-ignorecase)
         ''',
-        expect_regex='(?V1mw-i)')
+        expect_regex='(?V1w-i)')
 
         self.given('''
             (unicode ignorecase)
         ''',
-        expect_regex='(?V1mwui)')
+        expect_regex='(?V1wui)')
 
         self.given('''
             (unicode)
             (ignorecase) alpha
         ''',
-        expect_regex='(?V1mwu)(?i:\p{Alphabetic})')
+        expect_regex='(?V1wu)(?i:\p{Alphabetic})')
 
         self.given('''
             (unicode ignorecase)
             (-ignorecase) lower
         ''',
-        expect_regex='(?V1mwui)(?-i:\p{Lowercase})')
+        expect_regex='(?V1wui)(?-i:\p{Lowercase})')
 
         self.given('''
             (ignorecase) .'giga'_
@@ -3645,6 +3645,19 @@ class TestOutput(unittest.TestCase):
 
     def test_flag_dependent_charclass_output(self):
         self.given('''
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (multiline) /BOL/EOL/BOS/EOS/
+        ''',
+        expect_regex='(?m:^)(?m:$)(?m:^$\A\Z)\A\Z')
+
+        self.given('''
+            (multiline)
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (multiline) /BOL/EOL/BOS/EOS/
+        ''',
+        expect_regex='(?V1wm)^$(?m:^$\A\Z)\A\Z')
+
+        self.given('''
             (-multiline)
             /BOL/EOL/line2/BOS/EOS/
                 line2 = (multiline) /BOL/EOL/BOS/EOS/
@@ -3655,13 +3668,27 @@ class TestOutput(unittest.TestCase):
             /BOL/EOL/line2/BOS/EOS/
                 line2 = (-multiline) /BOL/EOL/BOS/EOS/
         ''',
-        expect_regex='^$(?-m:(?m:^)(?m:$)\A\Z)\A\Z')
+        expect_regex='(?m:^)(?m:$)(?-m:(?m:^)(?m:$)\A\Z)\A\Z')
+
+        self.given('''
+            (multiline)
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (-multiline) /BOL/EOL/BOS/EOS/
+        ''',
+        expect_regex='(?V1wm)^$(?-m:(?m:^)(?m:$)\A\Z)\A\Z')
+
+        self.given('''
+            (-multiline)
+            /BOL/EOL/line2/BOS/EOS/
+                line2 = (-multiline) /BOL/EOL/BOS/EOS/
+        ''',
+        expect_regex='(?V1w-m)(?m:^)(?m:$)(?-m:(?m:^)(?m:$)\A\Z)\A\Z')
 
         self.given('''
             /BOL/EOL/BOS/EOS/line2/
                 line2 = (dotall) /BOL/EOL/BOS/EOS/ -- should be unaffected
         ''',
-        expect_regex='^$\A\Z(?s:^$\A\Z)')
+        expect_regex='(?m:^)(?m:$)\A\Z(?s:(?m:^)(?m:$)\A\Z)')
 
         self.given('''
             /any/any2/any3/
@@ -3694,46 +3721,46 @@ class TestOutput(unittest.TestCase):
             (unicode)
             linechar
         ''',
-        expect_regex=r'(?V1mwu)[\r\n\x0B\x0C\x85\u2028\u2029]')
+        expect_regex=r'(?V1wu)[\r\n\x0B\x0C\x85\u2028\u2029]')
 
         self.given('''
             (word unicode)
             linechar
         ''',
-        expect_regex=r'(?V1mwu)[\r\n\x0B\x0C\x85\u2028\u2029]')
+        expect_regex=r'(?V1wu)[\r\n\x0B\x0C\x85\u2028\u2029]')
 
         self.given('''
             (unicode word)
             linechar
         ''',
-        expect_regex=r'(?V1muw)[\r\n\x0B\x0C\x85\u2028\u2029]')
+        expect_regex=r'(?V1uw)[\r\n\x0B\x0C\x85\u2028\u2029]')
 
         self.given('''
             (unicode)
             (word) linechar
         ''',
-        expect_regex=r'(?V1mwu)(?w:[\r\n\x0B\x0C\x85\u2028\u2029])')
+        expect_regex=r'(?V1wu)(?w:[\r\n\x0B\x0C\x85\u2028\u2029])')
 
         self.given('''
             (unicode -word)
             /linechar/line2/
                 line2 = (word) linechar
         ''',
-        expect_regex=r'(?V1mu-w)\n(?w:[\r\n\x0B\x0C\x85\u2028\u2029])')
+        expect_regex=r'(?V1u-w)\n(?w:[\r\n\x0B\x0C\x85\u2028\u2029])')
 
         self.given('''
             (-word unicode)
             (word) /linechar/line2/
                 line2 = (-word) linechar
         ''',
-        expect_regex=r'(?V1mu-w)(?w:[\r\n\x0B\x0C\x85\u2028\u2029](?-w:\n))')
+        expect_regex=r'(?V1u-w)(?w:[\r\n\x0B\x0C\x85\u2028\u2029](?-w:\n))')
 
         self.given('''
             (unicode)
             (-word) /linechar/line2/
                 line2 = (word) linechar
         ''',
-        expect_regex=r'(?V1mwu)(?-w:\n(?w:[\r\n\x0B\x0C\x85\u2028\u2029]))')
+        expect_regex=r'(?V1wu)(?-w:\n(?w:[\r\n\x0B\x0C\x85\u2028\u2029]))')
 
 
     def test_orblock_output(self):
@@ -4089,17 +4116,17 @@ class TestOutput(unittest.TestCase):
         self.given('''
             //wordchar/
         ''',
-        expect_regex=r'^\w')
+        expect_regex=r'(?m:^)\w')
 
         self.given('''
             /wordchar//
         ''',
-        expect_regex=r'\w$')
+        expect_regex=r'\w(?m:$)')
 
         self.given('''
             //wordchar//
         ''',
-        expect_regex=r'^\w$')
+        expect_regex=r'(?m:^)\w(?m:$)')
 
         self.given('''
             ./wordchar/
@@ -4119,17 +4146,17 @@ class TestOutput(unittest.TestCase):
         self.given('''
             ./wordchar//
         ''',
-        expect_regex=r'\A\w$')
+        expect_regex=r'\A\w(?m:$)')
 
         self.given('''
             //wordchar/.
         ''',
-        expect_regex=r'^\w\Z')
+        expect_regex=r'(?m:^)\w\Z')
 
         self.given('''
             @//wordchar/
         ''',
-        expect_regex=r'(?>^\w)')
+        expect_regex=r'(?>(?m:^)\w)')
 
         self.given('''
             @./wordchar/
@@ -4139,17 +4166,17 @@ class TestOutput(unittest.TestCase):
         self.given('''
             @//wordchar//
         ''',
-        expect_regex=r'(?>^\w$)')
+        expect_regex=r'(?>(?m:^)\w(?m:$))')
 
         self.given('''
             @./wordchar//
         ''',
-        expect_regex=r'(?>\A\w$)')
+        expect_regex=r'(?>\A\w(?m:$))')
 
         self.given('''
             @//wordchar/.
         ''',
-        expect_regex=r'(?>^\w\Z)')
+        expect_regex=r'(?>(?m:^)\w\Z)')
 
         self.given('''
             @./wordchar/.
@@ -4159,17 +4186,17 @@ class TestOutput(unittest.TestCase):
         self.given('''
             ./wordchar/digit//
         ''',
-        expect_regex=r'\A\w\d$')
+        expect_regex=r'\A\w\d(?m:$)')
 
         self.given('''
             @//wordchar/digit/.
         ''',
-        expect_regex=r'(?>^\w\d\Z)')
+        expect_regex=r'(?>(?m:^)\w\d\Z)')
 
         self.given('''
             //wordchar/digit//
         ''',
-        expect_regex=r'^\w\d$')
+        expect_regex=r'(?m:^)\w\d(?m:$)')
 
         self.given('''
             @./wordchar/digit/.
@@ -4181,9 +4208,10 @@ class TestOutput(unittest.TestCase):
               |./wordchar//
               |//wordchar/.
         ''',
-        expect_regex=r'\A\w$|^\w\Z')
+        expect_regex=r'\A\w(?m:$)|(?m:^)\w\Z')
 
         self.given('''
+            (multiline)
             <@>
              |./wordchar//>
              |./wordchar/.>
@@ -4198,7 +4226,7 @@ class TestOutput(unittest.TestCase):
                                                    <@//wordchar//|
                                                    <@./wordchar//|
         ''',
-        expect_regex=r'(?=\A\w$)(?=\A\w\Z)(?=^\w$)(?=\A\w$)\A\w\Z^\w$^\w\Z\A\w$(?<=\A\w\Z)(?<=^\w\Z)(?<=(?>^\w$))(?<=(?>\A\w$))')
+        expect_regex=r'(?V1wm)(?=\A\w$)(?=\A\w\Z)(?=^\w$)(?=\A\w$)\A\w\Z^\w$^\w\Z\A\w$(?<=\A\w\Z)(?<=^\w\Z)(?<=(?>^\w$))(?<=(?>\A\w$))')
 
 
 class TestMatches(unittest.TestCase):

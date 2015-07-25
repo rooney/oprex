@@ -325,7 +325,7 @@ FLAG_DEPENDENT_BUILTINS = dict(
         ],
     },
 )
-DEFAULT_FLAGS = 'wm'
+DEFAULT_FLAGS = 'w'
 for flag in FLAG_DEPENDENT_BUILTINS:
     for var in FLAG_DEPENDENT_BUILTINS[flag][flag in DEFAULT_FLAGS]:
         BUILTINS.append(var)
