@@ -782,8 +782,7 @@ def p_quantified_expr(t):
 
 def p_quantifier(t):
     '''quantifier : repeat_N_times
-                  | repeat_range
-                  | optionalize'''
+                  | repeat_range'''
     quant = t[1]
     base = {
         '{1}'   : '',
@@ -849,11 +848,6 @@ def p_numrange(t):
     except IndexError:
         max = ''
     t[0] = min, max
-
-
-def p_optionalize(t):
-    '''optionalize : QUESTMARK of'''
-    t[0] = Quantifier(base='?', modifier='+')
 
 
 def quantify(expr, quantifier):

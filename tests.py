@@ -1263,9 +1263,9 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             ? <<- of alpha
         ''',
-        expect_error='''Line 2: Unexpected LT
+        expect_error='''Line 2: Unexpected QUESTMARK
             ? <<- of alpha
-              ^''')
+            ^''')
 
         self.given('''
             1.. of alpha
@@ -1322,6 +1322,20 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected DOT
             @..2 <<- of alpha
               ^''')
+
+        self.given('''
+            ? of alpha
+        ''',
+        expect_error='''Line 2: Unexpected QUESTMARK
+            ? of alpha
+            ^''')
+
+        self.given('''
+            @? of alpha
+        ''',
+        expect_error='''Line 2: Unexpected QUESTMARK
+            @? of alpha
+             ^''')
 
 
     def test_commenting_error(self):
@@ -3025,11 +3039,6 @@ class TestOutput(unittest.TestCase):
         expect_regex='[a-zA-Z]{1,2}?')
 
         self.given('''
-            ? of alpha
-        ''',
-        expect_regex='[a-zA-Z]?+')
-
-        self.given('''
             alphas?
                 alphas = @1.. of alpha
         ''',
@@ -3040,12 +3049,6 @@ class TestOutput(unittest.TestCase):
                 alphas = @0.. of alpha
         ''',
         expect_regex='(?:[a-zA-Z]*+)?')
-
-        self.given('''
-            opt_alpha?
-                opt_alpha = ? of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]?+)?')
 
         self.given('''
             opt_alpha?
@@ -3066,27 +3069,17 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]??)?')
 
         self.given('''
-            ? of ? of alpha
+            @0..1 of @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)?+')
 
         self.given('''
-            ? of @0..1 of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]?+)?+')
-
-        self.given('''
-            @0..1 of ? of alpha
-        ''',
-        expect_regex='(?:[a-zA-Z]?+)?+')
-
-        self.given('''
-            ? of 0..1 <<- of alpha
+            @0..1 of 0..1 <<- of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?)?+')
 
         self.given('''
-            0 <<+..1 of ? of alpha
+            0 <<+..1 of @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+)??')
 
@@ -3096,22 +3089,22 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?:[a-zA-Z]??)?')
 
         self.given('''
-            2 of ? of alpha
+            2 of @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+){2}')
 
         self.given('''
-            ? of 2 of alpha
+            @0..1 of 2 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{2})?+')
 
         self.given('''
-            ? of @1..3 of alpha
+            @0..1 of @1..3 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]{1,3}+)?+')
 
         self.given('''
-            @1..3 of ? of alpha
+            @1..3 of @0..1 of alpha
         ''',
         expect_regex='(?:[a-zA-Z]?+){1,3}+')
 
