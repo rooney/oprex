@@ -201,11 +201,57 @@ class TestErrorHandling(unittest.TestCase):
              ^''')
         
         self.given('''
+            _
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            _
+             ^''')
+
+        self.given('''
             /_/
-                _ = 'underscore'
+        ''',
+        expect_error='''Line 2: Unexpected UNDERSCORE
+            /_/
+             ^''')
+
+        self.given('''
+            underscore
+                _ = '_'
         ''',
         expect_error='''Line 3: Unexpected UNDERSCORE
-                _ = 'underscore'
+                _ = '_'
+                ^''')
+
+        self.given('''
+            <<|
+              |_
+        ''',
+        expect_error='''Line 3: Unexpected NEWLINE
+              |_
+                ^''')
+
+        self.given('''
+            @|
+             |/_/
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+             |/_/
+               ^''')
+
+        self.given('''
+            <@>
+               _
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+               _
+               ^''')
+
+        self.given('''
+            <@>
+               |_|
+        ''',
+        expect_error='''Line 3: Unexpected UNDERSCORE
+               |_|
                 ^''')
 
 
@@ -1459,16 +1505,16 @@ class TestErrorHandling(unittest.TestCase):
             /_/
                 _ = 'underscore'
         ''',
-        expect_error='''Line 3: Unexpected UNDERSCORE
-                _ = 'underscore'
-                ^''')
+        expect_error='''Line 2: Unexpected UNDERSCORE
+            /_/
+             ^''')
 
         self.given('''
             /_./
         ''',
-        expect_error='''Line 2: Unexpected DOT
+        expect_error='''Line 2: Unexpected UNDERSCORE
             /_./
-              ^''')
+             ^''')
 
 
     def test_invalid_flags(self):
