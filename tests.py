@@ -1397,23 +1397,23 @@ class TestErrorHandling(unittest.TestCase):
         self.given('''
             =missing
         ''',
-        expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
+        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
 
         self.given('''
             =missing?
         ''',
-        expect_error="Line 2: Bad backreference: 'missing' is not defined/not a capturing group")
+        expect_error="Line 2: Bad Backreference: 'missing' is not defined/not a capturing group")
 
         self.given('''
             =alpha
         ''',
-        expect_error="Line 2: Bad backreference: 'alpha' is not defined/not a capturing group")
+        expect_error="Line 2: Bad Backreference: 'alpha' is not defined/not a capturing group")
 
         self.given('''
             /bang/=bang/
                 bang: b a n g !
         ''',
-        expect_error="Line 2: Bad backreference: 'bang' is not defined/not a capturing group")
+        expect_error="Line 2: Bad Backreference: 'bang' is not defined/not a capturing group")
 
 
     def test_invalid_boundaries(self):
@@ -1659,7 +1659,7 @@ class TestErrorHandling(unittest.TestCase):
                                |'to be'
                                |'not to be'
         ''',
-        expect_error='''Line 3: Unexpected OR
+        expect_error='''Line 3: Unexpected BAR
                 orblock_type = | -- atomic? backtrack? must specify
                                ^''')
 

@@ -82,7 +82,6 @@ tokens = [
     'NEWLINE',
     'NON',
     'OF',
-    'OR',
     'PLUS',
     'QUESTMARK',
     'RBRACKET',
@@ -95,6 +94,7 @@ tokens = [
 
 GLOBALMARK   = '*)'
 t_AT         = r'\@'
+t_BAR        = r'\|'
 t_DOT        = r'\.'
 t_EQUALSIGN  = r'\='
 t_EXCLAMARK  = r'\!'
@@ -133,6 +133,9 @@ class NegatedLookup(namedtuple('NegatedLookup', 'varname lineno optional')):
     __slots__ = ()
 
 class Backreference(namedtuple('Backreference', 'varname lineno optional')):
+    __slots__ = ()
+
+class CaptureCondition(namedtuple('CaptureCondition', 'varname lineno')):
     __slots__ = ()
 
 class Quantifier(namedtuple('Quantifier', 'base modifier')):
@@ -450,17 +453,6 @@ def t_BEGIN_ORBLOCK(t):
     return t
 
 
-def t_OR(t):
-    r'\|'
-    if t.lexer.mode == 'ORBLOCK':
-        barpos = find_column(t)
-        if barpos != t.lexer.barpos:
-            raise OprexSyntaxError(t.lineno, 'Misaligned OR')
-    elif t.lexer.mode == 'LOOKAROUND':
-        t.type = 'BAR'
-    return t
-
-
 ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
     ( .
     | N\{[^}]++\} # Unicode character name
@@ -729,7 +721,7 @@ def p_expression(t):
     reffed_varnames = set()
     for ref in references:
         if isinstance(ref, Backreference):
-            t.lexer.backreferences.append(ref)
+            t.lexer.references.append(ref)
         else:
             reffed_varnames.add(ref.varname)
 
@@ -941,11 +933,16 @@ class OrBlockExpr(Expr):
         regex = Regex(value, modifier='(?>') if self.is_atomic else Alternation(value)
         return regex, references
 
+
 def p_orblock_expr(t):
     '''orblock_expr : BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK'''
+    items = t[3]
+    if isinstance(items[-1], ConditionalExpr):
+        raise OprexSyntaxError(t.lineno(0) + len(items), 'The last branch of OR-block must not be conditional')
+
     t[0] = OrBlockExpr(
         is_atomic = t[1].startswith('@'),
-        items = t[3],
+        items = items,
     )
 
 OrItems = deque
@@ -960,13 +957,56 @@ def p_oritems(t):
     t[0].appendleft(t[1])
 
 
+class ConditionalExpr(Expr):
+    def apply(self, scope):
+        cond_prefix, cond_expr = self.conditional
+        cond_value, cond_refs = cond_expr.apply(scope)
+        action, action_refs = self.action.apply(scope)
+        regex = Regex(cond_prefix + cond_value + ')' + action, modifier='(?')
+        refs = cond_refs + action_refs
+        return regex, refs
+
+
 def p_oritem(t):
-    '''oritem : OR expr
-              | OR NEWLINE''' # --> allow the alternation to match empty string
-    if isinstance(t[2], Expr):
-        t[0] = t[2]
-    else:
-        t[0] = StringExpr(value='')
+    '''oritem : BAR conditional WHITESPACE QUESTMARK WHITESPACE expr
+              | BAR conditional WHITESPACE QUESTMARK WHITESPACE NEWLINE
+              | BAR expr
+              | BAR NEWLINE''' # --> allow the alternation to match empty string
+
+    def check_alignment():
+        barpos = find_column(t, 1)
+        if barpos != t.lexer.barpos:
+            raise OprexSyntaxError(t.lineno(1), 'Misaligned OR')
+
+    def build_expr():
+        t_last = t[len(t)-1]
+        expr = t_last if isinstance(t_last, Expr) else StringExpr(value='')
+        if len(t) == 3:
+            return expr
+        else:
+            return ConditionalExpr(conditional=t[2], action=expr)
+
+    check_alignment()
+    t[0] = build_expr()
+
+
+def p_conditional(t):
+    '''conditional : LBRACKET VARNAME   RBRACKET
+                   |      BAR EXCLAMARK lookup   GT
+                   |      BAR           lookup   GT
+                   |       LT EXCLAMARK lookup   BAR
+                   |       LT           lookup   BAR'''
+    cond = t[len(t)-2] # either VARNAME or lookup
+    type = ''.join(tok for tok in t if isinstance(tok, str) and tok in '[]<>|!')
+    t[0] = {
+        '[]'  : ('(',    StringExpr(value=cond)),
+        '|!>' : ('(?!',  cond),
+        '|>'  : ('(?=',  cond),
+        '<!|' : ('(?<!', cond),
+        '<|'  : ('(?<=', cond),
+    }[type]
+    if type == '[]':
+        t.lexer.references.append(CaptureCondition(cond, t.lineno(2)))
 
 
 class LookaroundExpr(Expr):
@@ -1138,7 +1178,7 @@ def p_lookup(t):
         items = t[2]
 
         def sugar_for(varname):
-            return VariableLookup(varname, t.lineno(0), optional='')
+            return VariableLookup(varname, t.lineno(0), optional=False)
 
         if t[1].endswith('//'):
             items.appendleft(sugar_for('BOL'))
@@ -1492,7 +1532,7 @@ def build_lexer(source_lines):
     lexer.indent_stack = [0] # for keeping track of indentation depths
     lexer.ongoing_declarations = {}
     lexer.capture_names = set()
-    lexer.backreferences = []
+    lexer.references = []
     lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS
 
     root_scope = Scope(type=Scope.ROOTSCOPE, starting_lineno=0, parent_scope=None)
@@ -1570,9 +1610,9 @@ def parse(lexer):
 
 def cleanup(lexer):
     def check_captures():
-        for ref in lexer.backreferences:
+        for ref in lexer.references:
             if ref.varname not in lexer.capture_names:
-                errmsg = "Bad backreference: '%s' is not defined/not a capturing group" % ref.varname
+                errmsg = "Bad %s: '%s' is not defined/not a capturing group" % (ref.__class__.__name__, ref.varname)
                 raise OprexSyntaxError(ref.lineno, errmsg)
 
     def check_unclosed_scope():

@@ -1,3 +1,5 @@
 
-(-multiline)
-/BOL/EOL/
+<<|
+  |[alpha] ? 'capt'
+  ||alpha> ? 'ahead'
+  |<digit| ? 'behind'
