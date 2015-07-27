@@ -70,6 +70,7 @@ tokens = [
     'END_OF_ORBLOCK',
     'EQUALSIGN',
     'EXCLAMARK',
+    'FAIL',
     'FLAGSET',
     'GLOBALMARK',
     'GT',
@@ -289,6 +290,7 @@ BUILTINS  = [
     Builtin('BOS',             r'\A'),
     Builtin('EOS',             r'\Z'),
     Builtin('uany',            r'\X'),
+    Builtin('FAIL!',           r'(?!)'),
 ]
 FLAG_DEPENDENT_BUILTINS = dict(
     m = { # MULTILINE
@@ -499,10 +501,15 @@ def t_STRING(t):
         return t
 
 
+## NON and FAIL must be before VARNAME otherwise VARNAME will be produced instead
+
 def t_NON(t):
     'non-'
     return t
 
+def t_FAIL(t):
+    'FAIL!'
+    return t
 
 def t_VARNAME(t):
     r'[A-Za-z_][A-Za-z0-9_]*'
@@ -960,10 +967,12 @@ def p_oritems(t):
 class ConditionalExpr(Expr):
     def apply(self, scope):
         cond_prefix, cond_expr = self.conditional
-        cond_value, cond_refs = cond_expr.apply(scope)
+        cond, cond_refs = cond_expr.apply(scope)
         action, action_refs = self.action.apply(scope)
-        regex = Regex(cond_prefix + cond_value + ')' + action, modifier='(?')
-        refs = cond_refs + action_refs
+        regex = Regex(cond_prefix + cond + ')' + action, modifier='(?')
+        refs = []
+        refs.extend(cond_refs)
+        refs.extend(action_refs)
         return regex, refs
 
 
@@ -1238,22 +1247,17 @@ def p_lookup_type(t):
     t[0] = t[1]
 
 def p_variable_lookup(t):
-    '''variable_lookup : varname'''
+    '''variable_lookup : VARNAME
+                       | FAIL'''
     t[0] = VariableLookup, t[1]
 
 def p_negated_lookup(t):
-    '''negated_lookup : NON varname'''
+    '''negated_lookup : NON VARNAME'''
     t[0] = NegatedLookup, t[2]
 
 def p_backreference(t):
     '''backreference : EQUALSIGN VARNAME'''
     t[0] = Backreference, t[2]
-
-
-def p_varname(t):
-    '''varname : VARNAME
-               | UNDERSCORE'''
-    t[0] = t[1]
 
 
 class CharClassExpr(Expr):

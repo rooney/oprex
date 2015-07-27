@@ -1,5 +1,5 @@
 
 <<|
-  |[alpha] ? 'capt'
-  ||alpha> ? 'ahead'
+  ||/alpha/upper/> ? 'ahead'
   |<digit| ? 'behind'
+  |FAIL!
