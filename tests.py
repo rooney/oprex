@@ -2305,11 +2305,17 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='[\u12ab\u12AB\u12Ab]')
 
-        self.given('''
-            x
-                x: \U0001234a \U0001234A \U0001234a
-        ''',
-        expect_regex='[\U0001234a\U0001234A\U0001234a]')
+        try:
+            self.given('''
+                x
+                    x: \U0001234a \U0001234A \U0001234a
+            ''',
+            expect_regex='[\U0001234a\U0001234A\U0001234a]')
+        except ValueError as e:
+            if 'narrow Python build' in e.message:
+                pass
+            else:
+                raise
 
         self.given('''
             x
