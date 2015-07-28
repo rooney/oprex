@@ -1766,6 +1766,52 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='Line 4: ORBLOCK cannot contain LOOKAROUND')
 
 
+    def test_invalid_conditionals(self):
+        self.given('''
+            <<|
+              |[capt]?'whitespace needed around the ?'
+        ''',
+        expect_error='''Line 3: Unexpected QUESTMARK
+              |[capt]?'whitespace needed around the ?'
+                     ^''')
+
+        self.given('''
+            <<|
+              |[capt]? 'whitespace needed around the ?'
+        ''',
+        expect_error='''Line 3: Unexpected QUESTMARK
+              |[capt]? 'whitespace needed around the ?'
+                     ^''')
+
+        self.given('''
+            <<|
+              |[capt] ?'whitespace needed around the ?'
+        ''',
+        expect_error='''Line 3: Unexpected STRING
+              |[capt] ?'whitespace needed around the ?'
+                       ^''')
+
+        self.given('''
+            <<|
+              |[capt] ? 'the capture must be defined'
+              |
+        ''',
+        expect_error="Line 3: Bad CaptureCondition: 'capt' is not defined/not a capturing group")
+
+        self.given('''
+            <<|
+              |[alpha] ? 'the capture must be a capture'
+              |
+        ''',
+        expect_error="Line 3: Bad CaptureCondition: 'alpha' is not defined/not a capturing group")
+
+        self.given('''
+            <<|
+              |[capt] ? 'last branch must not be conditional'
+        ''',
+        expect_error='Line 3: The last branch of OR-block must not be conditional')
+
+
     def test_invalid_lookaround(self):
         self.given('''
             empty_lookaround_not_allowed
