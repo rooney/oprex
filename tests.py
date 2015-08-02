@@ -1811,6 +1811,25 @@ class TestErrorHandling(unittest.TestCase):
         ''',
         expect_error='Line 3: The last branch of OR-block must not be conditional')
 
+        self.given('''
+            /currency/amount/
+                currency = <<|
+                             |dollar
+                             |euro
+                
+                    [dollar]: $
+                    [euro]: :EURO_SIGN
+                    
+                amount = <<|
+                           |[dollar] ? /digits/dot/digits/
+                           |[euro] ? /digits/comma/digits/
+              
+                    digits = @1.. of digit
+                    dot: .
+                    comma: ,
+        ''',
+        expect_error='Line 12: The last branch of OR-block must not be conditional')
+
 
     def test_invalid_lookaround(self):
         self.given('''
@@ -3990,6 +4009,46 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='espresso|cappuccino|kopi tubruk|earl grey|ocha|teh tarik|cendol')
 
+        self.given('''
+            /currency/amount/
+                currency = <<|
+                             |dollar
+                             |euro
+                
+                    [dollar]: $
+                    [euro]: :EURO_SIGN
+                    
+                amount = <<|
+                           |[dollar] ? /digits/dot/digits/
+                           |[euro] ? /digits/comma/digits/
+                           |
+              
+                    digits = @1.. of digit
+                    dot: .
+                    comma: ,
+        ''',
+        expect_regex='(?:(?P<dollar>\$)|(?P<euro>\N{EURO SIGN}))(?(dollar)\d++\.\d++|(?(euro)\d++,\d++))')
+
+        self.given('''
+            /currency/amount/
+                currency = <<|
+                             |dollar
+                             |euro
+                
+                    [dollar]: $
+                    [euro]: :EURO_SIGN
+                    
+                amount = <<|
+                           |[dollar] ? /digits/dot/digits/
+                           |[euro] ? /digits/comma/digits/
+                           |FAIL!
+              
+                    digits = @1.. of digit
+                    dot: .
+                    comma: ,
+        ''',
+        expect_regex='(?:(?P<dollar>\$)|(?P<euro>\N{EURO SIGN}))(?(dollar)\d++\.\d++|(?(euro)\d++,\d++|(?!)))')
+
 
     def test_lookaround_output(self):
         self.given('''
@@ -4325,6 +4384,84 @@ class TestOutput(unittest.TestCase):
                                                    <@./wordchar//|
         ''',
         expect_regex=r'(?V1wm)(?=\A\w$)(?=\A\w\Z)(?=^\w$)(?=\A\w$)\A\w\Z^\w$^\w\Z\A\w$(?<=\A\w\Z)(?<=^\w\Z)(?<=(?>^\w$))(?<=(?>\A\w$))')
+
+
+    def test_fail_output(self):
+        self.given('''
+            FAIL!
+        ''',
+        expect_regex='(?!)')
+
+        self.given('''
+            /FAIL!/
+        ''',
+        expect_regex='(?!)')
+
+        self.given('''
+            /alpha/FAIL!/
+        ''',
+        expect_regex='[a-zA-Z](?!)')
+
+        self.given('''
+            2 of FAIL!
+        ''',
+        expect_regex='(?!){2}')
+
+        self.given('''
+            <<|
+              |FAIL!
+        ''',
+        expect_regex='(?!)')
+
+        self.given('''
+            <<|
+              |FAIL!
+              |alpha
+        ''',
+        expect_regex='(?!)|[a-zA-Z]')
+
+        self.given('''
+            <<|
+              |alpha
+              |FAIL!
+        ''',
+        expect_regex='[a-zA-Z]|(?!)')
+
+        self.given('''
+            /opener?/contents?/closer/
+                opener = <<|
+                           |paren
+                           |curly
+                           |square
+                           |chevron
+                
+                    [paren]: (
+                    [curly]: {
+                    [square]: [
+                    [chevron]: <
+                    
+                contents = 1.. <<- of any
+                
+                closer = <<|
+                           |[paren] ? 1 of: )
+                           |[curly] ? 1 of: }
+                           |[square] ? 1 of: ]
+                           |[chevron] ? 1 of: >
+                           |FAIL!
+        ''',
+        expect_regex='(?:(?P<paren>\()|(?P<curly>\{)|(?P<square>\[)|(?P<chevron><))?(?s:.)*(?(paren)\)|(?(curly)\}|(?(square)\]|(?(chevron)>|(?!)))))')
+
+        self.given('''
+            <@>
+             |FAIL!>
+        ''',
+        expect_regex='(?=(?!))')
+
+        self.given('''
+            <@>
+             |!FAIL!>
+        ''',
+        expect_regex='(?!(?!))')
 
 
 class TestMatches(unittest.TestCase):
@@ -4818,6 +4955,101 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['a', 'b', 'c', 'd', 'e', 'f'],
         no_match=['A', 'B', 'F', 'x', 'X', 'z', 'Z', '0', '1', '9'])
+
+
+    def test_fail(self):
+        self.given('''
+            FAIL!
+        ''',
+        expect_full_match=[],
+        no_match=['nothing should match', '', 'not even empty string'])
+
+        self.given('''
+            /FAIL!/
+        ''',
+        expect_full_match=[],
+        no_match=['nothing should match', '', 'not even empty string'])
+
+        self.given('''
+            /alpha/FAIL!/
+        ''',
+        expect_full_match=[],
+        no_match=['', 'A', 'nothing should match'])
+
+        self.given('''
+            2 of FAIL!
+        ''',
+        expect_full_match=[],
+        no_match=['nothing should match', '', 'not even empty string'])
+
+        self.given('''
+            <<|
+              |FAIL!
+        ''',
+        expect_full_match=[],
+        no_match=['nothing should match', '', 'not even empty string'])
+
+        self.given('''
+            <<|
+              |FAIL!
+              |alpha
+        ''',
+        expect_full_match=['A', 'a'],
+        no_match=['1', ''])
+
+        self.given('''
+            <<|
+              |alpha
+              |FAIL!
+        ''',
+        expect_full_match=['A', 'a'],
+        no_match=['1', ''])
+
+        self.given('''
+            /opener?/contents?/closer/
+                opener = <<|
+                           |paren
+                           |curly
+                           |square
+                           |chevron
+                
+                    [paren]: (
+                    [curly]: {
+                    [square]: [
+                    [chevron]: <
+                    
+                contents = 1.. <<- of any
+                
+                closer = <<|
+                           |[paren] ? 1 of: )
+                           |[curly] ? 1 of: }
+                           |[square] ? 1 of: ]
+                           |[chevron] ? 1 of: >
+                           |FAIL!
+        ''',
+        expect_full_match=['()', '{}', '[]', '<>', '(riiiight)', '{()}', '[! @]', '<<>>', '<<<<<<<<<<<>'],
+        no_match=['{]', '<)', '(', '[unclosed'],
+        partial_match={
+            '(super) duper' : '(super)',
+        })
+
+        self.given('''
+            <@>
+             |FAIL!>
+        ''',
+        expect_full_match=[],
+        no_match=['nothing should match', '', 'not even empty string'])
+
+        self.given('''
+            <@>
+             |!FAIL!>
+        ''',
+        expect_full_match=[''],
+        no_match=[],
+        partial_match={
+            'everything matches' : '',
+            'though the match is empty string' : '',
+        })
 
 
     def test_quantifier(self):

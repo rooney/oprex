@@ -1,5 +1,8 @@
 
-<<|
-  ||/alpha/upper/> ? 'ahead'
-  |<digit| ? 'behind'
-  |FAIL!
+/a/b/or/
+    or = <<|
+           |[a] ?
+           |'ahead'
+  
+    [a]: A..z
+    [b]: 0..9

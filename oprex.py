@@ -230,7 +230,11 @@ class Regex(unicode):
 
 
 class Alternation(Regex):
-    pass
+    __slots__ = ('grouping_unnecessary',)
+    def __new__(cls, subexpressions, is_atomic):
+        alternation = Regex.__new__(cls, '|'.join(subexpressions), modifier='(?>' if is_atomic else None)
+        alternation.grouping_unnecessary = is_atomic or len(subexpressions) == 1
+        return alternation
 
 
 class CharClass(Regex):
@@ -290,7 +294,7 @@ BUILTINS  = [
     Builtin('BOS',             r'\A'),
     Builtin('EOS',             r'\Z'),
     Builtin('uany',            r'\X'),
-    Builtin('FAIL!',           r'(?!)'),
+    Builtin('FAIL!',           r'', modifier='(?!'),
 ]
 FLAG_DEPENDENT_BUILTINS = dict(
     m = { # MULTILINE
@@ -930,92 +934,79 @@ class OrBlockExpr(Expr):
     def apply(self, scope):
         subexpressions = []
         references = []
-
         for or_item in self.items:
             expression, refs = or_item.apply(scope)
             subexpressions.append(expression)
             references.extend(refs)
-
-        value = '|'.join(subexpressions)
-        regex = Regex(value, modifier='(?>') if self.is_atomic else Alternation(value)
-        return regex, references
+        return Alternation(subexpressions, self.is_atomic), references
 
 
 def p_orblock_expr(t):
     '''orblock_expr : BEGIN_ORBLOCK NEWLINE oritems END_OF_ORBLOCK'''
-    items = t[3]
-    if isinstance(items[-1], ConditionalExpr):
-        raise OprexSyntaxError(t.lineno(0) + len(items), 'The last branch of OR-block must not be conditional')
-
     t[0] = OrBlockExpr(
         is_atomic = t[1].startswith('@'),
-        items = items,
+        items = t[3],
     )
 
+
 OrItems = deque
+
 
 def p_oritems(t):
     '''oritems : oritem
                | oritem oritems'''
     try:
-        t[0] = t[2]
+        oritems = t[2]
     except IndexError:
-        t[0] = OrItems()
-    t[0].appendleft(t[1])
+        oritems = OrItems()
+        
+    if isinstance(t[1], ConditionalExpr):
+        try:
+            t[1].else_expr = oritems.popleft()
+        except IndexError:
+            raise OprexSyntaxError(t.lineno(1), 'The last branch of OR-block must not be conditional')
+    
+    oritems.appendleft(t[1])    
+    t[0] = oritems
+    
+
+def p_oritem(t):
+    '''oritem : or condition WHITESPACE QUESTMARK WHITESPACE expr
+              | or condition WHITESPACE QUESTMARK NEWLINE
+              | or expr
+              | or NEWLINE''' # --> allow the alternation to match empty string
+    t_last = t[len(t)-1]
+    expr = t_last if isinstance(t_last, Expr) else StringExpr(value='')
+    if len(t) > 3:
+        t[0] = ConditionalExpr(condition=t[2], then_expr=expr)
+    else:
+        t[0] = expr
 
 
 class ConditionalExpr(Expr):
     def apply(self, scope):
-        cond_prefix, cond_expr = self.conditional
-        cond, cond_refs = cond_expr.apply(scope)
-        action, action_refs = self.action.apply(scope)
-        regex = Regex(cond_prefix + cond + ')' + action, modifier='(?')
+        then_regex, then_refs = self.then_expr.apply(scope)
+        else_regex, else_refs = self.else_expr.apply(scope)
         refs = []
-        refs.extend(cond_refs)
-        refs.extend(action_refs)
-        return regex, refs
+        refs.extend(then_refs)
+        refs.extend(else_refs)
+        value = '(%s)%s' % (self.condition.varname, then_regex)
+        if else_regex:
+            value += '|' + else_regex
+        return Regex(value, modifier='(?'), refs
 
 
-def p_oritem(t):
-    '''oritem : BAR conditional WHITESPACE QUESTMARK WHITESPACE expr
-              | BAR conditional WHITESPACE QUESTMARK WHITESPACE NEWLINE
-              | BAR expr
-              | BAR NEWLINE''' # --> allow the alternation to match empty string
-
-    def check_alignment():
-        barpos = find_column(t, 1)
-        if barpos != t.lexer.barpos:
-            raise OprexSyntaxError(t.lineno(1), 'Misaligned OR')
-
-    def build_expr():
-        t_last = t[len(t)-1]
-        expr = t_last if isinstance(t_last, Expr) else StringExpr(value='')
-        if len(t) == 3:
-            return expr
-        else:
-            return ConditionalExpr(conditional=t[2], action=expr)
-
-    check_alignment()
-    t[0] = build_expr()
-
-
-def p_conditional(t):
-    '''conditional : LBRACKET VARNAME   RBRACKET
-                   |      BAR EXCLAMARK lookup   GT
-                   |      BAR           lookup   GT
-                   |       LT EXCLAMARK lookup   BAR
-                   |       LT           lookup   BAR'''
-    cond = t[len(t)-2] # either VARNAME or lookup
-    type = ''.join(tok for tok in t if isinstance(tok, str) and tok in '[]<>|!')
-    t[0] = {
-        '[]'  : ('(',    StringExpr(value=cond)),
-        '|!>' : ('(?!',  cond),
-        '|>'  : ('(?=',  cond),
-        '<!|' : ('(?<!', cond),
-        '<|'  : ('(?<=', cond),
-    }[type]
-    if type == '[]':
-        t.lexer.references.append(CaptureCondition(cond, t.lineno(2)))
+def p_condition(t):
+    '''condition : LBRACKET VARNAME RBRACKET'''
+    t[0] = CaptureCondition(varname=t[2], lineno=t.lineno(2))
+    t.lexer.references.append(t[0])
+    
+    
+def p_or(t):
+    '''or : BAR'''
+    barpos = find_column(t, 1)
+    if barpos != t.lexer.barpos:
+        raise OprexSyntaxError(t.lineno(1), 'Misaligned OR')
 
 
 class LookaroundExpr(Expr):
@@ -1031,11 +1022,14 @@ class LookaroundExpr(Expr):
         regex = Regex(''.join(subexpressions))
         return regex, references
 
+
 def p_lookaround_expr(t):
     '''lookaround_expr : BEGIN_LOOKAROUND NEWLINE lookitems END_OF_LOOKAROUND'''
     t[0] = LookaroundExpr(items=t[3])
 
+
 LookItems = deque
+
 
 def p_lookitems(t):
     '''lookitems : lookitem NEWLINE
@@ -1049,6 +1043,7 @@ def p_lookitems(t):
 
 class LookItem(namedtuple('LookItem', 'type expr')):   
     __slots__ = ()
+
 
 def p_lookitem(t):
     '''lookitem : BAR           lookup GT
@@ -1158,7 +1153,7 @@ class LookupExpr(Expr):
 
             if lookup.optional:
                 return quantify(value, quantifier=lookup.optional)
-            elif isinstance(value, Alternation) and not is_single_lookup:
+            elif isinstance(value, Alternation) and not value.grouping_unnecessary and not is_single_lookup:
                 return Regex(value, modifier='(?:')
             else:
                 return value
@@ -1175,6 +1170,7 @@ class LookupExpr(Expr):
 def p_lookup_expr(t):
     '''lookup_expr : lookup NEWLINE'''
     t[0] = t[1]
+
 
 def p_lookup(t):
     '''lookup :             lookup_item
@@ -1224,6 +1220,7 @@ def p_chain_end(t):
 
 LookupChain = deque
 
+
 def p_lookup_chain(t):
     '''lookup_chain : lookup_item SLASH
                     | lookup_item SLASH lookup_chain'''
@@ -1233,6 +1230,7 @@ def p_lookup_chain(t):
         t[0] = LookupChain()
     t[0].appendleft(t[1])
 
+
 def p_lookup_item(t):
     '''lookup_item : lookup_type
                    | lookup_type QUESTMARK'''
@@ -1240,20 +1238,24 @@ def p_lookup_item(t):
     has_questmark = len(t) == 3
     t[0] = LookupClass(varname, t.lineno(1), optional='?' if has_questmark else '')
 
+
 def p_lookup_type(t):
     '''lookup_type : variable_lookup
                    | negated_lookup
                    | backreference'''
     t[0] = t[1]
 
+
 def p_variable_lookup(t):
     '''variable_lookup : VARNAME
                        | FAIL'''
     t[0] = VariableLookup, t[1]
 
+
 def p_negated_lookup(t):
     '''negated_lookup : NON VARNAME'''
     t[0] = NegatedLookup, t[2]
+
 
 def p_backreference(t):
     '''backreference : EQUALSIGN VARNAME'''
