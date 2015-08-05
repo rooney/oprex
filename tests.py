@@ -4049,6 +4049,83 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex='(?:(?P<dollar>\$)|(?P<euro>\N{EURO SIGN}))(?(dollar)\d++\.\d++|(?(euro)\d++,\d++|(?!)))')
 
+        self.given('''
+            /alpha/or/
+                or = @|
+                      |alpha
+                      |digit
+        ''',
+        expect_regex='[a-zA-Z](?>[a-zA-Z]|\d)')
+
+        self.given('''
+            /or/alpha/
+                or = @|
+                      |alpha
+                      |digit
+        ''',
+        expect_regex='(?>[a-zA-Z]|\d)[a-zA-Z]')
+
+        self.given('''
+            /alpha/or/
+                or = <<|
+                       |alpha
+                       |digit
+        ''',
+        expect_regex='[a-zA-Z](?:[a-zA-Z]|\d)')
+
+        self.given('''
+            /or/alpha/
+                or = <<|
+                       |alpha
+                       |digit
+        ''',
+        expect_regex='(?:[a-zA-Z]|\d)[a-zA-Z]')
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |digit
+        ''',
+        expect_regex='(?P<az>[a-z])?(?(az)[a-zA-Z]|\d)')
+
+        self.given('''
+            /or/az/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |digit
+        ''',
+        expect_regex='(?(az)[a-zA-Z]|\d)(?P<az>[a-z])')
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |
+        ''',
+        expect_regex='(?P<az>[a-z])?(?(az)[a-zA-Z])')
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ?
+                       |digit                      
+        ''',
+        expect_regex='(?P<az>[a-z])?(?(az)|\d)')
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ?
+                       |
+        ''',
+        expect_regex='(?P<az>[a-z])?(?(az))')
+
 
     def test_lookaround_output(self):
         self.given('''
@@ -5689,6 +5766,110 @@ class TestMatches(unittest.TestCase):
         expect_full_match=['cendol', 'kopi tubruk', 'teh tarik', 'ocha', 'cappuccino'],
         no_match=['kopi earl grey cendol'],
         partial_match={'espresso tubruk' : 'espresso'})
+
+        self.given('''
+            /alpha/or/
+                or = @|
+                      |alpha
+                      |digit
+        ''',
+        expect_full_match=['Aa', 'a1'],
+        no_match=['', 'a', '1'])
+
+        self.given('''
+            /or/alpha/
+                or = @|
+                      |alpha
+                      |digit
+        ''',
+        expect_full_match=['Aa', '1A'],
+        no_match=['', 'a', '1'])
+
+        self.given('''
+            /alpha/or/
+                or = <<|
+                       |alpha
+                       |digit
+        ''',
+        expect_full_match=['Aa', 'a1'],
+        no_match=['', 'a', '1'])
+
+        self.given('''
+            /or/alpha/
+                or = <<|
+                       |alpha
+                       |digit
+        ''',
+        expect_full_match=['aA', '1a'],
+        no_match=['', 'a', '1'])
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |digit
+        ''',
+        expect_full_match=['aa', 'aA', '1'],
+        no_match=['', 'a'])
+
+        self.given('''
+            /or/az/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |digit
+        ''',
+        expect_full_match=['1a'],
+        no_match=['', 'a', '1', 'aa', 'Aa', 'aA'])
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ? alpha
+                       |
+        ''',
+        expect_full_match=['aA', 'aa', ''],
+        no_match=[],
+        partial_match={
+            'Aa' : '',
+            'A'  : '',
+            'a'  : '',
+            '1'  : '',
+            '12' : '',
+        })
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ?
+                       |digit                      
+        ''',
+        expect_full_match=['a', '1'],
+        no_match=['A', '', 'Aa'],
+        partial_match={
+            'aA' : 'a',
+            'a1' : 'a',
+            '12' : '1',
+        })
+
+        self.given('''
+            /az?/or/
+                [az]: a..z
+                or = <<|
+                       |[az] ?
+                       |
+        ''',
+        expect_full_match=['a', ''],
+        no_match=[],
+        partial_match={
+            'Aa' : '',
+            'A'  : '',
+            '1'  : '',
+            '12' : '',
+        })
 
 
     def test_lookaround(self):
