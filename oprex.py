@@ -756,18 +756,19 @@ class StringExpr(Expr):
         return Regex(self.value), references
 
 def p_string_expr(t):
-    '''string_expr : str_b STRING str_b NEWLINE'''
-    t[0] = StringExpr(value=t[1] + t[2] + t[3])
+    '''string_expr :       STRING       NEWLINE
+                   |       STRING str_b NEWLINE
+                   | str_b STRING       NEWLINE
+                   | str_b STRING str_b NEWLINE'''
+    t[0] = StringExpr(value=''.join(t[1:-1]))
 
 def p_str_b(t):
-    '''str_b :
-             | DOT
+    '''str_b : DOT
              | UNDERSCORE'''
     t[0] = {
-        None : '',
         '.'  : '\\b',
         '_'  : '\\B',
-    }[t[len(t)-1]]
+    }[t[1]]
 
 
 class QuantifiedExpr(Expr):
