@@ -113,6 +113,27 @@ t_SLASH      = r'\/'
 t_ignore = '' # oprex is whitespace-significant, no ignored characters
 
 
+ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
+    ( .
+    | N\{[^}]++\} # Unicode character name
+    | U\d{8}      # 8-digit hex escapes
+    | u\d{4}      # 4-digit hex escapes
+    | x\d{2}      # 2-digit hex escapes
+    | [0-7]{1,3}  # Octal escapes
+    )''', regexlib.VERBOSE)
+
+
+OVERESCAPED_RE = regexlib.compile(r'''\\\\
+    ( \\\\          # Escaped backslash
+    | ['"abfnrtv]   # Single-character escapes
+    | N\\\{[^}]++\} # Unicode character name
+    | U\d{8}        # 8-digit hex escapes
+    | u\d{4}        # 4-digit hex escapes
+    | x\d{2}        # 2-digit hex escapes
+    | [0-7]{1,3}    # Octal escapes
+    )''', regexlib.VERBOSE)
+
+
 class Variable(namedtuple('Variable', 'name value lineno')):
     __slots__ = ()
     def is_builtin(self):
@@ -247,9 +268,48 @@ class CharClass(Regex):
         '\\' : '\\\\',
     }
     def __new__(cls, value, is_set_op):
+        if value.startswith('[') and value.endswith(']') and value != '[ ]':
+            if len(value) == 3 or ESCAPE_SEQUENCE_RE.fullmatch(value[1:-1]):
+                value = value[1:-1]
+        if len(value) == 1:
+            value = regexlib.escape(value, special_only=True)
+        value = {
+            r'[^\d]' : r'\D',
+            r'[^\D]' : r'\d',
+            r'[^\s]' : r'\S',
+            r'[^\S]' : r'\s',
+            r'[^\w]' : r'\W',
+            r'[^\W]' : r'\w',
+            r'[^\$]' : r'[^$]',
+            r'[^\.]' : r'[^.]',
+            r'[^\|]' : r'[^|]',
+            r'[^\?]' : r'[^?]',
+            r'[^\*]' : r'[^*]',
+            r'[^\+]' : r'[^+]',
+            r'[^\(]' : r'[^(]',
+            r'[^\)]' : r'[^)]',
+            r'[^\{]' : r'[^{]',
+            r'[^\}]' : r'[^}]',
+            r'\-'    :  '-',
+        }.get(value, value)
         charclass = Regex.__new__(cls, value)
         charclass.is_set_op = is_set_op
         return charclass
+    
+    def negated(self):
+        if self.startswith('[^'):
+            negated_value = self.replace('[^', '[', 1)
+        elif self.startswith('['):
+            negated_value = self.replace('[', '[^', 1)
+        elif self.startswith(r'\p{'):
+            negated_value = self.replace(r'\p{', r'\P{', 1)
+        elif self.startswith(r'\P{'):
+            negated_value = self.replace(r'\P{', r'\p{', 1)
+        elif self == '-':
+            negated_value = r'[^\-]'
+        else:
+            negated_value = '[^%s]' % self
+        return CharClass(value=negated_value, is_set_op=self.is_set_op)
 
 
 class CCItem(namedtuple('CCItem', 'source type value')):
@@ -282,11 +342,8 @@ BUILTINS  = [
     BuiltinCC('backslash',     r'\\'),
     BuiltinCC('tab',           r'\t'),
     BuiltinCC('digit',         r'\d'),
-    BuiltinCC('non-digit',     r'\D'),
     BuiltinCC('whitechar',     r'\s'),
-    BuiltinCC('non-whitechar', r'\S'),
     BuiltinCC('wordchar',      r'\w'),
-    BuiltinCC('non-wordchar',  r'\W'),
     Builtin('BOW',             r'\m'),
     Builtin('EOW',             r'\M'),
     Builtin('WOB',             r'\b'),
@@ -459,25 +516,6 @@ def t_BEGIN_ORBLOCK(t):
     return t
 
 
-ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
-    ( .
-    | N\{[^}]++\} # Unicode character name
-    | U\d{8}      # 8-digit hex escapes
-    | u\d{4}      # 4-digit hex escapes
-    | x\d{2}      # 2-digit hex escapes
-    | [0-7]{1,3}  # Octal escapes
-    )''', regexlib.VERBOSE)
-
-OVERESCAPED_RE = regexlib.compile(r'''\\\\
-    ( \\\\          # Escaped backslash
-    | ['"abfnrtv]   # Single-character escapes
-    | N\\\{[^}]++\} # Unicode character name
-    | U\d{8}        # 8-digit hex escapes
-    | u\d{4}        # 4-digit hex escapes
-    | x\d{2}        # 2-digit hex escapes
-    | [0-7]{1,3}    # Octal escapes
-    )''', regexlib.VERBOSE)
-
 def restore_overescaped(match):
     match = match.group(1)
     if match.startswith('N'):
@@ -491,6 +529,7 @@ def restore_overescaped(match):
             'f'    : '\\x0C',
             'v'    : '\\x0B',
         }.get(match, '\\' + match)
+
 
 def t_STRING(t):
     r'''("(\\.|[^"\\])*")|('(\\.|[^'\\])*')''' # single- or double-quoted string, with escape-quote support
@@ -1116,32 +1155,8 @@ class LookupExpr(Expr):
                     return scope['non-' + lookup.varname].value
                 except KeyError:
                     value = var_lookup()
-
-                def negated(charclass):
-                    if charclass.startswith('[^'):
-                        negated_value = charclass.replace('[^', '[', 1)
-                    elif charclass.startswith('['):
-                        negated_value = charclass.replace('[', '[^', 1)
-                    elif charclass.startswith(r'\p{'):
-                        negated_value = charclass.replace(r'\p{', r'\P{', 1)
-                    elif charclass.startswith(r'\P{'):
-                        negated_value = charclass.replace(r'\P{', r'\p{', 1)
-                    else:
-                        negated_value = {
-                            r'\d' : r'\D',
-                            r'\D' : r'\d',
-                            r'\s' : r'\S',
-                            r'\S' : r'\s',
-                            r'\w' : r'\W',
-                            r'\W' : r'\w',
-                            r'\W' : r'\w',
-                             '-'  : r'[^\-]',
-                        }.get(charclass, '[^%s]' % charclass)
-
-                    return CharClass(value=negated_value, is_set_op=charclass.is_set_op)
-
                 if isinstance(value, CharClass):
-                    return negated(value)
+                    return value.negated()
                 else:
                     raise OprexSyntaxError(lookup.lineno, "'non-%s': '%s' is not a character-class" % (lookup.varname, lookup.varname))
 
@@ -1323,13 +1338,11 @@ class CharClassExpr(Expr):
 
         if len(items) == 1 and items[0].type == 'include': # simple aliasing
             regex = lookup(items[0].value.varname)
+        elif len(items) == 2 and items[0].source == 'not:' and items[1].type == 'include': # simple negation
+            regex = lookup(items[1].value.varname).negated()
         else:
             value = ''.join(map(value_or_lookup, items))
-            if value == '\\-': # no need to escape dash outside of character class
-                value = '-'
-            elif len(value) == 1:
-                value = regexlib.escape(value, special_only=True)
-            elif len(items) == 2 and value.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
+            if len(items) == 2 and value.startswith(r'^\p{'): # convert ^\p{something} to \P{something}
                 value = value.replace(r'^\p{', r'\P{', 1)
             elif len(items) > 1 or has_range:
                 value = '[' + value + ']'

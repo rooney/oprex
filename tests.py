@@ -2564,7 +2564,7 @@ class TestOutput(unittest.TestCase):
                 notNotX: not: +notX
                     notX:  not: X
         ''',
-        expect_regex='[^[^X]]')
+        expect_regex='X')
 
         self.given(u'''
             notand
@@ -4188,7 +4188,7 @@ class TestOutput(unittest.TestCase):
                     symbol: not: /Alphanumeric
                     non_symbols = @1.. of: not: symbol
         ''',
-        expect_regex='(?=(?=[^A-Z]*+[A-Z])(?=[^a-z]*+[a-z]))(?=[^\d]*+\d)(?=[^\P{Alphanumeric}]*+\P{Alphanumeric})\A(?s:.){8,255}+\Z')
+        expect_regex=r'(?=(?=[^A-Z]*+[A-Z])(?=[^a-z]*+[a-z]))(?=\D*+\d)(?=\p{Alphanumeric}*+\P{Alphanumeric})\A(?s:.){8,255}+\Z')
 
         self.given('''
             word_ends_with_s
@@ -4305,6 +4305,52 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'[^a-zA-Z--aiueoAIUEO]')
 
+        self.given('''
+            /lower/non-lower/non_lower/non-non_lower/nonnon_lower/non-nonnon_lower/
+                non_lower: not: lower
+                nonnon_lower: not: non_lower
+        ''',
+        expect_regex=r'[a-z][^a-z][^a-z][a-z][a-z][^a-z]')
+
+        self.given('''
+            /digit/non-digit/non_digit/non-non_digit/nonnon_digit/non-nonnon_digit/
+                non_digit: not: digit
+                nonnon_digit: not: non_digit
+        ''',
+        expect_regex=r'\d\D\D\d\d\D')
+
+        self.given('''
+            /ex/non-ex/non_ex/non-non_ex/nonnon_ex/non-nonnon_ex/
+                ex: X
+                non_ex: not: ex
+                nonnon_ex: not: non_ex
+        ''',
+        expect_regex=r'X[^X][^X]XX[^X]')
+
+        self.given('''
+            /minus/non-minus/non_minus/non-non_minus/nonnon_minus/non-nonnon_minus/
+                minus: -
+                non_minus: not: minus
+                nonnon_minus: not: non_minus
+        ''',
+        expect_regex=r'-[^\-][^\-]--[^\-]')
+
+        self.given('''
+            /plus/non-plus/non_plus/non-non_plus/nonnon_plus/non-nonnon_plus/
+                plus: +
+                non_plus: not: plus
+                nonnon_plus: not: non_plus
+        ''',
+        expect_regex=r'\+[^+][^+]\+\+[^+]')
+
+        self.given('''
+            /caret/non-caret/non_caret/non-non_caret/nonnon_caret/non-nonnon_caret/
+                caret: ^
+                non_caret: not: caret
+                nonnon_caret: not: non_caret
+        ''',
+        expect_regex=r'\^[^\^][^\^]\^\^[^\^]')
+
 
     def test_recursion_output(self):
         self.given('''
@@ -4343,7 +4389,7 @@ class TestOutput(unittest.TestCase):
                                      |non-close
                                      |text_in_parens
         ''',
-        expect_regex='(?P<text_in_parens>\((?:[^\(]|[^\)]|(?&text_in_parens))++\))')
+        expect_regex='(?P<text_in_parens>\((?:[^(]|[^)]|(?&text_in_parens))++\))')
 
 
     def test_anchor_sugar_output(self):
