@@ -249,6 +249,9 @@ class Regex(unicode):
         expr.quantifier = quantifier
         return expr
 
+    def apply(self, scope):
+        return self, []
+
 
 class Alternation(Regex):
     __slots__ = ('grouping_unnecessary',)
@@ -785,21 +788,18 @@ def p_expr(t):
             | orblock_expr
             | flagged_expr
             | lookaround_expr
-            | quantified_expr'''
+            | quantified_expr
+            | numrange_shortcut'''
     t[0] = t[1]
 
-
-class StringExpr(Expr):
-    def apply(self, scope):
-        references = []
-        return Regex(self.value), references
 
 def p_string_expr(t):
     '''string_expr :       STRING       NEWLINE
                    |       STRING str_b NEWLINE
                    | str_b STRING       NEWLINE
                    | str_b STRING str_b NEWLINE'''
-    t[0] = StringExpr(value=''.join(t[1:-1]))
+    t[0] = Regex(''.join(t[1:-1]))
+
 
 def p_str_b(t):
     '''str_b : DOT
@@ -808,6 +808,130 @@ def p_str_b(t):
         '.'  : '\\b',
         '_'  : '\\B',
     }[t[1]]
+    
+    
+def p_numrange_shortcut(t):
+    '''numrange_shortcut : STRING DOT DOT STRING NEWLINE'''
+    low = t[1]
+    high = t[4]
+            
+    # check bad format
+    for fmt in (low, high):
+        if not regexlib.fullmatch(r'o*\d+', fmt):
+            raise OprexSyntaxError(t.lineno(0), 'Bad number-range format: ' + fmt)
+        if regexlib.match(r'o+0+\d+', fmt):
+            raise OprexSyntaxError(t.lineno(0), 'Bad number-range format: %s (ambiguous leading-zero spec)' % fmt)
+    
+    o_led     = lambda str: str.startswith('o')
+    zero_led  = lambda str: str.startswith('0') and str != '0'
+    all_zero  = lambda str: all(digit == '0' for digit in str)
+    all_nine  = lambda str: all(digit == '9' for digit in str)
+    is_powten = lambda str: all(digit == '0' for digit in str[1:]) and str[0] == '1'
+    
+    # using zero-led/o-led format? len(low) must be == len(high)
+    if zero_led(low) or zero_led(high) or o_led(low) or o_led(high):
+        if len(low) != len(high):
+            raise OprexSyntaxError(t.lineno(0), 
+                "Bad number-range format: '%s'..'%s' (lengths must be the same if using leading-zero/o format)" % (low, high))
+        
+    # zero-led/o-led cannot be mixed
+    if zero_led(low) and o_led(high) or o_led(low) and zero_led(high):
+        raise OprexSyntaxError(t.lineno(0),
+            "Bad number-range format: '%s'..'%s' (one cannot be o-led while the other is zero-led)" % (low, high))
+        
+    # if low > high, swap
+    if int(low.lstrip('o')) > int(high.lstrip('o')):
+        low, high = high, low
+    
+    # extract out the o's
+    num_high_o = high.count('o')
+    num_low_o = low.count('o')
+    o_led = num_low_o > 0
+    if o_led:
+        o_maxdigits = len(high)
+    high = high.lstrip('o')
+    low = low.lstrip('o')
+                
+    def gen(low, high):
+        len_low  = len(low)
+        len_high = len(high)
+        low_magnitude  = len_low - 1
+        high_magnitude = len_high - 1
+        
+        def gen_opt_zeros(filled_length):
+            if (not o_led
+                or len_low == len_high
+                or filled_length == o_maxdigits):
+                return ''
+            return '0{,%d}+' % (o_maxdigits - filled_length)
+        
+        def gen_all(bounds):
+            subsets = []
+            while bounds:
+                subhigh = bounds.pop()
+                sublow = bounds.pop()
+                if int(sublow) <= int(subhigh):
+                    subsets.append(gen_opt_zeros(len(sublow)) + gen(sublow, subhigh))
+            return '(?>%s)' % '|'.join(subsets)
+            
+        if low == high:
+            return low
+        if len_low == len_high:
+            if len_low == 1:
+                return '[%s-%s]' % (low, high)
+            if low[0] == high[0]:
+                return low[0] + gen(low[1:], high[1:])
+            if all_zero(low) and all_nine(high):
+                return r'\d{%d}' % len_low
+            if all_zero(low[1:]) and all_nine(high[1:]):
+                return r'[%s-%s]\d{%d}' % (low[0], high[0], low_magnitude)
+            
+            bounds = []
+            bounds.append(low)
+            if not all_zero(low[1:]):
+                bounds.append(low[0] + '9' * low_magnitude)
+                bounds.append(str(int(low[0]) + 1) + '0' * low_magnitude)
+            if not all_nine(high[1:]):
+                bounds.append(str(int(high[0]) - 1) + '9' * high_magnitude)
+                bounds.append(high[0] + '0' * high_magnitude)
+            bounds.append(high)
+            return gen_all(bounds)
+        
+        else:
+            assert(len_low < len_high)
+            if not o_led:
+                if all_nine(high):
+                    if is_powten(low):
+                        return r'[1-9]\d{%d,%d}+' % (low_magnitude, high_magnitude)
+                    if low == '0':
+                        return '(?>%s)' % (gen('1', high) + '|0')
+                    
+            bounds = []
+            bounds.append(low)
+            if not is_powten(low):
+                bounds.append('9' * len_low)
+                bounds.append('1' + '0' * len_low)
+            if o_led:
+                for i in range(len_low, len_high):
+                    bounds.append('9' * i)
+                    bounds.append('1' + '0' * i)
+            if not all_nine(high):
+                bounds.append('9' * high_magnitude)
+                bounds.append('1' + '0' * high_magnitude)
+            bounds.append(high)
+            return gen_all(bounds)
+    
+    value = gen(low, high)
+    if num_high_o == num_low_o:
+        opt_zeros = '0{,%d}' % num_high_o
+        value = opt_zeros + value
+    
+    t[0] = Regex(value
+        .replace('[0-9]', r'\d')
+        .replace('{0,1}', '?')
+        .replace('{,1}' , '?')
+        .replace('{1}'  , '')
+    )
 
 
 class QuantifiedExpr(Expr):
@@ -1016,7 +1140,7 @@ def p_oritem(t):
               | or expr
               | or NEWLINE''' # --> allow the alternation to match empty string
     t_last = t[len(t)-1]
-    expr = t_last if isinstance(t_last, Expr) else StringExpr(value='')
+    expr = t_last if isinstance(t_last, Expr) else Regex('')
     if len(t) > 3:
         t[0] = ConditionalExpr(condition=t[2], then_expr=expr)
     else:
