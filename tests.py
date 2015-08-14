@@ -2230,6 +2230,138 @@ class TestErrorHandling(unittest.TestCase):
         expect_error='''Line 2: Unexpected VARNAME
             /alpha/.digit/
                     ^''')
+                    
+                    
+    def test_invalid_numrange_shortcut(self):
+        self.given('''
+            123..456 -- the numbers should be as string
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            123..456 -- the numbers should be as string
+                    ^''')
+
+        self.given('''
+            '456'..'123'
+        ''',
+        expect_error="Line 2: Bad number-range format: '456'..'123' (start > end)")
+
+        self.given('''
+            '000'..'fff' -- only supports decimal for now
+        ''',
+        expect_error="Line 2: Bad number-range format: 'fff'")
+
+        self.given('''
+            'I'..'MCMXCVIII' -- only supports decimal for now
+        ''',
+        expect_error="Line 2: Bad number-range format: 'I'")
+
+        self.given('''
+            'one'..'ten'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'one'")
+
+        self.given('''
+            '2.718'..'3.14'
+        ''',
+        expect_error=r"Line 2: Bad number-range format: '2\.718'")
+
+        self.given('''
+            '2.718'..'3.14'..'0.001'
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            '2.718'..'3.14'..'0.001'
+                           ^''')
+
+        self.given('''
+            '3,14'..'2,718'
+        ''',
+        expect_error=r"Line 2: Bad number-range format: '3,14'")
+
+        self.given('''
+            '0'.. -- infinity not supported for now
+        ''',
+        expect_error='''Line 2: Unexpected NEWLINE
+            '0'.. -- infinity not supported for now
+                 ^''')
+
+        self.given('''
+            '-1'..'-10' -- negative numbers not supported for now
+        ''',
+        expect_error="Line 2: Bad number-range format: '-1'")
+
+        self.given('''
+            '1'..'99'..'2'
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            '1'..'99'..'2'
+                     ^''')
+
+        self.given('''
+            '1'...'10'
+        ''',
+        expect_error='''Line 2: Unexpected DOT
+            '1'...'10'
+                 ^''')
+
+        self.given('''
+            ''..''
+        ''',
+        expect_error="Line 2: Bad number-range format: ''")
+
+        self.given('''
+            '0'..''
+        ''',
+        expect_error="Line 2: Bad number-range format: ''")
+
+        self.given('''
+            ''..'1'
+        ''',
+        expect_error="Line 2: Bad number-range format: ''")
+
+        self.given('''
+            '1'..'1oo'
+        ''',
+        expect_error="Line 2: Bad number-range format: '1oo'")
+
+        self.given('''
+            'o01'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'o01' (ambiguous leading-zero spec)")
+
+        self.given('''
+            '0o1'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: '0o1'")
+
+        self.given('''
+            'o'..'999' -- should be '0'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'o'")
+
+        self.given('''
+            'ooo'..'999' -- should be 'oo0'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'ooo'")
+
+        self.given('''
+            '01'..'999' -- should be '001'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: '01'..'999' (lengths must be the same if using leading-zero/o format)")
+
+        self.given('''
+            'o1'..'999' -- should be 'oo1'..'999'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'o1'..'999' (lengths must be the same if using leading-zero/o format)")
+
+        self.given('''
+            'oo1'..'099'
+        ''',
+        expect_error="Line 2: Bad number-range format: 'oo1'..'099' (one cannot be o-led while the other is zero-led)")
+
+        self.given('''
+            '09'..'o1'
+        ''',
+        expect_error="Line 2: Bad number-range format: '09'..'o1' (one cannot be o-led while the other is zero-led)")
 
 
 class TestOutput(unittest.TestCase):
@@ -3057,6 +3189,51 @@ class TestOutput(unittest.TestCase):
 
         self.given('''
             2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{2}')
+
+        self.given('''
+            0 of: alpha
+        ''',
+        expect_regex='')
+
+        self.given('''
+            1 of: alpha
+        ''',
+        expect_regex='[a-zA-Z]')
+
+        self.given('''
+            2 of: alpha
+        ''',
+        expect_regex='[a-zA-Z]{2}')
+
+        self.given('''
+            @0 of alpha
+        ''',
+        expect_regex='')
+
+        self.given('''
+            @1 of alpha
+        ''',
+        expect_regex='[a-zA-Z]')
+
+        self.given('''
+            @2 of alpha
+        ''',
+        expect_regex='[a-zA-Z]{2}')
+
+        self.given('''
+            @0 of: alpha
+        ''',
+        expect_regex='')
+
+        self.given('''
+            @1 of: alpha
+        ''',
+        expect_regex='[a-zA-Z]')
+
+        self.given('''
+            @2 of: alpha
         ''',
         expect_regex='[a-zA-Z]{2}')
 
@@ -4587,6 +4764,1154 @@ class TestOutput(unittest.TestCase):
         expect_regex='(?!(?!))')
 
 
+    def test_numrange_shortcut_output(self):
+        self.given(u'''
+            '0'..'1'
+        ''',
+        expect_regex=r'[01](?!\d)')
+
+        self.given(u'''
+            '0'..'2'
+        ''',
+        expect_regex=r'[0-2](?!\d)')
+
+        self.given(u'''
+            '0'..'9'
+        ''',
+        expect_regex=r'\d(?!\d)')
+
+        self.given(u'''
+            '1'..'2'
+        ''',
+        expect_regex=r'[12](?!\d)')
+
+        self.given(u'''
+            '1'..'9'
+        ''',
+        expect_regex=r'[1-9](?!\d)')
+
+        self.given(u'''
+            '2'..'9'
+        ''',
+        expect_regex=r'[2-9](?!\d)')
+
+        self.given(u'''
+            '8'..'9'
+        ''',
+        expect_regex=r'[89](?!\d)')
+
+        self.given(u'''
+            '0'..'10'
+        ''',
+        expect_regex=r'(?>10|\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'10'
+        ''',
+        expect_regex=r'(?>10|[1-9])(?!\d)')
+
+        self.given(u'''
+            '2'..'10'
+        ''',
+        expect_regex=r'(?>10|[2-9])(?!\d)')
+
+        self.given(u'''
+            '8'..'10'
+        ''',
+        expect_regex=r'(?>10|[89])(?!\d)')
+
+        self.given(u'''
+            '9'..'10'
+        ''',
+        expect_regex=r'(?>10|9)(?!\d)')
+
+        self.given(u'''
+            '0'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|[1-9])(?!\d)')
+
+        self.given(u'''
+            '9'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'11'
+        ''',
+        expect_regex=r'1[01](?!\d)')
+
+        self.given(u'''
+            '0'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|[1-9])(?!\d)')
+
+        self.given(u'''
+            '2'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|[2-9])(?!\d)')
+
+        self.given(u'''
+            '0'..'19'
+        ''',
+        expect_regex=r'(?>1\d|\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'19'
+        ''',
+        expect_regex=r'(?>1\d|[1-9])(?!\d)')
+
+        self.given(u'''
+            '9'..'19'
+        ''',
+        expect_regex=r'(?>1\d|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'19'
+        ''',
+        expect_regex=r'1\d(?!\d)')
+
+        self.given(u'''
+            '0'..'20'
+        ''',
+        expect_regex=r'(?>(?>20|1\d)|\d)(?!\d)')
+
+        self.given(u'''
+            '2'..'20'
+        ''',
+        expect_regex=r'(?>(?>20|1\d)|[2-9])(?!\d)')
+
+        self.given(u'''
+            '10'..'20'
+        ''',
+        expect_regex=r'(?>20|1\d)(?!\d)')
+
+        self.given(u'''
+            '19'..'20'
+        ''',
+        expect_regex=r'(?>20|19)(?!\d)')
+
+        self.given(u'''
+            '0'..'29'
+        ''',
+        expect_regex=r'(?>[12]\d|\d)(?!\d)')
+
+        self.given(u'''
+            '2'..'29'
+        ''',
+        expect_regex=r'(?>[12]\d|[2-9])(?!\d)')
+
+        self.given(u'''
+            '9'..'29'
+        ''',
+        expect_regex=r'(?>[12]\d|9)(?!\d)')
+
+        self.given(u'''
+            '2'..'42'
+        ''',
+        expect_regex=r'(?>(?>4[0-2]|[1-3]\d)|[2-9])(?!\d)')
+
+        self.given(u'''
+            '12'..'42'
+        ''',
+        expect_regex=r'(?>4[0-2]|[23]\d|1[2-9])(?!\d)')
+
+        self.given(u'''
+            '24'..'42'
+        ''',
+        expect_regex=r'(?>4[0-2]|3\d|2[4-9])(?!\d)')
+
+        self.given(u'''
+            '38'..'42'
+        ''',
+        expect_regex=r'(?>4[0-2]|3[89])(?!\d)')
+
+        self.given(u'''
+            '0'..'90'
+        ''',
+        expect_regex=r'(?>(?>90|[1-8]\d)|\d)(?!\d)')
+
+        self.given(u'''
+            '9'..'90'
+        ''',
+        expect_regex=r'(?>(?>90|[1-8]\d)|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'90'
+        ''',
+        expect_regex=r'(?>90|[1-8]\d)(?!\d)')
+
+        self.given(u'''
+            '0'..'98'
+        ''',
+        expect_regex=r'(?>(?>9[0-8]|[1-8]\d)|\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'98'
+        ''',
+        expect_regex=r'(?>(?>9[0-8]|[1-8]\d)|[1-9])(?!\d)')
+
+        self.given(u'''
+            '0'..'99'
+        ''',
+        expect_regex=r'(?>[1-9]\d?+|0)(?!\d)')
+
+        self.given(u'''
+            '1'..'99'
+        ''',
+        expect_regex=r'[1-9]\d?+(?!\d)')
+
+        self.given(u'''
+            '2'..'99'
+        ''',
+        expect_regex=r'(?>[1-9]\d|[2-9])(?!\d)')
+
+        self.given(u'''
+            '9'..'99'
+        ''',
+        expect_regex=r'(?>[1-9]\d|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'99'
+        ''',
+        expect_regex=r'[1-9]\d(?!\d)')
+
+        self.given(u'''
+            '11'..'99'
+        ''',
+        expect_regex=r'(?>[2-9]\d|1[1-9])(?!\d)')
+
+        self.given(u'''
+            '19'..'99'
+        ''',
+        expect_regex=r'(?>[2-9]\d|19)(?!\d)')
+
+        self.given(u'''
+            '20'..'99'
+        ''',
+        expect_regex=r'[2-9]\d(?!\d)')
+
+        self.given(u'''
+            '29'..'99'
+        ''',
+        expect_regex=r'(?>[3-9]\d|29)(?!\d)')
+
+        self.given(u'''
+            '46'..'99'
+        ''',
+        expect_regex=r'(?>[5-9]\d|4[6-9])(?!\d)')
+
+        self.given(u'''
+            '80'..'99'
+        ''',
+        expect_regex=r'[89]\d(?!\d)')
+
+        self.given(u'''
+            '89'..'99'
+        ''',
+        expect_regex=r'(?>9\d|89)(?!\d)')
+
+        self.given(u'''
+            '90'..'99'
+        ''',
+        expect_regex=r'9\d(?!\d)')
+
+        self.given(u'''
+            '0'..'100'
+        ''',
+        expect_regex=r'(?>100|(?>[1-9]\d?+|0))(?!\d)')
+
+        self.given(u'''
+            '10'..'100'
+        ''',
+        expect_regex=r'(?>100|[1-9]\d)(?!\d)')
+
+        self.given(u'''
+            '90'..'100'
+        ''',
+        expect_regex=r'(?>100|9\d)(?!\d)')
+
+        self.given(u'''
+            '99'..'100'
+        ''',
+        expect_regex=r'(?>100|99)(?!\d)')
+
+        self.given(u'''
+            '1'..'101'
+        ''',
+        expect_regex=r'(?>10[01]|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '99'..'101'
+        ''',
+        expect_regex=r'(?>10[01]|99)(?!\d)')
+
+        self.given(u'''
+            '100'..'101'
+        ''',
+        expect_regex=r'10[01](?!\d)')
+
+        self.given(u'''
+            '1'..'109'
+        ''',
+        expect_regex=r'(?>10\d|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '9'..'109'
+        ''',
+        expect_regex=r'(?>10\d|[1-9]\d|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'109'
+        ''',
+        expect_regex=r'(?>10\d|[1-9]\d)(?!\d)')
+
+        self.given(u'''
+            '99'..'109'
+        ''',
+        expect_regex=r'(?>10\d|99)(?!\d)')
+
+        self.given(u'''
+            '100'..'109'
+        ''',
+        expect_regex=r'10\d(?!\d)')
+
+        self.given(u'''
+            '1'..'110'
+        ''',
+        expect_regex=r'(?>1(?>10|0\d)|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '10'..'110'
+        ''',
+        expect_regex=r'(?>1(?>10|0\d)|[1-9]\d)(?!\d)')
+
+        self.given(u'''
+            '11'..'110'
+        ''',
+        expect_regex=r'(?>1(?>10|0\d)|(?>[2-9]\d|1[1-9]))(?!\d)')
+
+        self.given(u'''
+            '100'..'110'
+        ''',
+        expect_regex=r'1(?>10|0\d)(?!\d)')
+
+        self.given(u'''
+            '1'..'111'
+        ''',
+        expect_regex=r'(?>1(?>1[01]|0\d)|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '11'..'111'
+        ''',
+        expect_regex=r'(?>1(?>1[01]|0\d)|(?>[2-9]\d|1[1-9]))(?!\d)')
+        
+        self.given(u'''
+            '1'..'119'
+        ''',
+        expect_regex=r'(?>1[01]\d|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '11'..'119'
+        ''',
+        expect_regex=r'(?>1[01]\d|(?>[2-9]\d|1[1-9]))(?!\d)')
+
+        self.given(u'''
+            '19'..'119'
+        ''',
+        expect_regex=r'(?>1[01]\d|(?>[2-9]\d|19))(?!\d)')
+
+        self.given(u'''
+            '1'..'123'
+        ''',
+        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '12'..'123'
+        ''',
+        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|(?>[2-9]\d|1[2-9]))(?!\d)')
+
+        self.given(u'''
+            '23'..'123'
+        ''',
+        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|(?>[3-9]\d|2[3-9]))(?!\d)')
+
+        self.given(u'''
+            '1'..'199'
+        ''',
+        expect_regex=r'(?>1\d{2}|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '10'..'199'
+        ''',
+        expect_regex=r'(?>1\d{2}|[1-9]\d)(?!\d)')
+
+        self.given(u'''
+            '19'..'199'
+        ''',
+        expect_regex=r'(?>1\d{2}|(?>[2-9]\d|19))(?!\d)')
+
+        self.given(u'''
+            '99'..'199'
+        ''',
+        expect_regex=r'(?>1\d{2}|99)(?!\d)')
+
+        self.given(u'''
+            '100'..'199'
+        ''',
+        expect_regex=r'1\d{2}(?!\d)')
+
+        self.given(u'''
+            '109'..'199'
+        ''',
+        expect_regex=r'1(?>[1-9]\d|09)(?!\d)')
+
+        self.given(u'''
+            '110'..'199'
+        ''',
+        expect_regex=r'1[1-9]\d(?!\d)')
+
+        self.given(u'''
+            '190'..'199'
+        ''',
+        expect_regex=r'19\d(?!\d)')
+
+        self.given(u'''
+            '1'..'200'
+        ''',
+        expect_regex=r'(?>(?>200|1\d{2})|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '20'..'200'
+        ''',
+        expect_regex=r'(?>(?>200|1\d{2})|[2-9]\d)(?!\d)')
+
+        self.given(u'''
+            '100'..'200'
+        ''',
+        expect_regex=r'(?>200|1\d{2})(?!\d)')
+
+        self.given(u'''
+            '199'..'200'
+        ''',
+        expect_regex=r'(?>200|199)(?!\d)')
+
+        self.given(u'''
+            '1'..'201'
+        ''',
+        expect_regex=r'(?>(?>20[01]|1\d{2})|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '199'..'201'
+        ''',
+        expect_regex=r'(?>20[01]|199)(?!\d)')
+
+        self.given(u'''
+            '200'..'201'
+        ''',
+        expect_regex=r'20[01](?!\d)')
+
+        self.given(u'''
+            '1'..'299'
+        ''',
+        expect_regex=r'(?>[12]\d{2}|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '100'..'299'
+        ''',
+        expect_regex=r'[12]\d{2}(?!\d)')
+
+        self.given(u'''
+            '199'..'299'
+        ''',
+        expect_regex=r'(?>2\d{2}|199)(?!\d)')
+
+        self.given(u'''
+            '200'..'299'
+        ''',
+        expect_regex=r'2\d{2}(?!\d)')
+
+        self.given(u'''
+            '290'..'299'
+        ''',
+        expect_regex=r'29\d(?!\d)')
+
+        self.given(u'''
+            '1'..'300'
+        ''',
+        expect_regex=r'(?>(?>300|[12]\d{2})|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '1'..'399'
+        ''',
+        expect_regex=r'(?>[1-3]\d{2}|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '123'..'456'
+        ''',
+        expect_regex=r'(?>4(?>5[0-6]|[0-4]\d)|[23]\d{2}|1(?>[3-9]\d|2[3-9]))(?!\d)')
+
+        self.given(u'''
+            '1'..'901'
+        ''',
+        expect_regex=r'(?>(?>90[01]|[1-8]\d{2})|[1-9]\d?+)(?!\d)')
+
+        self.given(u'''
+            '0'..'999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{,2}+|0)(?!\d)')
+
+        self.given(u'''
+            '1'..'999'
+        ''',
+        expect_regex=r'[1-9]\d{,2}+(?!\d)')
+
+        self.given(u'''
+            '9'..'999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{1,2}+|9)(?!\d)')
+
+        self.given(u'''
+            '10'..'999'
+        ''',
+        expect_regex=r'[1-9]\d{1,2}+(?!\d)')
+
+        self.given(u'''
+            '99'..'999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{2}|99)(?!\d)')
+
+        self.given(u'''
+            '100'..'999'
+        ''',
+        expect_regex=r'[1-9]\d{2}(?!\d)')
+
+        self.given(u'''
+            '900'..'999'
+        ''',
+        expect_regex=r'9\d{2}(?!\d)')
+
+        self.given(u'''
+            '0'..'1000'
+        ''',
+        expect_regex=r'(?>1000|(?>[1-9]\d{,2}+|0))(?!\d)')
+
+        self.given(u'''
+            '1'..'1000'
+        ''',
+        expect_regex=r'(?>1000|[1-9]\d{,2}+)(?!\d)')
+
+        self.given(u'''
+            '10'..'1000'
+        ''',
+        expect_regex=r'(?>1000|[1-9]\d{1,2}+)(?!\d)')
+
+        self.given(u'''
+            '100'..'1000'
+        ''',
+        expect_regex=r'(?>1000|[1-9]\d{2})(?!\d)')
+
+        self.given(u'''
+            '999'..'1000'
+        ''',
+        expect_regex=r'(?>1000|999)(?!\d)')
+
+        self.given(u'''
+            '1'..'1001'
+        ''',
+        expect_regex=r'(?>100[01]|[1-9]\d{,2}+)(?!\d)')
+
+        self.given(u'''
+            '11'..'1001'
+        ''',
+        expect_regex=r'(?>100[01]|[1-9]\d{2}|(?>[2-9]\d|1[1-9]))(?!\d)')
+
+        self.given(u'''
+            '101'..'1001'
+        ''',
+        expect_regex=r'(?>100[01]|(?>[2-9]\d{2}|1(?>[1-9]\d|0[1-9])))(?!\d)')
+
+        self.given(u'''
+            '998'..'1001'
+        ''',
+        expect_regex=r'(?>100[01]|99[89])(?!\d)')
+
+        self.given(u'''
+            '1000'..'1001'
+        ''',
+        expect_regex=r'100[01](?!\d)')
+
+        self.given(u'''
+            '1000'..'1099'
+        ''',
+        expect_regex=r'10\d{2}(?!\d)')
+
+        self.given(u'''
+            '1'..'1999'
+        ''',
+        expect_regex=r'(?>1\d{3}|[1-9]\d{,2}+)(?!\d)')
+
+        self.given(u'''
+            '10'..'1999'
+        ''',
+        expect_regex=r'(?>1\d{3}|[1-9]\d{1,2}+)(?!\d)')
+
+        self.given(u'''
+            '100'..'1999'
+        ''',
+        expect_regex=r'(?>1\d{3}|[1-9]\d{2})(?!\d)')
+
+        self.given(u'''
+            '999'..'1999'
+        ''',
+        expect_regex=r'(?>1\d{3}|999)(?!\d)')
+
+        self.given(u'''
+            '1000'..'1999'
+        ''',
+        expect_regex=r'1\d{3}(?!\d)')
+
+        self.given(u'''
+            '1000'..'2000'
+        ''',
+        expect_regex=r'(?>2000|1\d{3})(?!\d)')
+
+        self.given(u'''
+            '1999'..'2000'
+        ''',
+        expect_regex=r'(?>2000|1999)(?!\d)')
+
+        self.given(u'''
+            '1998'..'2001'
+        ''',
+        expect_regex=r'(?>200[01]|199[89])(?!\d)')
+
+        self.given(u'''
+            '999'..'2999'
+        ''',
+        expect_regex=r'(?>[12]\d{3}|999)(?!\d)')
+
+        self.given(u'''
+            '1999'..'2999'
+        ''',
+        expect_regex=r'(?>2\d{3}|1999)(?!\d)')
+
+        self.given(u'''
+            '0'..'9999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{,3}+|0)(?!\d)')
+
+        self.given(u'''
+            '1'..'9999'
+        ''',
+        expect_regex=r'[1-9]\d{,3}+(?!\d)')
+
+        self.given(u'''
+            '10'..'9999'
+        ''',
+        expect_regex=r'[1-9]\d{1,3}+(?!\d)')
+
+        self.given(u'''
+            '99'..'9999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{2,3}+|99)(?!\d)')
+
+        self.given(u'''
+            '100'..'9999'
+        ''',
+        expect_regex=r'[1-9]\d{2,3}+(?!\d)')
+
+        self.given(u'''
+            '999'..'9999'
+        ''',
+        expect_regex=r'(?>[1-9]\d{3}|999)(?!\d)')
+
+        self.given(u'''
+            '1000'..'9999'
+        ''',
+        expect_regex=r'[1-9]\d{3}(?!\d)')
+
+        self.given(u'''
+            '1999'..'9999'
+        ''',
+        expect_regex=r'(?>[2-9]\d{3}|1999)(?!\d)')
+
+        self.given(u'''
+            '2999'..'9999'
+        ''',
+        expect_regex=r'(?>[3-9]\d{3}|2999)(?!\d)')
+
+        self.given(u'''
+            '7999'..'9999'
+        ''',
+        expect_regex=r'(?>[89]\d{3}|7999)(?!\d)')
+
+        self.given(u'''
+            '8999'..'9999'
+        ''',
+        expect_regex=r'(?>9\d{3}|8999)(?!\d)')
+
+        self.given(u'''
+            '9000'..'9999'
+        ''',
+        expect_regex=r'9\d{3}(?!\d)')
+
+        self.given(u'''
+            '0'..'10000'
+        ''',
+        expect_regex=r'(?>10000|(?>[1-9]\d{,3}+|0))(?!\d)')
+
+        self.given(u'''
+            '1'..'10000'
+        ''',
+        expect_regex=r'(?>10000|[1-9]\d{,3}+)(?!\d)')
+
+        self.given(u'''
+            '10'..'10000'
+        ''',
+        expect_regex=r'(?>10000|[1-9]\d{1,3}+)(?!\d)')
+
+        self.given(u'''
+            '100'..'10000'
+        ''',
+        expect_regex=r'(?>10000|[1-9]\d{2,3}+)(?!\d)')
+
+        self.given(u'''
+            '1000'..'10000'
+        ''',
+        expect_regex=r'(?>10000|[1-9]\d{3})(?!\d)')
+
+        self.given(u'''
+            '9000'..'10000'
+        ''',
+        expect_regex=r'(?>10000|9\d{3})(?!\d)')
+
+        self.given(u'''
+            '9999'..'10000'
+        ''',
+        expect_regex=r'(?>10000|9999)(?!\d)')
+
+        self.given(u'''
+            '9999'..'10001'
+        ''',
+        expect_regex=r'(?>1000[01]|9999)(?!\d)')
+
+        self.given(u'''
+            '10000'..'10001'
+        ''',
+        expect_regex=r'1000[01](?!\d)')
+
+
+    def test_00numrange_shortcut_output(self):
+        self.given(u'''
+            '00'..'01'
+        ''',
+        expect_regex=r'0[01](?!\d)')
+        
+        self.given(u'''
+            '000'..'001'
+        ''',
+        expect_regex=r'00[01](?!\d)')
+        
+        self.given(u'''
+            '00'..'02'
+        ''',
+        expect_regex=r'0[0-2](?!\d)')
+
+        self.given(u'''
+            '00'..'09'
+        ''',
+        expect_regex=r'0\d(?!\d)')
+
+        self.given(u'''
+            '01'..'02'
+        ''',
+        expect_regex=r'0[12](?!\d)')
+
+        self.given(u'''
+            '01'..'09'
+        ''',
+        expect_regex=r'0[1-9](?!\d)')
+
+        self.given(u'''
+            '02'..'09'
+        ''',
+        expect_regex=r'0[2-9](?!\d)')
+
+        self.given(u'''
+            '08'..'09'
+        ''',
+        expect_regex=r'0[89](?!\d)')
+
+        self.given(u'''
+            '00'..'10'
+        ''',
+        expect_regex=r'(?>10|0\d)(?!\d)')
+
+        self.given(u'''
+            '01'..'10'
+        ''',
+        expect_regex=r'(?>10|0[1-9])(?!\d)')
+
+        self.given(u'''
+            '001'..'010'
+        ''',
+        expect_regex=r'0(?>10|0[1-9])(?!\d)')
+
+        self.given(u'''
+            '02'..'10'
+        ''',
+        expect_regex=r'(?>10|0[2-9])(?!\d)')
+
+        self.given(u'''
+            '08'..'10'
+        ''',
+        expect_regex=r'(?>10|0[89])(?!\d)')
+
+        self.given(u'''
+            '09'..'10'
+        ''',
+        expect_regex=r'(?>10|09)(?!\d)')
+
+        self.given(u'''
+            '00'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|0\d)(?!\d)')
+
+        self.given(u'''
+            '01'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|0[1-9])(?!\d)')
+
+        self.given(u'''
+            '09'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|09)(?!\d)')
+
+        self.given(u'''
+            '010'..'011'
+        ''',
+        expect_regex=r'01[01](?!\d)')
+
+        self.given(u'''
+            '01'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|0[1-9])(?!\d)')
+
+        self.given(u'''
+            '000'..'012'
+        ''',
+        expect_regex=r'0(?>1[0-2]|0\d)(?!\d)')
+        
+        self.given(u'''
+            '02'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|0[2-9])(?!\d)')
+
+        self.given(u'''
+            '00'..'19'
+        ''',
+        expect_regex=r'[01]\d(?!\d)')
+
+        self.given(u'''
+            '01'..'19'
+        ''',
+        expect_regex=r'(?>1\d|0[1-9])(?!\d)')
+
+        self.given(u'''
+            '09'..'19'
+        ''',
+        expect_regex=r'(?>1\d|09)(?!\d)')
+
+        self.given(u'''
+            '010'..'019'
+        ''',
+        expect_regex=r'01\d(?!\d)')
+
+        self.given(u'''
+            '00'..'20'
+        ''',
+        expect_regex=r'(?>20|[01]\d)(?!\d)')
+
+        self.given(u'''
+            '02'..'20'
+        ''',
+        expect_regex=r'(?>20|1\d|0[2-9])(?!\d)')
+
+        self.given(u'''
+            '010'..'020'
+        ''',
+        expect_regex=r'0(?>20|1\d)(?!\d)')
+
+        self.given(u'''
+            '019'..'020'
+        ''',
+        expect_regex=r'0(?>20|19)(?!\d)')
+
+
+    def test_oonumrange_shortcut_output(self):
+        self.given(u'''
+            'o0'..'o1'
+        ''',
+        expect_regex=r'0?[01](?!\d)')
+        
+        self.given(u'''
+            'oo0'..'oo1'
+        ''',
+        expect_regex=r'0{,2}[01](?!\d)')
+        
+        self.given(u'''
+            'o0'..'o2'
+        ''',
+        expect_regex=r'0?[0-2](?!\d)')
+
+        self.given(u'''
+            'o0'..'o9'
+        ''',
+        expect_regex=r'0?\d(?!\d)')
+
+        self.given(u'''
+            'o1'..'o2'
+        ''',
+        expect_regex=r'0?+[12](?!\d)')
+
+        self.given(u'''
+            'o1'..'o9'
+        ''',
+        expect_regex=r'0?+[1-9](?!\d)')
+
+        self.given(u'''
+            'o2'..'o9'
+        ''',
+        expect_regex=r'0?+[2-9](?!\d)')
+
+        self.given(u'''
+            'o8'..'o9'
+        ''',
+        expect_regex=r'0?+[89](?!\d)')
+
+        self.given(u'''
+            'o0'..'10'
+        ''',
+        expect_regex=r'(?>10|0?\d)(?!\d)')
+
+        self.given(u'''
+            'o1'..'10'
+        ''',
+        expect_regex=r'(?>10|0?+[1-9])(?!\d)')
+
+        self.given(u'''
+            'oo1'..'o10'
+        ''',
+        expect_regex=r'(?>0?+10|0{,2}+[1-9])(?!\d)')
+
+        self.given(u'''
+            'o2'..'10'
+        ''',
+        expect_regex=r'(?>10|0?+[2-9])(?!\d)')
+
+        self.given(u'''
+            'o8'..'10'
+        ''',
+        expect_regex=r'(?>10|0?+[89])(?!\d)')
+
+        self.given(u'''
+            'o9'..'10'
+        ''',
+        expect_regex=r'(?>10|0?+9)(?!\d)')
+
+        self.given(u'''
+            'o0'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|0?\d)(?!\d)')
+
+        self.given(u'''
+            'o1'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|0?+[1-9])(?!\d)')
+
+        self.given(u'''
+            'o9'..'11'
+        ''',
+        expect_regex=r'(?>1[01]|0?+9)(?!\d)')
+
+        self.given(u'''
+            'o10'..'o11'
+        ''',
+        expect_regex=r'0?+1[01](?!\d)')
+
+        self.given(u'''
+            'o1'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|0?+[1-9])(?!\d)')
+
+        self.given(u'''
+            'oo0'..'o12'
+        ''',
+        expect_regex=r'(?>0?1[0-2]|0{,2}\d)(?!\d)')
+        
+        self.given(u'''
+            'o2'..'12'
+        ''',
+        expect_regex=r'(?>1[0-2]|0?+[2-9])(?!\d)')
+
+        self.given(u'''
+            'o0'..'19'
+        ''',
+        expect_regex=r'(?>1\d|0?\d)(?!\d)')
+
+        self.given(u'''
+            'o1'..'19'
+        ''',
+        expect_regex=r'(?>1\d|0?+[1-9])(?!\d)')
+
+        self.given(u'''
+            'o9'..'19'
+        ''',
+        expect_regex=r'(?>1\d|0?+9)(?!\d)')
+
+        self.given(u'''
+            'o10'..'o19'
+        ''',
+        expect_regex=r'0?+1\d(?!\d)')
+
+        self.given(u'''
+            'o0'..'20'
+        ''',
+        expect_regex=r'(?>(?>20|1\d)|0?\d)(?!\d)')
+
+        self.given(u'''
+            'o2'..'20'
+        ''',
+        expect_regex=r'(?>(?>20|1\d)|0?+[2-9])(?!\d)')
+
+        self.given(u'''
+            'o10'..'o20'
+        ''',
+        expect_regex=r'0?+(?>20|1\d)(?!\d)')
+
+        self.given(u'''
+            'o19'..'o20'
+        ''',
+        expect_regex=r'0?+(?>20|19)(?!\d)')
+
+
+    def test_norange_shortcut_output(self):
+        self.given(u'''
+            '0'..'0'
+        ''',
+        expect_regex=r'0(?!\d)')
+
+        self.given(u'''
+            '00'..'00'
+        ''',
+        expect_regex=r'00(?!\d)')
+
+        self.given(u'''
+            '000'..'000'
+        ''',
+        expect_regex=r'000(?!\d)')
+
+        self.given(u'''
+            '1'..'1'
+        ''',
+        expect_regex=r'1(?!\d)')
+
+        self.given(u'''
+            '2'..'2'
+        ''',
+        expect_regex=r'2(?!\d)')
+
+        self.given(u'''
+            '9'..'9'
+        ''',
+        expect_regex=r'9(?!\d)')
+
+        self.given(u'''
+            '10'..'10'
+        ''',
+        expect_regex=r'10(?!\d)')
+
+        self.given(u'''
+            '99'..'99'
+        ''',
+        expect_regex=r'99(?!\d)')
+
+        self.given(u'''
+            '100'..'100'
+        ''',
+        expect_regex=r'100(?!\d)')
+
+        self.given(u'''
+            '123'..'123'
+        ''',
+        expect_regex=r'123(?!\d)')
+
+        self.given(u'''
+            '12345'..'12345'
+        ''',
+        expect_regex=r'12345(?!\d)')
+
+        self.given(u'''
+            '9999999'..'9999999'
+        ''',
+        expect_regex=r'9999999(?!\d)')
+
+        self.given(u'''
+            'o0'..'o0'
+        ''',
+        expect_regex=r'0?0(?!\d)')
+
+        self.given(u'''
+            'oo0'..'oo0'
+        ''',
+        expect_regex=r'0{,2}0(?!\d)')
+
+        self.given(u'''
+            'ooo0'..'ooo0'
+        ''',
+        expect_regex=r'0{,3}0(?!\d)')
+
+        self.given(u'''
+            'o1'..'o1'
+        ''',
+        expect_regex=r'0?+1(?!\d)')
+
+        self.given(u'''
+            'oo9'..'oo9'
+        ''',
+        expect_regex=r'0{,2}+9(?!\d)')
+
+        self.given(u'''
+            'o10'..'o10'
+        ''',
+        expect_regex=r'0?+10(?!\d)')
+
+        self.given(u'''
+            'oo100'..'oo100'
+        ''',
+        expect_regex=r'0{,2}+100(?!\d)')
+
+        self.given(u'''
+            'o9999'..'o9999'
+        ''',
+        expect_regex=r'0?+9999(?!\d)')
+
+        self.given(u'''
+            'ooo9999'..'ooo9999'
+        ''',
+        expect_regex=r'0{,3}+9999(?!\d)')
+
+        
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -5333,7 +6658,7 @@ class TestMatches(unittest.TestCase):
         ''',
         fn=regex.search,
         expect_full_match=[],
-        no_match=['cat', 'cat videos','grumpy cat', 'tomcat', 'garfield'],
+        no_match=['cat', 'cat videos', 'grumpy cat', 'tomcat', 'garfield'],
         partial_match={'catasthrope' : 'cat', 'complicated' : 'cat'})
 
         self.given('''
@@ -6194,6 +7519,851 @@ class TestMatches(unittest.TestCase):
             '()))'  : '()',
             '(()))' : '(())',
         })
+
+
+    def test_numrange_shortcut(self):
+        self.given(u'''
+            '0'..'1'
+        ''',
+        expect_full_match=['0', '1'],
+        no_match=['00', '01', '10', '11'])
+
+        self.given(u'''
+            '0'..'2'
+        ''',
+        expect_full_match=['0', '1', '2'],
+        no_match=['00', '11', '22', '02'])
+
+        self.given(u'''
+            '0'..'9'
+        ''',
+        expect_full_match=['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        no_match=['00', '11', '99', '09', '911', '123abc'],
+        partial_match={
+            '0xdeadbeef' : '0',
+            '9z' : '9',
+            '3.14' : '3',
+        })
+
+        self.given(u'''
+            '1'..'2'
+        ''',
+        expect_full_match=['1', '2'],
+        no_match=['0', '11', '22', '12'])
+
+        self.given(u'''
+            '1'..'9'
+        ''',
+        expect_full_match=['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        no_match=['0', '11', '99', '19'])
+
+        self.given(u'''
+            '2'..'9'
+        ''',
+        expect_full_match=['2', '3', '4', '5', '6', '7', '8', '9'],
+        no_match=['1', '22', '99', '29'])
+
+        self.given(u'''
+            '8'..'9'
+        ''',
+        expect_full_match=['8', '9'],
+        no_match=['88', '99', '89'])
+
+        self.given(u'''
+            '0'..'10'
+        ''',
+        expect_full_match=['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+        no_match=['11', '010', '100'])
+
+        self.given(u'''
+            '1'..'10'
+        ''',
+        expect_full_match=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+        no_match=['0', '11', '010', '100', '110'])
+
+        self.given(u'''
+            '2'..'10'
+        ''',
+        expect_full_match=['2', '3', '4', '5', '6', '7', '8', '9', '10'],
+        no_match=['0', '22', '010', '100', '210'])
+
+        self.given(u'''
+            '8'..'10'
+        ''',
+        expect_full_match=['8', '9', '10'],
+        no_match=['88', '010', '100', '810'])
+
+        self.given(u'''
+            '9'..'10'
+        ''',
+        expect_full_match=['9', '10'],
+        no_match=['99', '010', '100', '910'])
+
+        self.given(u'''
+            '0'..'11'
+        ''',
+        expect_full_match=['0', '1', '5', '10', '11'],
+        no_match=['01', '12', '011', '111'])
+
+        self.given(u'''
+            '1'..'11'
+        ''',
+        expect_full_match=['1', '6', '10', '11'],
+        no_match=['0', '01', '011', '111'])
+
+        self.given(u'''
+            '9'..'11'
+        ''',
+        expect_full_match=['9', '10', '11'],
+        no_match=['90', '09', '911'])
+
+        self.given(u'''
+            '10'..'11'
+        ''',
+        expect_full_match=['10', '11'],
+        no_match=['100', '101', '111', '1011'])
+
+        self.given(u'''
+            '0'..'12'
+        ''',
+        expect_full_match=['0', '1', '2', '5', '10', '11', '12'],
+        no_match=['00', '012'])
+
+        self.given(u'''
+            '1'..'12'
+        ''',
+        expect_full_match=['1', '2', '8', '9', '10', '11', '12'],
+        no_match=['01', '012', '112', '121'])
+
+        self.given(u'''
+            '2'..'12'
+        ''',
+        expect_full_match=['2', '8', '9', '10', '11', '12'],
+        no_match=['20', '100', '110', '120'])
+
+        self.given(u'''
+            '0'..'19'
+        ''',
+        expect_full_match=['0', '1', '9', '10', '18', '19'],
+        no_match=['00', '019', '190', '20'])
+
+        self.given(u'''
+            '1'..'19'
+        ''',
+        expect_full_match=['1', '9', '10', '18', '19'],
+        no_match=['0', '00', '019', '190', '20'])
+
+        self.given(u'''
+            '9'..'19'
+        ''',
+        expect_full_match=['9', '10', '15', '19'],
+        no_match=['919'])
+
+        self.given(u'''
+            '10'..'19'
+        ''',
+        expect_full_match=['10', '19'],
+        no_match=['0', '1', '9', '100', '1019', '20', '190'])
+
+        self.given(u'''
+            '0'..'20'
+        ''',
+        expect_full_match=['0', '1', '2', '10', '19', '20'],
+        no_match=['00', '020', '200'])
+
+        self.given(u'''
+            '2'..'20'
+        ''',
+        expect_full_match=['2', '10', '19', '20'],
+        no_match=['00', '020', '200', '220'])
+
+        self.given(u'''
+            '10'..'20'
+        ''',
+        expect_full_match=['10', '11', '15', '19', '20'],
+        no_match=['0', '1', '010', '020', '100', '200', '1020'])
+
+        self.given(u'''
+            '19'..'20'
+        ''',
+        expect_full_match=['19', '20'],
+        no_match=['1', '019', '2000', '1920'])
+
+        self.given(u'''
+            '0'..'29'
+        ''',
+        expect_full_match=['0', '1', '2', '9', '29'],
+        no_match=['00', '029', '299'])
+
+        self.given(u'''
+            '2'..'29'
+        ''',
+        expect_full_match=['2', '9', '15', '21', '22', '29'],
+        no_match=['0', '1', '229', '292'])
+
+        self.given(u'''
+            '9'..'29'
+        ''',
+        expect_full_match=['9', '29', '19', '15'],
+        no_match=['92', '929', '299'])
+
+        self.given(u'''
+            '2'..'42'
+        ''',
+        expect_full_match=['2', '4', '12', '22', '39', '41', '42'],
+        no_match=['02', '242', '422'])
+
+        self.given(u'''
+            '12'..'42'
+        ''',
+        expect_full_match=['12', '22', '32', '42', '19', '41', '35'],
+        no_match=['1', '2', '1242', '4212'])
+
+        self.given(u'''
+            '24'..'42'
+        ''',
+        expect_full_match=['24', '39', '40', '42'],
+        no_match=['2', '4', '2442', '4224'])
+
+        self.given(u'''
+            '38'..'42'
+        ''',
+        expect_full_match=['38', '39', '40', '41', '42'],
+        no_match=['3', '4', '3842'])
+
+        self.given(u'''
+            '0'..'90'
+        ''',
+        expect_full_match=['0', '1', '2', '5', '7', '8', '9', '10', '11', '30', '42', '69', '83', '88', '89', '90'],
+        no_match=['09', '090', '900'])
+
+        self.given(u'''
+            '9'..'90'
+        ''',
+        expect_full_match=['9', '10', '19', '42', '89', '90'],
+        no_match=['09', '99', '900'])
+
+        self.given(u'''
+            '10'..'90'
+        ''',
+        expect_full_match=['10', '19', '20', '42', '89', '90'],
+        no_match=['0', '1', '100', '900', '010'])
+
+        self.given(u'''
+            '0'..'98'
+        ''',
+        expect_full_match=['0', '1', '8', '9', '18', '20', '42', '89', '90', '97', '98'],
+        no_match=['00', '09', '098', '980'])
+
+        self.given(u'''
+            '1'..'98'
+        ''',
+        expect_full_match=['1', '8', '9', '18', '20', '42', '89', '90', '97', '98'],
+        no_match=['0', '01', '09', '098', '198', '980'])
+
+        self.given(u'''
+            '0'..'99'
+        ''',
+        expect_full_match=['0', '1', '8', '9', '18', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['00', '09', '099', '990'],
+        partial_match={
+            '0xcafebabe' : '0',
+            '9z' : '9',
+            '12ab' : '12',
+            '3.1415' : '3',
+        })
+
+        self.given(u'''
+            '1'..'99'
+        ''',
+        expect_full_match=['1', '8', '9', '18', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['0', '01', '09', '099', '199', '991'])
+
+        self.given(u'''
+            '2'..'99'
+        ''',
+        expect_full_match=['2', '8', '9', '18', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['0', '1', '02', '099', '990'])
+
+        self.given(u'''
+            '9'..'99'
+        ''',
+        expect_full_match=['9', '18', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['0', '1', '09', '099', '990'])
+
+        self.given(u'''
+            '10'..'99'
+        ''',
+        expect_full_match=['10', '18', '19', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['1', '010', '100', '099', '990', '1099'])
+
+        self.given(u'''
+            '11'..'99'
+        ''',
+        expect_full_match=['11', '18', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['0', '1', '9', '10', '011', '110', '099', '990', '1199'])
+
+        self.given(u'''
+            '19'..'99'
+        ''',
+        expect_full_match=['19', '20', '42', '89', '90', '97', '98', '99'],
+        no_match=['0', '1', '9', '10', '019', '190', '099', '990', '1999'])
+
+        self.given(u'''
+            '20'..'99'
+        ''',
+        expect_full_match=['20', '42', '89', '90', '97', '98', '99'],
+        no_match=['2', '9', '020', '200', '099', '990', '2099'])
+
+        self.given(u'''
+            '29'..'99'
+        ''',
+        expect_full_match=['29', '42', '89', '90', '97', '98', '99'],
+        no_match=['2', '9', '029', '290', '099', '990', '2999'])
+
+        self.given(u'''
+            '46'..'99'
+        ''',
+        expect_full_match=['46', '85', '90', '97', '98', '99'],
+        no_match=['4', '9', '046', '460', '099', '990', '4699'])
+
+        self.given(u'''
+            '80'..'99'
+        ''',
+        expect_full_match=['80', '85', '90', '97', '98', '99'],
+        no_match=['8', '9', '080', '800', '099', '990', '8099'])
+
+        self.given(u'''
+            '89'..'99'
+        ''',
+        expect_full_match=['89', '90', '97', '98', '99'],
+        no_match=['8', '9', '089', '890', '099', '990', '8099'])
+
+        self.given(u'''
+            '90'..'99'
+        ''',
+        expect_full_match=['90', '91', '92', '95', '97', '98', '99'],
+        no_match=['9', '090', '900', '099', '990', '9099'])
+
+        self.given(u'''
+            '0'..'100'
+        ''',
+        expect_full_match=['0', '1', '2', '9', '10', '46', '99', '100'],
+        no_match=['00', '010', '0100', '1000'])
+
+        self.given(u'''
+            '10'..'100'
+        ''',
+        expect_full_match=['10', '46', '99', '100'],
+        no_match=['1', '010', '0100', '1000'])
+
+        self.given(u'''
+            '90'..'100'
+        ''',
+        expect_full_match=['90', '91', '92', '95', '97', '98', '99', '100'],
+        no_match=['9', '090', '900', '0100', '1000'])
+
+        self.given(u'''
+            '99'..'100'
+        ''',
+        expect_full_match=['99', '100'],
+        no_match=['9', '1', '10', '099', '0100', '990', '1000'])
+
+
+    def test_00numrange_shortcut(self):
+        self.given(u'''
+            '00'..'01'
+        ''',
+        expect_full_match=['00', '01'],
+        no_match=['0', '1', '000', '001', '010'])
+        
+        self.given(u'''
+            '000'..'001'
+        ''',
+        expect_full_match=['000', '001'],
+        no_match=['0', '1', '00', '01', '0000', '0001', '0010'])
+        
+        self.given(u'''
+            '00'..'02'
+        ''',
+        expect_full_match=['00', '01', '02'],
+        no_match=['0', '1', '2', '000', '001', '002', '020'])
+
+        self.given(u'''
+            '00'..'09'
+        ''',
+        expect_full_match=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['0', '1', '2', '9', '000', '009', '090', '010', '9z', '3.14'],
+        partial_match={
+            '09z' : '09',
+            '03.14' : '03',
+        })
+
+        self.given(u'''
+            '01'..'02'
+        ''',
+        expect_full_match=['01', '02'],
+        no_match=['0', '1', '2', '001', '002', '010', '020'])
+
+        self.given(u'''
+            '01'..'09'
+        ''',
+        expect_full_match=['01', '02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['1', '2', '3', '9', '001', '009', '010', '090'])
+
+        self.given(u'''
+            '02'..'09'
+        ''',
+        expect_full_match=['02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['2', '9', '002', '009', '020', '090'])
+
+        self.given(u'''
+            '08'..'09'
+        ''',
+        expect_full_match=['08', '09'],
+        no_match=['8', '9', '008', '009', '080', '090'])
+
+        self.given(u'''
+            '00'..'10'
+        ''',
+        expect_full_match=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['0', '1', '2', '9', '000', '010', '100'])
+
+        self.given(u'''
+            '01'..'10'
+        ''',
+        expect_full_match=['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['1', '2', '9', '001', '010', '100'])
+
+        self.given(u'''
+            '001'..'010'
+        ''',
+        expect_full_match=['001', '002', '003', '004', '005', '006', '007', '008', '009', '010'],
+        no_match=['1', '2', '9', '10', '01', '02', '0001', '0010', '0100'])
+
+        self.given(u'''
+            '02'..'10'
+        ''',
+        expect_full_match=['02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['2', '9', '002', '020', '010', '100'])
+
+        self.given(u'''
+            '08'..'10'
+        ''',
+        expect_full_match=['08', '09', '10'],
+        no_match=['8', '008', '080', '010', '100'])
+
+        self.given(u'''
+            '09'..'10'
+        ''',
+        expect_full_match=['09', '10'],
+        no_match=['9', '009', '090', '010', '100'])
+
+        self.given(u'''
+            '00'..'11'
+        ''',
+        expect_full_match=['00', '01', '05', '09', '10', '11'],
+        no_match=['0', '1', '000', '001', '011', '110'])
+
+        self.given(u'''
+            '01'..'11'
+        ''',
+        expect_full_match=['01', '05', '09', '10', '11'],
+        no_match=['0', '1', '00', '001', '010', '011', '110'])
+
+        self.given(u'''
+            '09'..'11'
+        ''',
+        expect_full_match=['09', '10', '11'],
+        no_match=['0', '9', '009', '090', '011', '110'])
+
+        self.given(u'''
+            '010'..'011'
+        ''',
+        expect_full_match=['010', '011'],
+        no_match=['0', '01', '10', '11', '0010', '090', '0011', '0100', '0110'])
+
+        self.given(u'''
+            '01'..'12'
+        ''',
+        expect_full_match=['01', '02', '05', '09', '10', '11', '12'],
+            no_match=['1', '001', '012', '010', '012'])
+        
+        self.given(u'''
+            '02'..'12'
+        ''',
+        expect_full_match=['02', '08', '09', '10', '11', '12'],
+        no_match=['2', '8', '9', '002', '009', '020', '012', '120'])
+
+        self.given(u'''
+            '000'..'012'
+        ''',
+        expect_full_match=['000', '001', '002', '008', '009', '010', '011', '012'],
+        no_match=['0', '1', '2', '10', '12', '0000', '0012', '0120'])
+        
+        self.given(u'''
+            '00'..'19'
+        ''',
+        expect_full_match=['00', '01', '02', '09', '10', '18', '19'],
+        no_match=['0', '1', '000', '019', '190'])
+
+        self.given(u'''
+            '01'..'19'
+        ''',
+        expect_full_match=['01', '02', '09', '10', '18', '19'],
+        no_match=['0', '1', '000', '019', '190'])
+
+        self.given(u'''
+            '09'..'19'
+        ''',
+        expect_full_match=['09', '10', '18', '19'],
+        no_match=['0', '1', '9', '009', '019', '090', '190'])
+
+        self.given(u'''
+            '010'..'019'
+        ''',
+        expect_full_match=['010', '011', '015', '018', '019'],
+        no_match=['0', '1', '10', '11', '19' '0010', '0190', '0100', '0190'])
+
+        self.given(u'''
+            '00'..'20'
+        ''',
+        expect_full_match=['00', '01', '02', '10', '19', '20'],
+        no_match=['0', '2', '000', '020', '200'])
+
+        self.given(u'''
+            '02'..'20'
+        ''',
+        expect_full_match=['02', '10', '19', '20'],
+        no_match=['0', '2', '002', '020', '200'])
+
+        self.given(u'''
+            '010'..'020'
+        ''',
+        expect_full_match=['010', '011', '012', '015', '018', '019', '020'],
+        no_match=['0', '01', '02', '10', '20', '0100', '0200', '0010', '0020'])
+
+        self.given(u'''
+            '019'..'020'
+        ''',
+        expect_full_match=['019', '020'],
+        no_match=['0', '01', '02', '19', '20', '0190', '0200', '0019', '0020'])
+
+
+    def test_oonumrange_shortcut(self):
+        self.given(u'''
+            'o0'..'o1'
+        ''',
+        expect_full_match=['0', '1', '00', '01'],
+        no_match=['000', '001', '010'])
+        
+        self.given(u'''
+            'oo0'..'oo1'
+        ''',
+        expect_full_match=['0', '1', '00', '01', '000', '001'],
+        no_match=['0000', '0001', '0010'])
+        
+        self.given(u'''
+            'o0'..'o2'
+        ''',
+        expect_full_match=['0', '1', '2', '00', '01', '02'],
+        no_match=['000', '001', '002', '020'])
+
+        self.given(u'''
+            'o0'..'o9'
+        ''',
+        expect_full_match=['0', '1', '2', '9', '00', '01', '02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['000', '009', '090', '010'],
+        partial_match={
+            '9z' : '9',
+            '09z' : '09',
+            '3.14' : '3',
+            '03.14' : '03',
+        })
+
+        self.given(u'''
+            'o1'..'o2'
+        ''',
+        expect_full_match=['1', '2', '01', '02'],
+        no_match=['0', '001', '002', '010', '020'])
+
+        self.given(u'''
+            'o1'..'o9'
+        ''',
+        expect_full_match=['1', '2', '3', '9', '01', '02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['001', '009', '010', '090'])
+
+        self.given(u'''
+            'o2'..'o9'
+        ''',
+        expect_full_match=['2', '9', '02', '03', '04', '05', '06', '07', '08', '09'],
+        no_match=['002', '009', '020', '090'])
+
+        self.given(u'''
+            'o8'..'o9'
+        ''',
+        expect_full_match=['8', '9', '08', '09'],
+        no_match=['008', '009', '080', '090'])
+
+        self.given(u'''
+            'o0'..'10'
+        ''',
+        expect_full_match=['0', '1', '2', '9', '00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['000', '010', '100'])
+
+        self.given(u'''
+            'o1'..'10'
+        ''',
+        expect_full_match=['1', '2', '9', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['001', '010', '100'])
+
+        self.given(u'''
+            'oo1'..'o10'
+        ''',
+        expect_full_match=['1', '2', '9', '10', '01', '02', '001', '002', '003', '004', '005', '006', '007', '008', '009', '010'],
+        no_match=['0001', '0010', '0100'])
+
+        self.given(u'''
+            'o2'..'10'
+        ''',
+        expect_full_match=['2', '9', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+        no_match=['002', '020', '010', '100'])
+
+        self.given(u'''
+            'o8'..'10'
+        ''',
+        expect_full_match=['8', '08', '09', '10'],
+        no_match=['008', '080', '010', '100'])
+
+        self.given(u'''
+            'o9'..'10'
+        ''',
+        expect_full_match=['9', '09', '10'],
+        no_match=['009', '090', '010', '100'])
+
+        self.given(u'''
+            'o0'..'11'
+        ''',
+        expect_full_match=['0', '1', '00', '01', '05', '09', '10', '11'],
+        no_match=['000', '001', '011', '110'])
+
+        self.given(u'''
+            'o1'..'11'
+        ''',
+        expect_full_match=['1', '01', '05', '09', '10', '11'],
+        no_match=['0', '00', '001', '010', '011', '110'])
+
+        self.given(u'''
+            'o9'..'11'
+        ''',
+        expect_full_match=['9', '09', '10', '11'],
+        no_match=['0', '009', '090', '011', '110'])
+
+        self.given(u'''
+            'o10'..'o11'
+        ''',
+        expect_full_match=['10', '11', '010', '011'],
+        no_match=['0', '01', '0010', '090', '0011', '0100', '0110'])
+
+        self.given(u'''
+            'o1'..'12'
+        ''',
+        expect_full_match=['1', '01', '02', '05', '09', '10', '11', '12'],
+        no_match=['001', '012', '010', '012'])
+        
+        self.given(u'''
+            'o2'..'12'
+        ''',
+        expect_full_match=['2', '8', '9', '02', '08', '09', '10', '11', '12'],
+        no_match=['002', '009', '020', '012', '120'])
+
+        self.given(u'''
+            'oo0'..'o12'
+        ''',
+        expect_full_match=['0', '1', '2', '10', '12', '000', '001', '002', '008', '009', '010', '011', '012'],
+        no_match=['0000', '0012', '0120'])
+        
+        self.given(u'''
+            'o0'..'19'
+        ''',
+        expect_full_match=['0', '1', '00', '01', '02', '09', '10', '18', '19'],
+        no_match=['000', '019', '190'])
+
+        self.given(u'''
+            'o1'..'19'
+        ''',
+        expect_full_match=['1', '01', '02', '09', '10', '18', '19'],
+        no_match=['0', '000', '019', '190'])
+
+        self.given(u'''
+            'o9'..'19'
+        ''',
+        expect_full_match=['9', '09', '10', '18', '19'],
+        no_match=['0', '1', '009', '019', '090', '190'])
+
+        self.given(u'''
+            'o10'..'o19'
+        ''',
+        expect_full_match=['10', '11', '19', '010', '011', '015', '018', '019'],
+        no_match=['0', '1', '0010', '0190', '0100', '0190'])
+
+        self.given(u'''
+            'o0'..'20'
+        ''',
+        expect_full_match=['0', '2', '00', '01', '02', '10', '19', '20'],
+        no_match=['000', '020', '200'])
+
+        self.given(u'''
+            'o2'..'20'
+        ''',
+        expect_full_match=['2', '02', '10', '19', '20'],
+        no_match=['0', '002', '020', '200'])
+
+        self.given(u'''
+            'o10'..'o20'
+        ''',
+        expect_full_match=['10', '20', '010', '011', '012', '015', '018', '019', '020'],
+        no_match=['0', '01', '02', '0100', '0200', '0010', '0020'])
+
+        self.given(u'''
+            'o19'..'o20'
+        ''',
+        expect_full_match=['19', '20', '019', '020'],
+        no_match=['0', '01', '02', '0190', '0200', '0019', '0020'])
+
+
+    def test_norange_shortcut(self):
+        self.given(u'''
+            '0'..'0'
+        ''',
+        expect_full_match=['0'],
+        no_match=['00', '01', '1'])
+
+        self.given(u'''
+            '00'..'00'
+        ''',
+        expect_full_match=['00'],
+        no_match=['0', '01', '000'])
+
+        self.given(u'''
+            '000'..'000'
+        ''',
+        expect_full_match=['000'],
+        no_match=['0', '00', '0000', '0001', '001'])
+
+        self.given(u'''
+            '007'..'007'
+        ''',
+        expect_full_match=['007'],
+        no_match=['0', '00', '07', '7', '0070', '0007', '006', '008'])
+        
+        self.given(u'''
+            '1'..'1'
+        ''',
+        expect_full_match=['1'],
+        no_match=['00', '01', '0', '2'])
+
+        self.given(u'''
+            '2'..'2'
+        ''',
+        expect_full_match=['2'],
+        no_match=['0', '1', '3', '02', '20'])
+
+        self.given(u'''
+            '9'..'9'
+        ''',
+        expect_full_match=['9'],
+        no_match=['0', '8', '10', '09', '90'])
+
+        self.given(u'''
+            '10'..'10'
+        ''',
+        expect_full_match=['10'],
+        no_match=['0', '1', '9', '11', '010', '100'])
+
+        self.given(u'''
+            '99'..'99'
+        ''',
+        expect_full_match=['99'],
+        no_match=['0', '9', '98', '100', '099', '990'])
+
+        self.given(u'''
+            '100'..'100'
+        ''',
+        expect_full_match=['100'],
+        no_match=['0', '1', '99', '101', '0100', '1000'])
+
+        self.given(u'''
+            '123'..'123'
+        ''',
+        expect_full_match=['123'],
+        no_match=['1', '12', '122', '124', '023', '1230'])
+
+        self.given(u'''
+            '12345'..'12345'
+        ''',
+        expect_full_match=['12345'],
+        no_match=['0', '1', '12', '123', '1234', '12344', '12346', '012345', '123450'])
+
+        self.given(u'''
+            '9999999'..'9999999'
+        ''',
+        expect_full_match=['9999999'],
+        no_match=['99999999', '999999', '99999', '9999', '999', '99', '9', '9999998', '10000000', '09999999', '99999990'])
+
+        self.given(u'''
+            'o0'..'o0'
+        ''',
+        expect_full_match=['0', '00'],
+        no_match=['000', '1', '01'])
+
+        self.given(u'''
+            'oo0'..'oo0'
+        ''',
+        expect_full_match=['0', '00', '000'],
+        no_match=['0000', '1', '01', '001'])
+
+        self.given(u'''
+            'ooo0'..'ooo0'
+        ''',
+        expect_full_match=['0', '00', '000', '0000'],
+        no_match=['00000', '1', '01', '001', '0001'])
+
+        self.given(u'''
+            'o1'..'o1'
+        ''',
+        expect_full_match=['1', '01'],
+        no_match=['001', '0', '00', '02', '010'])
+
+        self.given(u'''
+            'oo9'..'oo9'
+        ''',
+        expect_full_match=['9', '09', '009'],
+        no_match=['0009', '0', '00', '008', '010', '0090'])
+
+        self.given(u'''
+            'o10'..'o10'
+        ''',
+        expect_full_match=['10', '010'],
+        no_match=['0', '01', '009', '011', '0100', '0010'])
+
+        self.given(u'''
+            'oo100'..'oo100'
+        ''',
+        expect_full_match=['100', '0100', '00100'],
+        no_match=['0', '1', '10', '00', '01', '010', '000' '001', '0010', '99', '101'])
+
+        self.given(u'''
+            'o9999'..'o9999'
+        ''',
+        expect_full_match=['9999', '09999'],
+        no_match=['0', '9', '09', '099', '0999', '9998', '10000', '99990'])
+
+        self.given(u'''
+            'ooo9999'..'ooo9999'
+        ''',
+        expect_full_match=['9999', '09999', '009999', '0009999'],
+        no_match=['0', '9', '09', '099', '0999', '009', '0099', '00999', '0009', '00099', '000999', '9998', '10000'])
 
 
 if __name__ == '__main__':

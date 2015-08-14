@@ -334,27 +334,27 @@ class CCItem(namedtuple('CCItem', 'source type value')):
         return t
 
 
-Builtin   = lambda name, value, modifier=None: Variable(name, Regex(value, modifier), lineno=0)
+Builtin   = lambda name, value, modifier=None: Variable(name, Regex(value, modifier=modifier), lineno=0)
 BuiltinCC = lambda name, value:                Variable(name, CharClass(value, is_set_op=False), lineno=0)
 BUILTINS  = [
-    BuiltinCC('alpha',         r'[a-zA-Z]'),
-    BuiltinCC('upper',         r'[A-Z]'),
-    BuiltinCC('lower',         r'[a-z]'),
-    BuiltinCC('alnum',         r'[a-zA-Z0-9]'),
-    BuiltinCC('padchar',       r'[ \t]'),
-    BuiltinCC('backslash',     r'\\'),
-    BuiltinCC('tab',           r'\t'),
-    BuiltinCC('digit',         r'\d'),
-    BuiltinCC('whitechar',     r'\s'),
-    BuiltinCC('wordchar',      r'\w'),
-    Builtin('BOW',             r'\m'),
-    Builtin('EOW',             r'\M'),
-    Builtin('WOB',             r'\b'),
-    Builtin('non-WOB',         r'\B'),
-    Builtin('BOS',             r'\A'),
-    Builtin('EOS',             r'\Z'),
-    Builtin('uany',            r'\X'),
-    Builtin('FAIL!',           r'', modifier='(?!'),
+    BuiltinCC('alpha',     r'[a-zA-Z]'),
+    BuiltinCC('upper',     r'[A-Z]'),
+    BuiltinCC('lower',     r'[a-z]'),
+    BuiltinCC('alnum',     r'[a-zA-Z0-9]'),
+    BuiltinCC('padchar',   r'[ \t]'),
+    BuiltinCC('backslash', r'\\'),
+    BuiltinCC('tab',       r'\t'),
+    BuiltinCC('digit',     r'\d'),
+    BuiltinCC('whitechar', r'\s'),
+    BuiltinCC('wordchar',  r'\w'),
+    Builtin('BOW',         r'\m'),
+    Builtin('EOW',         r'\M'),
+    Builtin('WOB',         r'\b'),
+    Builtin('non-WOB',     r'\B'),
+    Builtin('BOS',         r'\A'),
+    Builtin('EOS',         r'\Z'),
+    Builtin('uany',        r'\X'),
+    Builtin('FAIL!',       '', modifier='(?!'),
 ]
 FLAG_DEPENDENT_BUILTINS = dict(
     m = { # MULTILINE
@@ -625,6 +625,7 @@ def t_ANY_comments_whitespace(t):
 
     # else, num_newlines > 0
     t.type = 'NEWLINE'
+    t.value = '\n'
     if t.lexer.mode == 'CHARCLASS': # NEWLINE ends the charclass-mode
         t.lexer.end_mode('CHARCLASS')
 
@@ -747,11 +748,11 @@ def p_global_flags(t):
     root_scope = t.lexer.scopes[0]
     if 'u' in flags.turn_ons: 
         root_scope.update(
-            alpha    = Variable('alpha',    CharClass(r'\p{Alphabetic}',                 is_set_op=False), lineno=0),
-            upper    = Variable('upper',    CharClass(r'\p{Uppercase}',                  is_set_op=False), lineno=0),
-            lower    = Variable('lower',    CharClass(r'\p{Lowercase}',                  is_set_op=False), lineno=0),
-            alnum    = Variable('alnum',    CharClass(r'\p{Alphanumeric}',               is_set_op=False), lineno=0),
-            linechar = Variable('linechar', CharClass(r'[\r\n\x0B\x0C\x85\u2028\u2029]', is_set_op=False), lineno=0),
+            alpha    = BuiltinCC('alpha',    r'\p{Alphabetic}'),
+            upper    = BuiltinCC('upper',    r'\p{Uppercase}'),
+            lower    = BuiltinCC('lower',    r'\p{Lowercase}'),
+            alnum    = BuiltinCC('alnum',    r'\p{Alphanumeric}'),
+            linechar = BuiltinCC('linechar', r'[\r\n\x0B\x0C\x85\u2028\u2029]'),
         )
         t.lexer.flag_dependent_builtins = FLAG_DEPENDENT_BUILTINS.copy()
         t.lexer.flag_dependent_builtins['w'] = t.lexer.flag_dependent_builtins['w'].copy()
@@ -818,9 +819,9 @@ def p_numrange_shortcut(t):
     # check bad format
     for fmt in (low, high):
         if not regexlib.fullmatch(r'o*\d+', fmt):
-            raise OprexSyntaxError(t.lineno(0), 'Bad number-range format: ' + fmt)
+            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s'" % fmt)
         if regexlib.match(r'o+0+\d+', fmt):
-            raise OprexSyntaxError(t.lineno(0), 'Bad number-range format: %s (ambiguous leading-zero spec)' % fmt)
+            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s' (ambiguous leading-zero spec)" % fmt)
     
     o_led     = lambda str: str.startswith('o')
     zero_led  = lambda str: str.startswith('0') and str != '0'
@@ -839,99 +840,122 @@ def p_numrange_shortcut(t):
         raise OprexSyntaxError(t.lineno(0),
             "Bad number-range format: '%s'..'%s' (one cannot be o-led while the other is zero-led)" % (low, high))
         
-    # if low > high, swap
+    # if low > high, err
     if int(low.lstrip('o')) > int(high.lstrip('o')):
-        low, high = high, low
+            raise OprexSyntaxError(t.lineno(0), 
+                "Bad number-range format: '%s'..'%s' (start > end)" % (low, high))
     
-    # extract out the o's
+    # record leading-o settings
     num_high_o = high.count('o')
     num_low_o = low.count('o')
-    o_led = num_low_o > 0
-    if o_led:
-        o_maxdigits = len(high)
+    is_o_led = num_low_o > 0 # if high is o-led then low must be o-led too, so checking only the num_low_o is enough
+    if is_o_led:
+        maxdigits = len(high)
+        defer_gen_o = num_high_o == num_low_o # e.g. 'oo123'..'oo456' --> we can just do '123'..'456' 
+        if defer_gen_o:                       #                           and prepend the 'oo' to the result later
+            numos = num_high_o # = num_low_o
+        
+    # now that leading-o settings have been recorded, we can strip them out
     high = high.lstrip('o')
     low = low.lstrip('o')
-                
+    
+    # if low is 0, optional-leading-zeroes must be capable of giving back one '0' so the low can match
+    if is_o_led: # i.e. optional-leading-zeroes should be greedy, not be possessive
+         if low == '0':
+             o_eagerness = '' # greedy
+         else:
+             o_eagerness = '+' # possessive
+             
+    def optzeros(numos):
+        return '0{,%d}%s' % (numos, o_eagerness)
+    
     def gen(low, high):
         len_low  = len(low)
         len_high = len(high)
-        low_magnitude  = len_low - 1
-        high_magnitude = len_high - 1
-        
-        def gen_opt_zeros(filled_length):
-            if (not o_led
-                or len_low == len_high
-                or filled_length == o_maxdigits):
-                return ''
-            return '0{,%d}+' % (o_maxdigits - filled_length)
-        
-        def gen_all(bounds):
+        low_mag  = len_low - 1 # e.g. order-of-magnitude of "42" is 1 (4.2 x 10^1), "1337" is 3 (1.337 x 10^3), etc
+        high_mag = len_high - 1
+                
+        def gen_all(steppers=[], should_gen_o=False):
             subsets = []
-            while bounds:
-                subhigh = bounds.pop()
-                sublow = bounds.pop()
-                if int(sublow) <= int(subhigh):
-                    subsets.append(gen_opt_zeros(len(sublow)) + gen(sublow, subhigh))
+            while steppers: # steppers should be in pairs (low-high-low-high etc)
+                subhigh = steppers.pop()
+                sublow = steppers.pop()                    
+                if int(sublow) > int(subhigh): # this happens when e.g. '7'..'11'
+                    continue # the 7 produces steppers 7-9-10 and the 11 produces 9-10-11, resulting in subsets: 7-9, 10-9, and 10-11
+                                                                                         # the 10-9 needs to be skipped
+                subset = gen(sublow, subhigh)
+                if should_gen_o and len(subhigh) < maxdigits:
+                    numos = maxdigits - len(subhigh)
+                    subset = optzeros(numos) + subset
+                subsets.append(subset)
             return '(?>%s)' % '|'.join(subsets)
-            
+        
         if low == high:
             return low
         if len_low == len_high:
-            if len_low == 1:
+            length = len_low # = len_high
+            mag = length - 1
+            if length == 1:
+                if int(low) == int(high) - 1:
+                    return '[%s%s]' % (low, high)
                 return '[%s-%s]' % (low, high)
             if low[0] == high[0]:
                 return low[0] + gen(low[1:], high[1:])
             if all_zero(low) and all_nine(high):
-                return r'\d{%d}' % len_low
+                return r'\d{%d}' % length
             if all_zero(low[1:]) and all_nine(high[1:]):
-                return r'[%s-%s]\d{%d}' % (low[0], high[0], low_magnitude)
+                return gen(low[0], high[0]) + gen (low[1:], high[1:])
             
-            bounds = []
-            bounds.append(low)
-            if not all_zero(low[1:]):
-                bounds.append(low[0] + '9' * low_magnitude)
-                bounds.append(str(int(low[0]) + 1) + '0' * low_magnitude)
-            if not all_nine(high[1:]):
-                bounds.append(str(int(high[0]) - 1) + '9' * high_magnitude)
-                bounds.append(high[0] + '0' * high_magnitude)
-            bounds.append(high)
-            return gen_all(bounds)
+            steppers = []
+            steppers.append(low)
+            if not all_zero(low[1:]):                                   # e.g. if low = 404
+                steppers.append(low[0] + '9' * low_mag)                 #         put 499
+                steppers.append(str(int(low[0]) + 1) + '0' * low_mag)   #         put 500
+            if not all_nine(high[1:]):                                  # e.g. if high = 919
+                steppers.append(str(int(high[0]) - 1) + '9' * high_mag) #         put 899
+                steppers.append(high[0] + '0' * high_mag)               #         put 900
+            steppers.append(high)                            # so the steppers will be: 404-499, 500-899, 900-919
+            return gen_all(steppers, should_gen_o=False)     # when len(low) == len(high), optional leading zeroes are not needed 
         
         else:
             assert(len_low < len_high)
-            if not o_led:
+            if not is_o_led: # if not o-led, we can take some shortcuts
                 if all_nine(high):
                     if is_powten(low):
-                        return r'[1-9]\d{%d,%d}+' % (low_magnitude, high_magnitude)
+                        return r'[1-9]\d{%d,%d}+' % (low_mag, high_mag)
                     if low == '0':
-                        return '(?>%s)' % (gen('1', high) + '|0')
+                        return '(?>%s|0)' % gen('1', high)
                     
-            bounds = []
-            bounds.append(low)
-            if not is_powten(low):
-                bounds.append('9' * len_low)
-                bounds.append('1' + '0' * len_low)
-            if o_led:
-                for i in range(len_low, len_high):
-                    bounds.append('9' * i)
-                    bounds.append('1' + '0' * i)
-            if not all_nine(high):
-                bounds.append('9' * high_magnitude)
-                bounds.append('1' + '0' * high_magnitude)
-            bounds.append(high)
-            return gen_all(bounds)
+            steppers = []
+            steppers.append(low)
+            if low == '0' and not is_o_led: # don't add any more low-steps, the next step will be an all-nine
+                pass                        # so the first subset pair (0-allnine) will utilize the shortcut above
+            elif not is_powten(low):                               # e.g. if low = 42
+                low_mag_biggest_int = '9' * len_low                #         low_mag_biggest_int = 99
+                steppers.append(low_mag_biggest_int)               #         put 99
+                steppers.append(str(int(low_mag_biggest_int) + 1)) #         put 100
+            if is_o_led:                           # if o-led, each order-of-magnitude will need different amount of leading-zeros
+                for i in range(len_low, len_high): # so we need to step every order-of-magnitude between low and high
+                    steppers.append('9' * i)       # and put its biggest-int 
+                    steppers.append('1' + '0' * i) # and next-order-of-magnitude's smallest-int
+            if not all_nine(high):                                   # e.g. if high = 1337
+                high_mag_smallest_int = '1' + '0' * high_mag         #         high_mag_smallest_int = 1000
+                steppers.append(str(int(high_mag_smallest_int) - 1)) #         put 999
+                steppers.append(high_mag_smallest_int)               #         put 1000
+            steppers.append(high)
+            return gen_all(steppers, should_gen_o=is_o_led and not defer_gen_o)
     
+    # here's the main action
     value = gen(low, high)
-    if num_high_o == num_low_o:
-        opt_zeros = '0{,%d}' % num_high_o
-        value = opt_zeros + value
+    if is_o_led and defer_gen_o:
+        value = optzeros(numos) + value
     
     t[0] = Regex(value
-        .replace('[0-9]', r'\d')
-        .replace('{0,1}', '?')
-        .replace('{,1}' , '?')
-        .replace('{1}'  , '')
-    )
+                    .replace('[0-9]', r'\d')
+                    .replace('{0,'  , '{,')
+                    .replace('{,1}' , '?')
+                    .replace('{1}'  , '')
+        + '(?!\d)')
 
 
 class QuantifiedExpr(Expr):
@@ -1140,7 +1164,10 @@ def p_oritem(t):
               | or expr
               | or NEWLINE''' # --> allow the alternation to match empty string
     t_last = t[len(t)-1]
-    expr = t_last if isinstance(t_last, Expr) else Regex('')
+    if t_last == '\n':
+        expr = Regex('')
+    else:
+        expr = t_last
     if len(t) > 3:
         t[0] = ConditionalExpr(condition=t[2], then_expr=expr)
     else:
