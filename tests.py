@@ -4924,12 +4924,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'20'
         ''',
-        expect_regex=r'(?>(?>20|1\d)|\d)(?!\d)')
+        expect_regex=r'(?>20|1\d|\d)(?!\d)')
 
         self.given(u'''
             '2'..'20'
         ''',
-        expect_regex=r'(?>(?>20|1\d)|[2-9])(?!\d)')
+        expect_regex=r'(?>20|1\d|[2-9])(?!\d)')
 
         self.given(u'''
             '10'..'20'
@@ -4959,7 +4959,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '2'..'42'
         ''',
-        expect_regex=r'(?>(?>4[0-2]|[1-3]\d)|[2-9])(?!\d)')
+        expect_regex=r'(?>4[0-2]|[1-3]\d|[2-9])(?!\d)')
 
         self.given(u'''
             '12'..'42'
@@ -4979,12 +4979,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'90'
         ''',
-        expect_regex=r'(?>(?>90|[1-8]\d)|\d)(?!\d)')
+        expect_regex=r'(?>90|[1-8]\d|\d)(?!\d)')
 
         self.given(u'''
             '9'..'90'
         ''',
-        expect_regex=r'(?>(?>90|[1-8]\d)|9)(?!\d)')
+        expect_regex=r'(?>90|[1-8]\d|9)(?!\d)')
 
         self.given(u'''
             '10'..'90'
@@ -4994,12 +4994,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'98'
         ''',
-        expect_regex=r'(?>(?>9[0-8]|[1-8]\d)|\d)(?!\d)')
+        expect_regex=r'(?>9[0-8]|[1-8]\d|\d)(?!\d)')
 
         self.given(u'''
             '1'..'98'
         ''',
-        expect_regex=r'(?>(?>9[0-8]|[1-8]\d)|[1-9])(?!\d)')
+        expect_regex=r'(?>9[0-8]|[1-8]\d|[1-9])(?!\d)')
 
         self.given(u'''
             '0'..'99'
@@ -5069,7 +5069,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'100'
         ''',
-        expect_regex=r'(?>100|(?>[1-9]\d?+|0))(?!\d)')
+        expect_regex=r'(?>100|[1-9]\d?+|0)(?!\d)')
 
         self.given(u'''
             '10'..'100'
@@ -5139,7 +5139,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '11'..'110'
         ''',
-        expect_regex=r'(?>1(?>10|0\d)|(?>[2-9]\d|1[1-9]))(?!\d)')
+        expect_regex=r'(?>1(?>10|0\d)|[2-9]\d|1[1-9])(?!\d)')
 
         self.given(u'''
             '100'..'110'
@@ -5154,7 +5154,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '11'..'111'
         ''',
-        expect_regex=r'(?>1(?>1[01]|0\d)|(?>[2-9]\d|1[1-9]))(?!\d)')
+        expect_regex=r'(?>1(?>1[01]|0\d)|[2-9]\d|1[1-9])(?!\d)')
         
         self.given(u'''
             '1'..'119'
@@ -5164,12 +5164,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '11'..'119'
         ''',
-        expect_regex=r'(?>1[01]\d|(?>[2-9]\d|1[1-9]))(?!\d)')
+        expect_regex=r'(?>1[01]\d|[2-9]\d|1[1-9])(?!\d)')
 
         self.given(u'''
             '19'..'119'
         ''',
-        expect_regex=r'(?>1[01]\d|(?>[2-9]\d|19))(?!\d)')
+        expect_regex=r'(?>1[01]\d|[2-9]\d|19)(?!\d)')
 
         self.given(u'''
             '1'..'123'
@@ -5179,12 +5179,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '12'..'123'
         ''',
-        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|(?>[2-9]\d|1[2-9]))(?!\d)')
+        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|[2-9]\d|1[2-9])(?!\d)')
 
         self.given(u'''
             '23'..'123'
         ''',
-        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|(?>[3-9]\d|2[3-9]))(?!\d)')
+        expect_regex=r'(?>1(?>2[0-3]|[01]\d)|[3-9]\d|2[3-9])(?!\d)')
 
         self.given(u'''
             '1'..'199'
@@ -5199,7 +5199,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '19'..'199'
         ''',
-        expect_regex=r'(?>1\d{2}|(?>[2-9]\d|19))(?!\d)')
+        expect_regex=r'(?>1\d{2}|[2-9]\d|19)(?!\d)')
 
         self.given(u'''
             '99'..'199'
@@ -5229,12 +5229,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '1'..'200'
         ''',
-        expect_regex=r'(?>(?>200|1\d{2})|[1-9]\d?+)(?!\d)')
+        expect_regex=r'(?>200|1\d{2}|[1-9]\d?+)(?!\d)')
 
         self.given(u'''
             '20'..'200'
         ''',
-        expect_regex=r'(?>(?>200|1\d{2})|[2-9]\d)(?!\d)')
+        expect_regex=r'(?>200|1\d{2}|[2-9]\d)(?!\d)')
 
         self.given(u'''
             '100'..'200'
@@ -5249,7 +5249,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '1'..'201'
         ''',
-        expect_regex=r'(?>(?>20[01]|1\d{2})|[1-9]\d?+)(?!\d)')
+        expect_regex=r'(?>20[01]|1\d{2}|[1-9]\d?+)(?!\d)')
 
         self.given(u'''
             '199'..'201'
@@ -5289,7 +5289,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '1'..'300'
         ''',
-        expect_regex=r'(?>(?>300|[12]\d{2})|[1-9]\d?+)(?!\d)')
+        expect_regex=r'(?>300|[12]\d{2}|[1-9]\d?+)(?!\d)')
 
         self.given(u'''
             '1'..'399'
@@ -5304,7 +5304,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '1'..'901'
         ''',
-        expect_regex=r'(?>(?>90[01]|[1-8]\d{2})|[1-9]\d?+)(?!\d)')
+        expect_regex=r'(?>90[01]|[1-8]\d{2}|[1-9]\d?+)(?!\d)')
 
         self.given(u'''
             '0'..'999'
@@ -5344,7 +5344,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'1000'
         ''',
-        expect_regex=r'(?>1000|(?>[1-9]\d{,2}+|0))(?!\d)')
+        expect_regex=r'(?>1000|[1-9]\d{,2}+|0)(?!\d)')
 
         self.given(u'''
             '1'..'1000'
@@ -5374,12 +5374,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '11'..'1001'
         ''',
-        expect_regex=r'(?>100[01]|[1-9]\d{2}|(?>[2-9]\d|1[1-9]))(?!\d)')
+        expect_regex=r'(?>100[01]|[1-9]\d{2}|[2-9]\d|1[1-9])(?!\d)')
 
         self.given(u'''
             '101'..'1001'
         ''',
-        expect_regex=r'(?>100[01]|(?>[2-9]\d{2}|1(?>[1-9]\d|0[1-9])))(?!\d)')
+        expect_regex=r'(?>100[01]|[2-9]\d{2}|1(?>[1-9]\d|0[1-9]))(?!\d)')
 
         self.given(u'''
             '998'..'1001'
@@ -5509,7 +5509,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '0'..'10000'
         ''',
-        expect_regex=r'(?>10000|(?>[1-9]\d{,3}+|0))(?!\d)')
+        expect_regex=r'(?>10000|[1-9]\d{,3}+|0)(?!\d)')
 
         self.given(u'''
             '1'..'10000'
@@ -5828,12 +5828,12 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             'o0'..'20'
         ''',
-        expect_regex=r'(?>(?>20|1\d)|0?\d)(?!\d)')
+        expect_regex=r'(?>20|1\d|0?\d)(?!\d)')
 
         self.given(u'''
             'o2'..'20'
         ''',
-        expect_regex=r'(?>(?>20|1\d)|0?+[2-9])(?!\d)')
+        expect_regex=r'(?>20|1\d|0?+[2-9])(?!\d)')
 
         self.given(u'''
             'o10'..'o20'
@@ -5982,7 +5982,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '46'..
         ''',
-        expect_regex=r'(?>[1-9]\d{2,}+|(?>[5-9]\d|4[6-9]))')
+        expect_regex=r'(?>[1-9]\d{2,}+|[5-9]\d|4[6-9])')
 
         self.given(u'''
             '100'..
@@ -5997,7 +5997,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             '234'..
         ''',
-        expect_regex=r'(?>[1-9]\d{3,}+|(?>[3-9]\d{2}|2(?>[4-9]\d|3[4-9])))')
+        expect_regex=r'(?>[1-9]\d{3,}+|[3-9]\d{2}|2(?>[4-9]\d|3[4-9]))')
 
         self.given(u'''
             ? of '1'..
@@ -6007,7 +6007,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             ? of '2'..
         ''',
-        expect_regex=r'(?:(?>[1-9]\d++|[2-9]))?')
+        expect_regex=r'(?>[1-9]\d++|[2-9])?')
 
 
     def test_infinite_onumrange_output(self):
@@ -6039,7 +6039,7 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             'o46'..
         ''',
-        expect_regex=r'0*+(?>[1-9]\d{2,}+|(?>[5-9]\d|4[6-9]))')
+        expect_regex=r'0*+(?>[1-9]\d{2,}+|[5-9]\d|4[6-9])')
 
         self.given(u'''
             'o100'..
@@ -6054,18 +6054,18 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             'o234'..
         ''',
-        expect_regex=r'0*+(?>[1-9]\d{3,}+|(?>[3-9]\d{2}|2(?>[4-9]\d|3[4-9])))')
+        expect_regex=r'0*+(?>[1-9]\d{3,}+|[3-9]\d{2}|2(?>[4-9]\d|3[4-9]))')
 
         self.given(u'''
             amount?
                 amount = 'o0'..
         ''',
-        expect_regex=r'(?:\d++)?')
+        expect_regex=r'\d*+')
 
         self.given(u'''
             ? of 'o0'..
         ''',
-        expect_regex=r'(?:\d++)?')
+        expect_regex=r'\d*+')
 
         self.given(u'''
             ? of 'o1'..

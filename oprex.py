@@ -896,6 +896,8 @@ def p_numrange_shortcut(t):
                 if should_gen_o and len(subhigh) < maxdigits:
                     numos = maxdigits - len(subhigh)
                     subset = gen_optzeros(numos) + subset
+                if subset.startswith('(?>'):
+                    subset = subset[3:-1]
                 subsets.append(subset)
             return '(?>%s)' % '|'.join(subsets)
         
@@ -960,33 +962,47 @@ def p_numrange_shortcut(t):
                 return r'\d++'
             else:
                 return r'(?!0\d)\d++'
-            
+        
         if is_powten(low):
-            result = r'[1-9]\d{%d,}+' % (len(low) - 1)
+            value = r'[1-9]\d{%d,}+' % (len(low) - 1)
         else:
             low_range = gen(low, '9' * len(low))
+            if low_range.startswith('(?>'):
+                low_range = low_range[3:-1]
             beyond = '[1-9]\d{%d,}+' % len(low)
-            result = r'(?>%s|%s)' % (beyond, low_range)
+            value = '(?>%s|%s)' % (beyond, low_range);
                         
         if is_o_led:
-            return '0*+' + result
+            return '0*+' + value
         else:
-            return result
+            return value
     
     def range_with_max():
-        result = gen(low, high)
+        value = gen(low, high)
         if is_o_led and defer_gen_o:
-            result = gen_optzeros(numos_deferred) + result
-        return result + r'(?!\d)'
-    
-    t[0] = Regex((infinite_range() if high == 'infinity' else range_with_max())
+            value = gen_optzeros(numos_deferred) + value
+        return value + r'(?!\d)'
+        
+    value = infinite_range() if high == 'infinity' else range_with_max()
+    value = (value
         .replace('[0-9]', r'\d')
-        .replace('{0,'  , '{,')
-        .replace('{,1}' , '?')
-        .replace('{1,}' , '+')
-        .replace('{,}'  , '*')
-        .replace('{1}'  , '')
+        .replace('{0,'  ,  '{,')
+        .replace('{,1}' ,  '?')
+        .replace('{1,}' ,  '+')
+        .replace('{,}'  ,  '*')
+        .replace('{1}'  ,  '')
     )
+    
+    # extract the modifier (if any) from the value
+    if value.startswith('(?>'):
+        value, modifier = value[3:-1], '(?>'
+    elif value.endswith('\d++'):
+        value, modifier = value[:-2], '++'
+    else:
+        modifier = '' 
+        # value stays unchanged
+        
+    t[0] = Regex(value, modifier)
 
 
 class QuantifiedExpr(Expr):
