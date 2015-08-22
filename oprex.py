@@ -1004,7 +1004,8 @@ def p_quantified_expr(t):
 
 def p_quantifier(t):
     '''quantifier : repeat_N_times
-                  | repeat_range'''
+                  | repeat_range
+                  | optionalize'''
     quant = t[1]
     base = {
         '{1}'   : '',
@@ -1016,6 +1017,11 @@ def p_quantifier(t):
     }.get(quant.base, quant.base)
     modifier = quant.modifier if base else ''
     t[0] = base + modifier
+
+
+def p_optionalize(t):
+    '''optionalize : QUESTMARK of'''
+    t[0] = Quantifier(base='?', modifier='')
 
 
 def p_repeat_N_times(t):
