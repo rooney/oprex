@@ -2278,13 +2278,6 @@ class TestErrorHandling(unittest.TestCase):
         expect_error=r"Line 2: Bad number-range format: '3,14'")
 
         self.given('''
-            '0'.. -- infinity not supported for now
-        ''',
-        expect_error='''Line 2: Unexpected NEWLINE
-            '0'.. -- infinity not supported for now
-                 ^''')
-
-        self.given('''
             '-1'..'-10' -- negative numbers not supported for now
         ''',
         expect_error="Line 2: Bad number-range format: '-1'")
@@ -2362,6 +2355,38 @@ class TestErrorHandling(unittest.TestCase):
             '09'..'o1'
         ''',
         expect_error="Line 2: Bad number-range format: '09'..'o1' (one cannot be o-led while the other is zero-led)")
+
+
+    def test_invalid_infinite_numrange(self):
+        self.given('''
+            '00'..
+        ''',
+        expect_error="Line 2: Infinite range cannot have (non-optional) leading zero: '00'..")
+        
+        self.given('''
+            '01'..
+        ''',
+        expect_error="Line 2: Infinite range cannot have (non-optional) leading zero: '01'..")
+        
+        self.given('''
+            '0123'..
+        ''',
+        expect_error="Line 2: Infinite range cannot have (non-optional) leading zero: '0123'..")
+        
+        self.given('''
+            'oo0'..
+        ''',
+        expect_error="Line 2: Infinite range: excessive leading-o: 'oo0'..")
+        
+        self.given('''
+            'oo1'..
+        ''',
+        expect_error="Line 2: Infinite range: excessive leading-o: 'oo1'..")
+        
+        self.given('''
+            'oo123'..
+        ''',
+        expect_error="Line 2: Infinite range: excessive leading-o: 'oo123'..")
 
 
 class TestOutput(unittest.TestCase):
@@ -5911,6 +5936,106 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'0{,3}+9999(?!\d)')
 
+
+    def test_infinite_numrange_output(self):
+        self.given(u'''
+            '0'..
+        ''',
+        expect_regex=r'(?!0\d)\d++')
+
+        self.given(u'''
+            '1'..
+        ''',
+        expect_regex=r'[1-9]\d*+')
+
+        self.given(u'''
+            '2'..
+        ''',
+        expect_regex=r'(?>[1-9]\d++|[2-9])')
+
+        self.given(u'''
+            '10'..
+        ''',
+        expect_regex=r'[1-9]\d++')
+
+        self.given(u'''
+            '20'..
+        ''',
+        expect_regex=r'(?>[1-9]\d{2,}+|[2-9]\d)')
+
+        self.given(u'''
+            '46'..
+        ''',
+        expect_regex=r'(?>[1-9]\d{2,}+|(?>[5-9]\d|4[6-9]))')
+
+        self.given(u'''
+            '100'..
+        ''',
+        expect_regex=r'[1-9]\d{2,}+')
+
+        self.given(u'''
+            '200'..
+        ''',
+        expect_regex=r'(?>[1-9]\d{3,}+|[2-9]\d{2})')
+
+        self.given(u'''
+            '234'..
+        ''',
+        expect_regex=r'(?>[1-9]\d{3,}+|(?>[3-9]\d{2}|2(?>[4-9]\d|3[4-9])))')
+
+
+    def test_infinite_onumrange_output(self):
+        self.given(u'''
+            'o0'..
+        ''',
+        expect_regex=r'\d++')
+
+        self.given(u'''
+            'o1'..
+        ''',
+        expect_regex=r'0*+[1-9]\d*+')
+
+        self.given(u'''
+            'o2'..
+        ''',
+        expect_regex=r'0*+(?>[1-9]\d++|[2-9])')
+
+        self.given(u'''
+            'o10'..
+        ''',
+        expect_regex=r'0*+[1-9]\d++')
+
+        self.given(u'''
+            'o20'..
+        ''',
+        expect_regex=r'0*+(?>[1-9]\d{2,}+|[2-9]\d)')
+
+        self.given(u'''
+            'o46'..
+        ''',
+        expect_regex=r'0*+(?>[1-9]\d{2,}+|(?>[5-9]\d|4[6-9]))')
+
+        self.given(u'''
+            'o100'..
+        ''',
+        expect_regex=r'0*+[1-9]\d{2,}+')
+
+        self.given(u'''
+            'o200'..
+        ''',
+        expect_regex=r'0*+(?>[1-9]\d{3,}+|[2-9]\d{2})')
+
+        self.given(u'''
+            'o234'..
+        ''',
+        expect_regex=r'0*+(?>[1-9]\d{3,}+|(?>[3-9]\d{2}|2(?>[4-9]\d|3[4-9])))')
+
+        self.given(u'''
+            amount?
+                amount = 'o0'..
+        ''',
+        expect_regex=r'(?:\d++)?')
+
         
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
@@ -8364,6 +8489,128 @@ class TestMatches(unittest.TestCase):
         ''',
         expect_full_match=['9999', '09999', '009999', '0009999'],
         no_match=['0', '9', '09', '099', '0999', '009', '0099', '00999', '0009', '00099', '000999', '9998', '10000'])
+        
+        
+    def test_infinite_numrange(self):
+        self.given(u'''
+            '0'..
+        ''',
+        expect_full_match=['0', '1', '2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['00', '01', '02', '010', '011', '020', '0100', '0200', '01000', '09999', '065535', '04294967295'])
+
+        self.given(u'''
+            '1'..
+        ''',
+        expect_full_match=['1', '2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '2'..
+        ''',
+        expect_full_match=['2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '10'..
+        ''',
+        expect_full_match=['10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '20'..
+        ''',
+        expect_full_match=['20', '100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '10', '11', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '46'..
+        ''',
+        expect_full_match=['100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '10', '11', '20', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '100'..
+        ''',
+        expect_full_match=['100', '200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '10', '11', '20', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '200'..
+        ''',
+        expect_full_match=['200', '1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '10', '11', '20', '100', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+        self.given(u'''
+            '234'..
+        ''',
+        expect_full_match=['1000', '9999', '65535', '4294967295'],
+        no_match=['0', '1', '2', '10', '11', '20', '100', '200', '00', '01', '02', '010', '011', '020', '0100', '0200'])
+
+
+    def test_infinite_onumrange(self):
+        self.given(u'''
+            'o0'..
+        ''',
+        expect_full_match=['0', '1', '2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295',
+                '00', '01', '02', '010', '011', '020', '0100', '0200', '01000', '09999', '065535', '04294967295',
+                '000', '001', '002', '0010', '0011', '0020', '00100', '00200', '001000', '009999', '0065535', '004294967295',
+                '0000', '0001', '0002', '00010', '00011', '00020', '000100', '000200', '0001000', '0009999', '00065535', '0004294967295'],
+        no_match=[])
+
+        self.given(u'''
+            'o1'..
+        ''',
+        expect_full_match=['1', '2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295',
+                        '01', '02', '010', '011', '020', '0100', '0200',
+                        '001', '002', '0010', '0011', '0020', '00100', '00200'],
+        no_match=['0', '00', '000', '0000', '00000'])
+
+        self.given(u'''
+            'o2'..
+        ''',
+        expect_full_match=['2', '10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295',
+                        '02', '010', '011', '020', '0100', '0200'],
+        no_match=['0', '1', '00', '01', '000', '001'])
+
+        self.given(u'''
+            'o10'..
+        ''',
+        expect_full_match=['10', '11', '20', '100', '200', '1000', '9999', '65535', '4294967295',
+                        '010', '011', '020', '0100', '0200'],
+        no_match=['0', '1', '2', '00', '01', '02', '000', '001', '002'])
+
+        self.given(u'''
+            'o20'..
+        ''',
+        expect_full_match=['20', '100', '200', '1000', '9999', '65535', '4294967295',
+                        '020', '0100', '0200', '0020', '00100', '00200'],
+        no_match=['0', '1', '2', '10', '11', '00', '01', '02', '010', '011', '000', '001', '002'])
+
+        self.given(u'''
+            'o46'..
+        ''',
+        expect_full_match=['100', '200', '1000', '9999', '65535', '4294967295',
+                        '0100', '0200', '00100', '00200'],
+        no_match=['0', '1', '2', '10', '11', '20', '00', '01', '02', '010', '011', '020', '000', '001', '002'])
+
+        self.given(u'''
+            'o100'..
+        ''',
+        expect_full_match=['100', '200', '1000', '9999', '65535', '4294967295',
+                        '0100', '0200', '00100', '00200'],
+        no_match=['0', '1', '2', '10', '11', '20', '00', '01', '02', '010', '011', '020', '000', '001', '002'])
+
+        self.given(u'''
+            'o200'..
+        ''',
+        expect_full_match=['200', '1000', '9999', '65535', '4294967295', '0200', '00200'],
+        no_match=['0', '1', '2', '10', '11', '20', '100', '00', '01', '02', '010', '011', '020', '0100'])
+
+        self.given(u'''
+            'o234'..
+        ''',
+        expect_full_match=['1000', '9999', '65535', '4294967295', '01000', '001000'],
+        no_match=['0', '1', '2', '10', '11', '20', '100', '200', '00', '01', '02', '010', '011', '020', '0100', '0200'])
 
 
 if __name__ == '__main__':

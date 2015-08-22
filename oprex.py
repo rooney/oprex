@@ -812,61 +812,70 @@ def p_str_b(t):
     
     
 def p_numrange_shortcut(t):
-    '''numrange_shortcut : STRING DOT DOT STRING NEWLINE'''
+    '''numrange_shortcut : STRING DOT DOT STRING NEWLINE
+                         | STRING DOT DOT        NEWLINE'''
     low = t[1]
-    high = t[4]
-            
-    # check bad format
-    for fmt in (low, high):
-        if not regexlib.fullmatch(r'o*\d+', fmt):
-            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s'" % fmt)
-        if regexlib.match(r'o+0+\d+', fmt):
-            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s' (ambiguous leading-zero spec)" % fmt)
-    
+    if len(t) == 6:
+        high = t[4]
+    else:
+        high = 'infinity'
+                
     o_led     = lambda str: str.startswith('o')
     zero_led  = lambda str: str.startswith('0') and str != '0'
     all_zero  = lambda str: all(digit == '0' for digit in str)
     all_nine  = lambda str: all(digit == '9' for digit in str)
-    is_powten = lambda str: all(digit == '0' for digit in str[1:]) and str[0] == '1'
+    is_powten = lambda str: str[0] == '1' and all_zero(str[1:])
     
-    # using zero-led/o-led format? len(low) must be == len(high)
-    if zero_led(low) or zero_led(high) or o_led(low) or o_led(high):
-        if len(low) != len(high):
-            raise OprexSyntaxError(t.lineno(0), 
-                "Bad number-range format: '%s'..'%s' (lengths must be the same if using leading-zero/o format)" % (low, high))
-        
-    # zero-led/o-led cannot be mixed
-    if zero_led(low) and o_led(high) or o_led(low) and zero_led(high):
-        raise OprexSyntaxError(t.lineno(0),
-            "Bad number-range format: '%s'..'%s' (one cannot be o-led while the other is zero-led)" % (low, high))
-        
-    # if low > high, err
-    if int(low.lstrip('o')) > int(high.lstrip('o')):
-            raise OprexSyntaxError(t.lineno(0), 
-                "Bad number-range format: '%s'..'%s' (start > end)" % (low, high))
+    def check_format(fmt):
+        if not regexlib.fullmatch(r'o*\d+', fmt):
+            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s'" % fmt)
+        if regexlib.match(r'o+0+\d+', fmt):
+            raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s' (ambiguous leading-zero spec)" % fmt)
+            
+    check_format(low)
     
-    # record leading-o settings
-    num_high_o = high.count('o')
-    num_low_o = low.count('o')
-    is_o_led = num_low_o > 0 # if high is o-led then low must be o-led too, so checking only the num_low_o is enough
+    if high == 'infinity':
+        if zero_led(low):
+            raise OprexSyntaxError(t.lineno(0), "Infinite range cannot have (non-optional) leading zero: '%s'.." % low)        
+        if o_led(low) and low.count('o') > 1:
+            raise OprexSyntaxError(t.lineno(0), "Infinite range: excessive leading-o: '%s'.." % low)
+            
+    else: # high != infinity
+        check_format(high)
+
+        # using zero-led/o-led format? len(low) must be == len(high)
+        if zero_led(low) or zero_led(high) or o_led(low) or o_led(high):
+            if len(low) != len(high):
+                raise OprexSyntaxError(t.lineno(0), 
+                    "Bad number-range format: '%s'..'%s' (lengths must be the same if using leading-zero/o format)" % (low, high))
+        
+        # zero-led/o-led cannot be mixed
+        if zero_led(low) and o_led(high) or o_led(low) and zero_led(high):
+            raise OprexSyntaxError(t.lineno(0),
+                "Bad number-range format: '%s'..'%s' (one cannot be o-led while the other is zero-led)" % (low, high))
+            
+    # process leading-o (if any), leading o(s) = allow optional leading zero(es)
+    is_o_led = o_led(low)
     if is_o_led:
-        maxdigits = len(high)
-        defer_gen_o = num_high_o == num_low_o # e.g. 'oo123'..'oo456' --> we can just do '123'..'456' 
-        if defer_gen_o:                       #                           and prepend the 'oo' to the result later
-            numos = num_high_o # = num_low_o
+        if high != 'infinity':
+            maxdigits = len(high)
+            defer_gen_o = low.count('o') == high.count('o') # e.g. 'oo123'..'oo456' --> we can just gen '123'..'456' 
+            if defer_gen_o:                       #                and prepend the 'oo' to the result later, outside of gen()
+                numos_deferred = low.count('o')
         
-    # now that leading-o settings have been recorded, we can strip them out
+        # if low == 0, the leading-o must be able to give back one '0' for the low to match, i.e. don't be possessive
+        if low.lstrip('o') == '0':
+            o_eagerness = '' # greedy
+        else:
+            o_eagerness = '+' # possessive
+        
+    # now that leading-os have been processed, we can strip them out
+    low = low.lstrip('o')    
     high = high.lstrip('o')
-    low = low.lstrip('o')
+    if high != 'infinity' and int(high) < int(low):
+        raise OprexSyntaxError(t.lineno(0), "Bad number-range format: '%s'..'%s' (start > end)" % (low, high))
     
-    # if low is 0, optional-leading-zeroes must be capable of giving back one '0' so the low can match
-    if is_o_led: # i.e. optional-leading-zeroes should be greedy, not be possessive
-         if low == '0':
-             o_eagerness = '' # greedy
-         else:
-             o_eagerness = '+' # possessive
-             
-    def optzeros(numos):
+    def gen_optzeros(numos):
         return '0{,%d}%s' % (numos, o_eagerness)
     
     def gen(low, high):
@@ -886,7 +895,7 @@ def p_numrange_shortcut(t):
                 subset = gen(sublow, subhigh)
                 if should_gen_o and len(subhigh) < maxdigits:
                     numos = maxdigits - len(subhigh)
-                    subset = optzeros(numos) + subset
+                    subset = gen_optzeros(numos) + subset
                 subsets.append(subset)
             return '(?>%s)' % '|'.join(subsets)
         
@@ -904,7 +913,7 @@ def p_numrange_shortcut(t):
             if all_zero(low) and all_nine(high):
                 return r'\d{%d}' % length
             if all_zero(low[1:]) and all_nine(high[1:]):
-                return gen(low[0], high[0]) + gen (low[1:], high[1:])
+                return gen(low[0], high[0]) + gen(low[1:], high[1:])
             
             steppers = []
             steppers.append(low)
@@ -945,17 +954,39 @@ def p_numrange_shortcut(t):
             steppers.append(high)
             return gen_all(steppers, should_gen_o=is_o_led and not defer_gen_o)
     
-    # here's the main action
-    value = gen(low, high)
-    if is_o_led and defer_gen_o:
-        value = optzeros(numos) + value
+    def infinite_range():
+        if low == '0':
+            if is_o_led:
+                return r'\d++'
+            else:
+                return r'(?!0\d)\d++'
+            
+        if is_powten(low):
+            result = r'[1-9]\d{%d,}+' % (len(low) - 1)
+        else:
+            low_range = gen(low, '9' * len(low))
+            beyond = '[1-9]\d{%d,}+' % len(low)
+            result = r'(?>%s|%s)' % (beyond, low_range)
+                        
+        if is_o_led:
+            return '0*+' + result
+        else:
+            return result
     
-    t[0] = Regex(value
-                    .replace('[0-9]', r'\d')
-                    .replace('{0,'  , '{,')
-                    .replace('{,1}' , '?')
-                    .replace('{1}'  , '')
-        + '(?!\d)')
+    def range_with_max():
+        result = gen(low, high)
+        if is_o_led and defer_gen_o:
+            result = gen_optzeros(numos_deferred) + result
+        return result + r'(?!\d)'
+    
+    t[0] = Regex((infinite_range() if high == 'infinity' else range_with_max())
+        .replace('[0-9]', r'\d')
+        .replace('{0,'  , '{,')
+        .replace('{,1}' , '?')
+        .replace('{1,}' , '+')
+        .replace('{,}'  , '*')
+        .replace('{1}'  , '')
+    )
 
 
 class QuantifiedExpr(Expr):
