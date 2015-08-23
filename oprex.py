@@ -171,8 +171,12 @@ class Block(namedtuple('Block', 'variables starting_lineno')):
     __slots__ = ()
     def check_unused_vars(self, useds):
         for var in self.variables:
-            if var.name not in useds:
-                raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
+            if var.name == 'wordchar':
+                if self.variables.index(var) > 0:
+                    raise OprexSyntaxError(var.lineno, 'Redefining wordchar: must be the first/before any other definition')
+            else: # varname not wordchar
+                if var.name not in useds:
+                    raise OprexSyntaxError(var.lineno, "'%s' is defined but not used (by its parent expression)" % var.name)
 
 
 class Scope(dict):
@@ -792,6 +796,19 @@ def p_expr(t):
             | quantified_expr
             | numrange_shortcut'''
     t[0] = t[1]
+    
+
+class StringExpr(Expr):
+    def apply(self, scope):
+        references = []
+        def process(item):
+            if isinstance(item, VariableLookup):
+                references.append(item)
+                return scope[item.varname].value
+            else:
+                return item
+        value = ''.join(map(process, self.items))
+        return Regex(value), references
 
 
 def p_string_expr(t):
@@ -799,16 +816,16 @@ def p_string_expr(t):
                    |       STRING str_b NEWLINE
                    | str_b STRING       NEWLINE
                    | str_b STRING str_b NEWLINE'''
-    t[0] = Regex(''.join(t[1:-1]))
+    t[0] = StringExpr(items=t[1:-1])
 
 
 def p_str_b(t):
     '''str_b : DOT
              | UNDERSCORE'''
-    t[0] = {
-        '.'  : '\\b',
-        '_'  : '\\B',
-    }[t[1]]
+    t[0] = VariableLookup({
+        '.' : 'WOB',
+        '_' : 'non-WOB',
+    }[t[1]], t.lineno(1), optional=False)
     
     
 def p_numrange_shortcut(t):
@@ -1384,6 +1401,7 @@ class LookupExpr(Expr):
             regex = Regex(''.join(map(resolve, self.items)))
         if self.atomize:
             regex = Regex(regex, modifier='(?>')
+        
         return regex, self.items
 
 
@@ -1644,34 +1662,51 @@ def p_definitions(t):
 def p_definition(t):
     '''definition : assignment
                   | GLOBALMARK assignment'''
-    if t[1] == GLOBALMARK:
+    is_global = t[1] == GLOBALMARK
+    if is_global:
         assignment = t[2]
-        scopes = t.lexer.scopes # global variable, define in all scopes
+        scopes = t.lexer.scopes # global variable --> define in all scopes
     else:
         assignment = t[1]
-        scopes = t.lexer.scopes[-1:] # non-global, define in the deepest (current) scope only
+        scopes = t.lexer.scopes[-1:] # non-global --> define in the deepest (current) scope only
 
     def variable_from(declaration):
-        def make_var():
-            varname = declaration.varname
-            value = assignment.value
-            if declaration.capture:
+        def make_var(varname, capture, value, lineno):
+            if capture:
                 value = Regex(value, modifier='(?P<%s>' % varname)
                 t.lexer.capture_names.add(varname)
-            return Variable(varname, value, assignment.lineno)
+            return Variable(varname, value, lineno)
+        
+        var = make_var(declaration.varname, declaration.capture, assignment.value, assignment.lineno)
+        def put_in_scope(var):
+            for scope in scopes:
+                scope[var.name] = var
 
-        var = make_var()
         try: # check the deepest scope for varname (every scope supersets its parent, so checking only the deepeset is sufficient)
             prev_def = scopes[-1][var.name]
         except KeyError: # not already defined, OK to define it
-            for scope in scopes:
-                scope[var.name] = var
+            put_in_scope(var)
         else: # already defined
-            raise OprexSyntaxError(t.lineno(1),
-                "'%s' is a non-redefinable built-in variable" % var.name
-                if prev_def.is_builtin() else
-                    "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
-                        % (var.name, prev_def.lineno))
+            if prev_def.name == 'wordchar': # wordchar is special -- it's redefinable
+                if not is_global:
+                    raise OprexSyntaxError(t.lineno(0), 'Redefining wordchar: must be global')
+                if len(scopes) > 2:
+                    raise OprexSyntaxError(t.lineno(0), 'Redefining wordchar: must be the first/before any other definition')
+                if not isinstance(var.value, CharClass):
+                    raise OprexSyntaxError(t.lineno(0), 'Redefining wordchar: wordchar must be a charclass')
+                else:
+                    wob     = '(?>(?<=%s)(?!%s)|(?<!%s)(?=%s))' % (var.value, var.value, var.value, var.value)
+                    non_wob = '(?>(?<=%s)(?=%s)|(?<!%s)(?!%s))' % (var.value, var.value, var.value, var.value)
+                    put_in_scope(var)
+                    put_in_scope(make_var('WOB',     False, Regex(wob),     assignment.lineno))
+                    put_in_scope(make_var('non-WOB', False, Regex(non_wob), assignment.lineno))
+            else:
+                if prev_def.is_builtin():
+                    errmsg = "'%s' is a non-redefinable built-in variable" % var.name
+                else:
+                    errmsg = "Names must be unique within a scope, '%s' is already defined (previous definition at line %d)"
+                    errmsg %= (var.name, prev_def.lineno)
+                raise OprexSyntaxError(t.lineno(1), errmsg)
         return var
 
     list_of_variables = map(variable_from, assignment.declarations)

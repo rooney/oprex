@@ -2382,6 +2382,34 @@ class TestErrorHandling(unittest.TestCase):
         expect_error="Line 2: Infinite range: excessive leading-o: 'oo123'..")
 
 
+    def test_invalid_wordchar_redef(self):
+        self.given('''
+            .'cat'.
+                wordchar: A..z
+        ''',
+        expect_error='Line 3: Redefining wordchar: must be global')
+        
+        self.given('''
+            .'cat'.
+*)              wordchar = 'A-z'
+        ''',
+        expect_error='Line 3: Redefining wordchar: wordchar must be a charclass')
+        
+        self.given('''
+            /cat/
+                cat = 'cat'
+*)              wordchar: A..z
+        ''',
+        expect_error='Line 4: Redefining wordchar: must be the first/before any other definition')
+        
+        self.given('''
+            /cat/
+                cat = 'cat'
+*)                  wordchar: A..z
+        ''',
+        expect_error='Line 4: Redefining wordchar: must be the first/before any other definition')
+        
+        
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
         default_flags = '(?V1w)'
@@ -6073,6 +6101,28 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'(?:0*+[1-9]\d*+)?')
 
         
+    def test_wordchar_redef_output(self):
+        self.given(u'''
+            /wordchar/pads/WOB/pads/str/pads/non-WOB/
+*)              wordchar: digit
+                str = .'  '_
+                pads = '  '
+        ''',
+        expect_regex=r'\d  (?>(?<=\d)(?!\d)|(?<!\d)(?=\d))  (?>(?<=\d)(?!\d)|(?<!\d)(?=\d))  (?>(?<=\d)(?=\d)|(?<!\d)(?!\d))  (?>(?<=\d)(?=\d)|(?<!\d)(?!\d))')
+                
+        self.given(u'''
+            WOB
+*)              wordchar = lower
+        ''',
+        expect_regex=r'(?>(?<=[a-z])(?![a-z])|(?<![a-z])(?=[a-z]))')
+                
+        self.given(u'''
+            .'cat'_
+*)              wordchar: upper lower -
+        ''',
+        expect_regex=r'(?>(?<=[A-Za-z\-])(?![A-Za-z\-])|(?<![A-Za-z\-])(?=[A-Za-z\-]))cat(?>(?<=[A-Za-z\-])(?=[A-Za-z\-])|(?<![A-Za-z\-])(?![A-Za-z\-]))')
+                
+        
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -6124,6 +6174,7 @@ class TestMatches(unittest.TestCase):
             'Déjà vu'
         ''',
         expect_full_match=[u'Déjà vu'])
+
 
     def test_simple_optional(self):
         self.given('''
@@ -8718,5 +8769,19 @@ class TestMatches(unittest.TestCase):
         partial_match={'0':'', '00':'', '000':'', '0000':''})
 
 
+    def test_wordchar_redef(self):
+        self.given(u'''
+            .'cat'_
+*)              wordchar: upper lower -
+        ''',
+        expect_full_match=[],
+        no_match=['cat', 'cat9', 'bobcat', 'that-cat'],
+        partial_match={
+            'catasthropic' : 'cat',
+            'cat-like' : 'cat',
+            'cat-9' : 'cat',
+        })
+        
+        
 if __name__ == '__main__':
     unittest.main()
