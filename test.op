@@ -1,3 +1,4 @@
 
-WOB
-*)  wordchar = lower
+/__?/end/
+    end = .''
+    

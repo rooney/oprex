@@ -55,7 +55,8 @@ states = (
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
 reserved = {
-    '_' : 'UNDERSCORE',
+    '_'  : 'UNDERSCORE',
+    '__' : 'DOUBLEUNDERSCORE',
 }
 tokens = [
     'AT',
@@ -114,12 +115,12 @@ t_ignore = '' # oprex is whitespace-significant, no ignored characters
 
 
 ESCAPE_SEQUENCE_RE = regexlib.compile(r'''\\
-    ( .
-    | N\{[^}]++\} # Unicode character name
+    ( N\{[^}]++\} # Unicode character name
     | U\d{8}      # 8-digit hex escapes
     | u\d{4}      # 4-digit hex escapes
     | x\d{2}      # 2-digit hex escapes
     | [0-7]{1,3}  # Octal escapes
+    | .
     )''', regexlib.VERBOSE)
 
 
@@ -140,8 +141,8 @@ class Variable(namedtuple('Variable', 'name value lineno')):
         return self.lineno == 0
 
 
-class VariableDeclaration:
-    __slots__ = ('varname lineno capture')
+class VariableDeclaration(object):
+    __slots__ = ('varname', 'lineno', 'capture')
     def __init__(self, varname, lineno, capture):
         self.varname = varname
         self.lineno  = lineno
@@ -150,12 +151,71 @@ class VariableDeclaration:
 
 class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
     __slots__ = ()
+    def resolve(self, scope, lexer):
+        if self.varname in scope:
+            return scope[self.varname].value
+        elif self.varname in lexer.ongoing_declarations:
+            lexer.ongoing_declarations[self.varname].capture = True
+            return Regex('(?&%s)%s' % (self.varname, self.optional)) 
+        else:
+            raise OprexSyntaxError(self.lineno, "'%s' is not defined" % self.varname)
 
-class NegatedLookup(namedtuple('NegatedLookup', 'varname lineno optional')):
-    __slots__ = ()
+
+class NegatedLookup(VariableLookup):
+    def resolve(self, scope, lexer):
+        try:
+            return scope['non-' + self.varname].value
+        except KeyError:
+            value = VariableLookup.resolve(self, scope, lexer)
+            if isinstance(value, CharClass):
+                return value.negated()
+            else:
+                raise OprexSyntaxError(self.lineno, "'non-%s': '%s' is not a character-class" % (self.varname, self.varname))
+        
 
 class Backreference(namedtuple('Backreference', 'varname lineno optional')):
     __slots__ = ()
+    def resolve(self, scope, lexer):
+        return Regex(self.varname, modifier='(?P=')
+
+
+class MatchUntil(object):
+    __slots__ = ('limiter', 'lineno', 'optional')
+    def __init__(self, limiter, lineno, optional):
+        self.limiter = limiter
+        self.lineno = lineno
+        self.optional = optional
+    
+    def resolve(self, scope, lexer):
+        value = '.'
+        if isinstance(self.limiter, VariableLookup):
+            limiter_value = self.limiter.resolve(scope, lexer)
+            if isinstance(limiter_value, CharClass):
+                value = limiter_value.negated()
+            elif isinstance(limiter_value, StringLiteral):
+                prefixed = limiter_value[:2] in (r'\b', r'\B')
+                if prefixed:
+                    prefix = limiter_value[:2]
+                    limiter_value = limiter_value[2:]
+                if limiter_value != '':
+                    if limiter_value.startswith('\\'):
+                        first_char = ESCAPE_SEQUENCE_RE.match(limiter_value).group(0)
+                    else:
+                        first_char = limiter_value[0]
+                        
+                    first_char_negated = CharClass(first_char, is_set_op=False).negated()
+                    rest = limiter_value[len(first_char):]
+                    if not rest and not prefixed: # limiter_value is single-char, note that e.g. \N{FULL STOP} is counted as single char
+                        value = first_char_negated
+                    else:
+                        value = '%s++' % first_char_negated
+                        if prefixed:
+                            value += '|(?<!%s)%s' % (prefix, first_char)
+                        if rest:
+                            value += '|%s(?!%s)' % (first_char, rest)
+                        value = '(?:%s)' % value
+        return Regex(value, modifier='+?' if value =='.' else '++')
+
 
 class CaptureCondition(namedtuple('CaptureCondition', 'varname lineno')):
     __slots__ = ()
@@ -258,11 +318,16 @@ class Regex(unicode):
 
 
 class Alternation(Regex):
-    __slots__ = ('grouping_unnecessary',)
-    def __new__(cls, subexpressions, is_atomic):
-        alternation = Regex.__new__(cls, '|'.join(subexpressions), modifier='(?>' if is_atomic else None)
-        alternation.grouping_unnecessary = is_atomic or len(subexpressions) == 1
+    __slots__ = ('items', 'grouping_unnecessary')
+    def __new__(cls, items, is_atomic):
+        alternation = Regex.__new__(cls, '|'.join(items), modifier='(?>' if is_atomic else None)
+        alternation.items = items
+        alternation.grouping_unnecessary = is_atomic or len(items) == 1
         return alternation
+        
+        
+class StringLiteral(Regex):
+    pass
 
 
 class CharClass(Regex):
@@ -742,7 +807,7 @@ def p_root_expression(t):
         elif isinstance(t[1], Flagset):
             flags = t[1]
             expression = ''
-
+    
     t[0] = flags, expression
 
 
@@ -780,7 +845,7 @@ def p_expression(t):
     for ref in references:
         if isinstance(ref, Backreference):
             t.lexer.references.append(ref)
-        else:
+        elif isinstance(ref, VariableLookup):
             reffed_varnames.add(ref.varname)
 
     optional_subblock_cleanup(t.lexer, t[2], reffed_varnames)
@@ -808,7 +873,7 @@ class StringExpr(Expr):
             else:
                 return item
         value = ''.join(map(process, self.items))
-        return Regex(value), references
+        return StringLiteral(value), references
 
 
 def p_string_expr(t):
@@ -1362,32 +1427,7 @@ class LookupExpr(Expr):
         is_single_lookup = len(self.items) == 1
 
         def resolve(lookup):
-            def var_lookup():
-                if lookup.varname in scope:
-                    return scope[lookup.varname].value
-                elif lookup.varname in self.ongoing_declarations:
-                    self.ongoing_declarations[lookup.varname].capture = True
-                    return Regex('(?&%s)%s' % (lookup.varname, lookup.optional)) 
-                else:
-                    raise OprexSyntaxError(lookup.lineno, "'%s' is not defined" % lookup.varname)
-
-            def negated_lookup():
-                try:
-                    return scope['non-' + lookup.varname].value
-                except KeyError:
-                    value = var_lookup()
-                if isinstance(value, CharClass):
-                    return value.negated()
-                else:
-                    raise OprexSyntaxError(lookup.lineno, "'non-%s': '%s' is not a character-class" % (lookup.varname, lookup.varname))
-
-            if isinstance(lookup, Backreference): 
-                return Regex('(?P=%s)%s' % (lookup.varname, lookup.optional))
-            elif isinstance(lookup, NegatedLookup):
-                value = negated_lookup()
-            elif isinstance(lookup, VariableLookup):
-                value = var_lookup()
-
+            value = lookup.resolve(scope, self.lexer)
             if lookup.optional:
                 return quantify(value, quantifier=lookup.optional)
             elif isinstance(value, Alternation) and not value.grouping_unnecessary and not is_single_lookup:
@@ -1433,7 +1473,7 @@ def p_lookup(t):
         elif t[3] == '.':
             items.append(sugar_for('EOS'))
 
-    t[0] = LookupExpr(items=items, atomize=atomize, ongoing_declarations=t.lexer.ongoing_declarations)
+    t[0] = LookupExpr(items=items, atomize=atomize, lexer=t.lexer)
 
 
 def p_chain_begin(t):
@@ -1462,25 +1502,34 @@ LookupChain = deque
 def p_lookup_chain(t):
     '''lookup_chain : lookup_item SLASH
                     | lookup_item SLASH lookup_chain'''
+    item = t[1]
     try:
-        t[0] = t[3]
+        chain = t[3]
+        next_item = chain[0]
     except IndexError:
-        t[0] = LookupChain()
-    t[0].appendleft(t[1])
+        chain = LookupChain()
+        next_item = None
+        
+    if isinstance(item, MatchUntil) and next_item is not None:
+        item.limiter = next_item
+    
+    chain.appendleft(item)
+    t[0] = chain
 
 
 def p_lookup_item(t):
     '''lookup_item : lookup_type
                    | lookup_type QUESTMARK'''
-    LookupClass, varname = t[1]
+    klass, arg = t[1]
     has_questmark = len(t) == 3
-    t[0] = LookupClass(varname, t.lineno(1), optional='?' if has_questmark else '')
+    t[0] = klass(arg, t.lineno(1), optional='?' if has_questmark else '')
 
 
 def p_lookup_type(t):
     '''lookup_type : variable_lookup
                    | negated_lookup
-                   | backreference'''
+                   | backreference
+                   | match_until'''
     t[0] = t[1]
 
 
@@ -1498,6 +1547,11 @@ def p_negated_lookup(t):
 def p_backreference(t):
     '''backreference : EQUALSIGN VARNAME'''
     t[0] = Backreference, t[2]
+    
+    
+def p_match_until(t):
+    '''match_until : DOUBLEUNDERSCORE'''
+    t[0] = MatchUntil, None
 
 
 class CharClassExpr(Expr):

@@ -1490,7 +1490,7 @@ class TestErrorHandling(unittest.TestCase):
             /cat/
                 cat = 'cat'__
         ''',
-        expect_error='''Line 3: Unexpected VARNAME
+        expect_error='''Line 3: Unexpected DOUBLEUNDERSCORE
                 cat = 'cat'__
                            ^''')
 
@@ -6123,6 +6123,136 @@ class TestOutput(unittest.TestCase):
         expect_regex=r'(?>(?<=[A-Za-z\-])(?![A-Za-z\-])|(?<![A-Za-z\-])(?=[A-Za-z\-]))cat(?>(?<=[A-Za-z\-])(?=[A-Za-z\-])|(?<![A-Za-z\-])(?![A-Za-z\-]))')
                 
         
+    def test_lazydotstar_output(self):
+        self.given(u'''
+            __
+        ''',
+        expect_regex=r'.+?')
+        
+        self.given(u'''
+            __?
+        ''',
+        expect_regex=r'.*?')
+
+        self.given(u'''
+            /__?/
+        ''',
+        expect_regex=r'.*?')
+
+        self.given(u'''
+            /__/__?/
+        ''',
+        expect_regex=r'.+?.*?')
+
+        self.given(u'''
+            /__?/__/
+        ''',
+        expect_regex=r'.*?.+?')
+
+        self.given(u'''
+            /__/alpha/
+        ''',
+        expect_regex=r'[^a-zA-Z]++[a-zA-Z]')
+
+        self.given(u'''
+            /alpha/__/
+        ''',
+        expect_regex=r'[a-zA-Z].+?')
+
+        self.given(u'''
+            /lazydotstar/alpha/
+                lazydotstar = __
+        ''',
+        expect_regex=r'.+?[a-zA-Z]')
+
+        self.given(u'''
+            (unicode)
+            /__/alpha/
+        ''',
+        expect_regex=r'(?V1wu)\P{Alphabetic}++\p{Alphabetic}')
+
+        self.given(u'''
+            (unicode)
+            /__/non-alpha/
+        ''',
+        expect_regex=r'(?V1wu)\p{Alphabetic}++\P{Alphabetic}')
+
+        self.given(u'''
+            /__/non-alpha/
+        ''',
+        expect_regex=r'[a-zA-Z]++[^a-zA-Z]')
+
+        self.given(u'''
+            /__/digit/
+        ''',
+        expect_regex=r'\D++\d')
+
+        self.given(u'''
+            /__/non-digit/
+        ''',
+        expect_regex=r'\d++\D')
+
+        self.given(u'''
+            (unicode)
+            /__/non-digit/
+        ''',
+        expect_regex=r'(?V1wu)\d++\D')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = ''
+        ''',
+        expect_regex=r'.+?')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = .''
+        ''',
+        expect_regex=r'.+?\b')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = _''
+        ''',
+        expect_regex=r'.+?\B')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = 'END'
+        ''',
+        expect_regex=r'(?:[^E]++|E(?!ND))++END')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = .'END'
+        ''',
+        expect_regex=r'(?:[^E]++|(?<!\b)E|E(?!ND))++\bEND')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = _'END'
+        ''',
+        expect_regex=r'(?:[^E]++|(?<!\B)E|E(?!ND))++\BEND')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = '.'
+        ''',
+        expect_regex=r'[^.]++\.')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = .'.'
+        ''',
+        expect_regex=r'(?:[^.]++|(?<!\b)\.)++\b\.')
+
+        self.given(u'''
+            /__/limiter/
+                limiter = _'.'
+        ''',
+        expect_regex=r'(?:[^.]++|(?<!\B)\.)++\B\.')
+        
+        
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
         regex_source = oprex(oprex_source)
@@ -8781,6 +8911,92 @@ class TestMatches(unittest.TestCase):
             'cat-like' : 'cat',
             'cat-9' : 'cat',
         })
+
+
+    def test_lazydotstar(self):
+        self.given(u'''
+            /quote/__?/quote/
+                quote: "
+        ''',
+        expect_full_match=['"Hi!"', '""'],
+        no_match=['"unclosed'],
+        partial_match={
+            '"Hi!", he said, "How are you?"' : '"Hi!"',
+        })
+        
+        self.given(u'''
+            /quote/__/quote/
+                quote: "
+        ''',
+        expect_full_match=['"Hi!"'],
+        no_match=['"unclosed', '""'],
+        partial_match={
+            '"Hi!", he said, "How are you?"' : '"Hi!"',
+        })
+        
+        self.given(u'''
+            /open/__/close/
+                open: (
+                close: )
+        ''',
+        expect_full_match=['(sic)', '({})'],
+        no_match=['(unclosed', '()'],
+        partial_match={
+            '((x+y)*z)' : '((x+y)',
+        })
+        
+        self.given(u'''
+            /BEGIN/__?/END/
+                BEGIN = 'BEGIN'
+                END = 'END'
+        ''',
+        expect_full_match=['BEGINEND', 'BEGIN END', 'BEGINNING END', 'BEGIN SECRET MESSAGE END'],
+        partial_match={
+            'BEGINNINGENDING' : 'BEGINNINGEND',
+            'BEGIN DONT SEND THE PACKAGE YET END' : 'BEGIN DONT SEND',
+        })
+        
+        self.given(u'''
+            /BEGIN/__?/END/
+                BEGIN = 'BEGIN'
+                END = .'END'
+        ''',
+        expect_full_match=['BEGIN END', 'BEGINNING END', 'BEGIN SECRET MESSAGE END', 'BEGIN DONT SEND THE PACKAGE YET END'],
+        no_match=['BEGINEND'])
+        
+        self.given(u'''
+            /__/END/
+                END = '.'
+        ''',
+        expect_full_match=['this.'],
+        no_match=['.', '.com', '...'],
+        partial_match={
+            'example.com' : 'example.',
+            'Hmm...' : 'Hmm.',
+        })
+        
+        self.given(u'''
+            /__?/END/
+                END = 'Z'
+        ''',
+        expect_full_match=['Z', 'WoZ', 'ATOZ', 'A TO Z'],
+        partial_match={'ZOO' : 'Z', 'PIZZA' : 'PIZ'})
+        
+        self.given(u'''
+            /__?/END/
+                END = .'Z'
+        ''',
+        expect_full_match=['Z', 'A TO Z'],
+        no_match=['WoZ', 'ATOZ', 'PIZZA'],
+        partial_match={'ZOO' : 'Z'})
+        
+        self.given(u'''
+            /__?/END/
+                END = _'Z'
+        ''',
+        expect_full_match=['WoZ', 'ATOZ'],
+        no_match=['Z', 'A TO Z', 'ZOO'],
+        partial_match={'PIZZA' : 'PIZ'})
         
         
 if __name__ == '__main__':
