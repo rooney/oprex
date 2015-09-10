@@ -156,7 +156,7 @@ class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
             return scope[self.varname].value
         elif self.varname in lexer.ongoing_declarations:
             lexer.ongoing_declarations[self.varname].capture = True
-            return Regex('(?&%s)%s' % (self.varname, self.optional)) 
+            return Regex(self.varname, modifier='(?&') 
         else:
             raise OprexSyntaxError(self.lineno, "'%s' is not defined" % self.varname)
 
