@@ -4610,11 +4610,11 @@ class TestOutput(unittest.TestCase):
                 palindrome = <<|
                                |/letter/palindrome/=letter/
                                |/letter/=letter/
-                               |alpha
+                               |letter
 
                     [letter]: alpha
         ''',
-        expect_regex='\A(?P<palindrome>(?P<letter>[a-zA-Z])(?&palindrome)(?P=letter)|(?P<letter>[a-zA-Z])(?P=letter)|[a-zA-Z])\Z')
+        expect_regex='\A(?P<palindrome>(?P<letter>[a-zA-Z])(?&palindrome)(?P=letter)|(?P<letter>[a-zA-Z])(?P=letter)|(?P<letter>[a-zA-Z]))\Z')
 
         self.given('''
             csv
@@ -4623,7 +4623,7 @@ class TestOutput(unittest.TestCase):
 *)                      separator: ,
                     more_values = /separator/value?/more_values?/
         ''',
-        expect_regex='[^,]*+(?P<more_values>,[^,]*+(?:(?&more_values)?)?)?')
+        expect_regex='[^,]*+(?P<more_values>,[^,]*+(?&more_values)?)?')
 
         self.given('''
             text_in_parens
@@ -7850,7 +7850,7 @@ class TestMatches(unittest.TestCase):
                 palindrome = <<|
                                |/letter/palindrome/=letter/
                                |/letter/=letter/
-                               |alpha
+                               |letter
 
                     [letter]: alpha
         ''',
