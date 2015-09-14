@@ -55,8 +55,9 @@ states = (
 LexToken = namedtuple('LexToken', 'type value lineno lexpos lexer')
 ExtraToken = lambda t, type, value=None, lexpos=None: LexToken(type, value or t.value, t.lexer.lineno, lexpos or t.lexpos, t.lexer)
 reserved = {
-    '_'  : 'UNDERSCORE',
-    '__' : 'DOUBLEUNDERSCORE',
+    '_'   : 'UNDERSCORE',
+    '__'  : 'DOUBLEUNDERSCORE',
+    'not' : 'NOT',
 }
 tokens = [
     'AT',
@@ -487,7 +488,7 @@ def t_CHARCLASS_DOT(t):
 
 
 def t_CHARCLASS_op(t):
-    '''not:|not|and'''
+    r'''not:|not\b|and\b'''
     return CCItem.token(t, 'op', {
         'not:' : '^',
         'not'  : '--',
@@ -859,7 +860,8 @@ def p_expr(t):
             | flagged_expr
             | lookaround_expr
             | quantified_expr
-            | numrange_shortcut'''
+            | numrange_shortcut
+            | charclass_negation'''
     t[0] = t[1]
     
 
@@ -1085,6 +1087,12 @@ def p_numrange_shortcut(t):
         # value stays unchanged
         
     t[0] = Regex(value, modifier)
+
+
+def p_charclass_negation(t):
+    '''charclass_negation : NOT COLON charclass'''
+    t[3].items.appendleft(CCItem('not:', 'op', '^'))
+    t[0] = t[3]
 
 
 class QuantifiedExpr(Expr):
@@ -1561,7 +1569,8 @@ class CharClassExpr(Expr):
         def check_op(op, index):
             is_first = index == 0
             is_last = index == len(items)-1
-            prefix = is_first and not is_last
+            prev_item = None if is_first else items[index - 1]
+            prefix = (is_first or prev_item.source == 'not:') and not is_last
             infix = not is_first and not is_last
 
             op_type, valid_placement = {
@@ -1572,9 +1581,8 @@ class CharClassExpr(Expr):
 
             if not valid_placement:
                 raise OprexSyntaxError(self.lineno, "Invalid use of %s '%s' operator" % (CCItem.op_types[op_type], op.source))
-            
+
             if op_type == CCItem.BINARY_OP: # binary ops require the previous item to be non-op
-                prev_item = items[index-1]
                 if prev_item.type == 'op':
                     raise OprexSyntaxError(self.lineno,  "Bad set operation '%s %s'" % (prev_item.source, op.source))              
 
@@ -1622,6 +1630,7 @@ class CharClassExpr(Expr):
                 value = value.replace(r'^\p{', r'\P{', 1)
             elif len(items) > 1 or has_range:
                 value = '[' + value + ']'
+            value = value.replace('^^', '') # remove double negation
             regex = CharClass(value, is_set_op=has_set_op)
 
         return regex, includes
@@ -1868,7 +1877,7 @@ class CustomLexer:
 
     def token(self):
         token = self.get_next_token()
-        #print token
+        # print token
         return token
 
     def get_next_token(self):

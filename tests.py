@@ -1015,14 +1015,6 @@ class TestErrorHandling(unittest.TestCase):
                          ^''')
 
         self.given(u'''
-            notand
-                notand: not and -- possible, but must use +not +and
-                    not: n o t
-                    and: a n d
-        ''',
-        expect_error="Line 3: Invalid use of binary 'not' operator")
-
-        self.given(u'''
             /x/y/
                 x = 'x'
                 y: +x
@@ -1109,11 +1101,6 @@ class TestErrorHandling(unittest.TestCase):
             1 of: x and and y
         ''',
         expect_error="Line 2: Bad set operation 'and and'")
-
-        self.given(u'''
-            1 of: not: not: x
-        ''',
-        expect_error="Line 2: Invalid use of unary 'not:' operator")
 
         self.given(u'''
             1 of: not: not x
@@ -2731,8 +2718,18 @@ class TestOutput(unittest.TestCase):
         expect_regex='[^X]')
 
         self.given(u'''
+            not: X
+        ''',
+        expect_regex='[^X]')
+
+        self.given(u'''
+            not: X Y Z
+        ''',
+        expect_regex='[^XYZ]')
+
+        self.given(u'''
             /not_X/
-                not_X: +notX
+                not_X: notX
                     notX:  not: X
         ''',
         expect_regex='[^X]')
@@ -2745,12 +2742,34 @@ class TestOutput(unittest.TestCase):
         expect_regex='X')
 
         self.given(u'''
-            notand
-                notand: +not +and
-                    not: n o t
-                    and: a n d
+            not: not: X
         ''',
-        expect_regex='[notand]')
+        expect_regex='X')
+
+        self.given(u'''
+            1 of: not: not: X
+        ''',
+        expect_regex='X')
+
+        self.given(u'''
+            not: not: not: X
+        ''',
+        expect_regex='[^X]')
+
+        self.given(u'''
+            not: not: not: not: X
+        ''',
+        expect_regex='X')
+
+        self.given(u'''
+            not: not: -
+        ''',
+        expect_regex='-')
+
+        self.given(u'''
+            not: -
+        ''',
+        expect_regex=r'[^\-]')
 
         self.given(u'''
             /plus/minus/pmz/
@@ -2808,6 +2827,16 @@ class TestOutput(unittest.TestCase):
         self.given(u'''
             nonalpha
                 nonalpha: not: /Alphabetic
+        ''',
+        expect_regex='\P{Alphabetic}')
+
+        self.given(u'''
+            not: digit
+        ''',
+        expect_regex='\D')
+
+        self.given(u'''
+            not: /Alphabetic
         ''',
         expect_regex='\P{Alphabetic}')
 
@@ -6641,6 +6670,12 @@ class TestMatches(unittest.TestCase):
         self.given(u'''
             nonalpha
                 nonalpha: not: /Alphabetic
+        ''',
+        expect_full_match=['-', '^', '1'],
+        no_match=['A', 'a', u'Ä', u'ä'])
+
+        self.given(u'''
+            not: /Alphabetic
         ''',
         expect_full_match=['-', '^', '1'],
         no_match=['A', 'a', u'Ä', u'ä'])
