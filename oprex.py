@@ -150,16 +150,30 @@ class VariableDeclaration(object):
         self.capture = capture
 
 
-class VariableLookup(namedtuple('VariableLookup', 'varname lineno optional')):
-    __slots__ = ()
+class VariableLookup(object):
+    __slots__ = ('varname', 'lineno', 'optional', 'next_lookup_in_chain')
+    def __init__(self, varname, lineno, optional):
+        self.varname = varname
+        self.lineno = lineno
+        self.optional = optional
+        self.next_lookup_in_chain = None
+
     def resolve(self, scope, lexer):
         if self.varname in scope:
-            return scope[self.varname].value
+            return self.get_value(scope)
         elif self.varname in lexer.ongoing_declarations:
             lexer.ongoing_declarations[self.varname].capture = True
             return Regex(self.varname, modifier='(?&') 
         else:
             raise OprexSyntaxError(self.lineno, "'%s' is not defined" % self.varname)
+
+    def get_value(self, scope):
+        value = scope[self.varname].value
+        if isinstance(value, NumRangeRegex) and self.next_lookup_in_chain is not None:
+            # the numrange is followed by something, so we can strip out the (?!\d) check
+            return value[:-len(r'(?!\d)')]
+        else:
+            return value
 
 
 class NegatedLookup(VariableLookup):
@@ -174,23 +188,17 @@ class NegatedLookup(VariableLookup):
                 raise OprexSyntaxError(self.lineno, "'non-%s': '%s' is not a character-class" % (self.varname, self.varname))
         
 
-class Backreference(namedtuple('Backreference', 'varname lineno optional')):
-    __slots__ = ()
+class Backreference(VariableLookup):
     def resolve(self, scope, lexer):
         return Regex(self.varname, modifier='(?P=')
 
 
-class MatchUntil(object):
-    __slots__ = ('limiter', 'lineno', 'optional')
-    def __init__(self, limiter, lineno, optional):
-        self.limiter = limiter
-        self.lineno = lineno
-        self.optional = optional
-    
+class MatchUntil(VariableLookup):
     def resolve(self, scope, lexer):
         value = '.'
-        if isinstance(self.limiter, VariableLookup):
-            limiter_value = self.limiter.resolve(scope, lexer)
+        limiter = self.next_lookup_in_chain
+        if isinstance(limiter, VariableLookup):
+            limiter_value = limiter.resolve(scope, lexer)
             if isinstance(limiter_value, CharClass):
                 value = limiter_value.negated()
             elif isinstance(limiter_value, StringLiteral):
@@ -328,6 +336,10 @@ class Alternation(Regex):
         
         
 class StringLiteral(Regex):
+    pass
+        
+        
+class NumRangeRegex(Regex):
     pass
 
 
@@ -1086,7 +1098,7 @@ def p_numrange_shortcut(t):
         modifier = '' 
         # value stays unchanged
         
-    t[0] = Regex(value, modifier)
+    t[0] = NumRangeRegex(value, modifier)
 
 
 def p_charclass_negation(t):
@@ -1517,10 +1529,8 @@ def p_lookup_chain(t):
     except IndexError:
         chain = LookupChain()
         next_item = None
-        
-    if isinstance(item, MatchUntil) and next_item is not None:
-        item.limiter = next_item
-    
+
+    item.next_lookup_in_chain = next_item
     chain.appendleft(item)
     t[0] = chain
 

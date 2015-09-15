@@ -1,4 +1,6 @@
 
-x
-	x: not: 
-    
+/xnum/x/numx/num/
+	x: x
+	num = '1'..'10'
+	numx = /num/x/
+	xnum = /x/num/

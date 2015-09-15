@@ -6129,6 +6129,17 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=r'(?:0*+[1-9]\d*+)?')
 
+
+    def test_numrange_optimization_output(self):
+        self.given(u'''
+            /xnum/x/numx/num/
+                x: x
+                num = '1'..'10'
+                numx = /num/x/
+                xnum = /x/num/
+        ''',
+        expect_regex=r'x(?>10|[1-9])(?!\d)x(?>10|[1-9])x(?>10|[1-9])(?!\d)')
+
         
     def test_wordchar_redef_output(self):
         self.given(u'''
