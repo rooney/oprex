@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import unittest, regex
+import unittest, regex, os
 from oprex import oprex, OprexSyntaxError
 
 class TestErrorHandling(unittest.TestCase):
@@ -9044,6 +9044,22 @@ class TestMatches(unittest.TestCase):
         no_match=['Z', 'A TO Z', 'ZOO'],
         partial_match={'PIZZA' : 'PIZ'})
         
-        
+
+class TestSampleFiles(unittest.TestCase):
+    def test_sample_files(self):
+        try:
+            samples_dir = os.path.join(os.path.dirname(__file__), 'samples')
+            for f in os.listdir(samples_dir):
+                filename = os.path.join(samples_dir, f)
+                with open(filename) as f:
+                    contents = f.read()
+                    oprex(contents)
+        except OprexSyntaxError as e:
+            msg = '\nFile: %s\n' % filename
+            msg += contents
+            msg += e.message
+            raise OprexSyntaxError(None, msg)
+
+
 if __name__ == '__main__':
     unittest.main()
