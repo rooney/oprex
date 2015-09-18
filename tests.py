@@ -7920,14 +7920,14 @@ class TestMatches(unittest.TestCase):
         no_match=[''])
 
         self.given('''
-            text_in_parens
-                text_in_parens = /open/text?/close/
+            balanced_parens
+                balanced_parens = /open/text?/close/
                     open: (
                     close: )
                     text = @1.. of <<|
                                      |non-open
                                      |non-close
-                                     |text_in_parens
+                                     |balanced_parens
         ''',
         expect_full_match=[
             '(EST)', 
