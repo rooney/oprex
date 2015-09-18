@@ -1,0 +1,6 @@
+
+/yyyy/separator/mm/=separator/dd/
+	yyyy = 4 of digit
+	mm = '01'..'12'
+	dd = '01'..'31'
+	[separator] = 1 of: - /

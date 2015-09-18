@@ -1,0 +1,8 @@
+
+/hash/hexes/
+    hash = '#'
+    hexes = <<|
+              |6 of hexdigit
+              |3 of hexdigit
+
+        hexdigit: digit A..F a..f

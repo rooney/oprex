@@ -1,0 +1,6 @@
+
+/begin/__/end/
+	begin = '<title>'
+	end = '</title>'
+
+-- output: <title>(?:[^<]++|<(?!/title>))++</title>

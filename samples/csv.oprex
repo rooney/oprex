@@ -1,0 +1,5 @@
+
+//value/more_values?//
+    value = @1.. of non-comma
+*)      comma: ,
+    more_values = /comma/value/more_values?/

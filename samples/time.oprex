@@ -1,0 +1,12 @@
+
+<<|
+  |/hh/colon/mm/colon/ss/space/ampm/ -- 12-hour format
+  |/HH/colon/mm/colon/ss/            -- 24-hour format
+
+    hh = '1'..'12'
+    HH = 'o0'..'23'
+    mm = ss = '00'..'59'
+    colon: :
+    ampm = (ignorecase) <<|
+                          |'AM'
+                          |'PM'

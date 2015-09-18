@@ -1,0 +1,10 @@
+
+/type/rhesus/
+    [type] = <<|
+               |'AB'
+               |1 of: A B O
+
+    [rhesus] = <<|
+                 |'+'
+                 |'-'
+                 |

@@ -1,0 +1,4 @@
+
+    /digits/even/.
+        digits = 0.. <<- of digit
+        even: 0 2 4 6 8

@@ -1,0 +1,15 @@
+
+/somebody/at/somedomain/
+    somebody = @1.. of: alnum . _ - +
+    at = '@'
+    somedomain = /subdomain/TLD/
+        subdomain = /hostname/dot/subdomain?/
+            hostname = <@>
+                |!dash>
+                |alnums_and_dashes|
+                            <!dash|
+                
+                    dash: -
+                    alnums_and_dashes = @1.. of: alnum dash
+            dot = '.'
+        TLD = @2..63 of alpha

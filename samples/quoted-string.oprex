@@ -1,0 +1,16 @@
+
+/opening_quote/contents/=opening_quote/
+    [opening_quote] = 1 of quote
+*)      quote: ' "
+    contents = @1.. of <<|
+                         |non-quote
+                         |non_opening_quote
+                         |escaped
+
+        non_opening_quote = <@>
+                      |quote|
+            <!=opening_quote|
+
+        escaped = <@>
+            <backslash|
+                      |quote|

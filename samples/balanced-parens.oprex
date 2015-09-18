@@ -1,0 +1,9 @@
+
+/non_parens?/balanced_parens/non_parens?/.
+    non_parens = @1.. of not: ( ) 
+    balanced_parens = /open/contents?/close/
+        open: (
+        close: )
+        contents = @1.. of <<|
+                             |non_parens
+                             |balanced_parens

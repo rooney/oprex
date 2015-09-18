@@ -1,0 +1,4 @@
+
+/byte/dot/byte/dot/byte/dot/byte/
+	byte = '0'..'255'
+	dot = '.'

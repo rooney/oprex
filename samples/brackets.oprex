@@ -1,0 +1,27 @@
+
+/open/contents?/close/
+    open = @|
+            |paren
+            |curly
+            |angle
+            |square
+
+        [paren]: (
+        [curly]: {
+        [angle]: <
+        [square]: [
+
+    close = @|
+             |[paren] ? ')'
+             |[curly] ? '}'
+             |[angle] ? '>'
+             |[square] ? ']'
+             |FAIL!
+
+    contents = @1.. of <<|
+                         |not: ( ) { } < > [ ]
+                         |not_close
+
+        not_close = <@>
+               |any|
+            <!close|

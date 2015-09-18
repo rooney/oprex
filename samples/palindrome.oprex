@@ -1,0 +1,8 @@
+
+./palindrome/.
+    palindrome = <<|
+                   |/letter/palindrome/=letter/
+                   |/letter/=letter/
+                   |letter
+
+        [letter] = alpha
