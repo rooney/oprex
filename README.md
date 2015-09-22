@@ -1,5 +1,5 @@
 # oprex
-A more readable, maintainable regex syntax.
+Readable, maintainable regex syntax.
 
 ## Examples
 ##### 1. IPv4 Address
@@ -307,7 +307,7 @@ This defines `hexdigit` as a [character-class](). Character classes are defined 
 The following oprex matches stuff-inside-brackets, with the brackets can be one of `()``{}``<>` or `[]`.
  
 - Sample matches: `<html>` `{x < 0}` `[1]` and `(see footnote [1])`
-- Will not match: `f(g(x))`
+- Will not match e.g. `f(g(x))`
 - Will only partially match `{{citation needed}}` as `{{citation needed}`
 - To also match those, we can combine this example with the [balanced parentheses example](). But to keep it short and clear, we'll go with the above restrictions.
 
@@ -414,15 +414,15 @@ As you can see, comments in oprex starts with `--` (a la SQL) not with `#` like 
 ## Examples explained
 The *Tutorial* should explain most of the syntax used in *Examples*. The rest are covered here:
 
-### 1. Range of digits
+### 1. Match a range of number-strings
 On the *IPv4 Address*, *Date*, and *Time* examples:
 
 - `byte = '0'..'255'` (leading-zero not allowed, e.g. won't match `007`)
 - `hh = '1'..'12'`
-- `mm = '01'..'12'` (leading-zero mandatory for single-digits)
+- `mm = '01'..'12'` (leading-zero mandatory for single-digits, e.g. will match `02` but not `2`)
 - `dd = '01'..'31'`
 - `mm = ss = '00'..'59'`
-- `HH = 'o0'..'23'` (the `o` means optional leading-zero)
+- `HH = 'o0'..'23'` (the `o` means optional leading-zero, e.g. will match both `2` and `02`)
 
 ### 2. Backreference
 
@@ -440,7 +440,7 @@ On the *IPv4 Address*, *Date*, and *Time* examples:
 #### 1.1. Built-in Character Classes
 
 Name        | Output             | Output when (unicode)          
--------- | ------------ | ---------------------
+----------- | ------------------ | ---------------------
 `alpha`     | `[a-zA-Z]`         | `\p{Alphabetic}`
 `upper`     | `[A-Z]`            | `\p{Uppercase}`
 `lower`     | `[a-z]`            | `\p{Lowercase}`
@@ -457,17 +457,17 @@ Name        | Output             | Output when (unicode)
 
 #### 1.2. Built-in Expressions
 
-Name        | Meaning               | Output          
--------- | -------------- | ---------------------
-`BOS`       | `beginning of string` | `\A`
-`EOS`       | `end of string`       | `\Z`
-`BOL`       | `beginning of line`   | `(?m:^)`
-`EOL`       | `end of line`         | `(?m:$)`
-`BOW`       | `beginning of word`   | `\m`
-`EOW`       | `end of word`         | `\M`
-`WOB`       | `word boundary`       | `\b`
-`any`       | `any character`       | `(?s:.)` (`.` with DOTALL turned on)
-`uany`      | `unicode-any`         | `\X` (single unicode grapheme)
+Name        | Meaning             | Output          
+----------- | ------------------- | ------
+`BOS`       | beginning of string | `\A`
+`EOS`       | end of string       | `\Z`
+`BOL`       | beginning of line   | `(?m:^)`
+`EOL`       | end of line         | `(?m:$)`
+`BOW`       | beginning of word   | `\m`
+`EOW`       | end of word         | `\M`
+`WOB`       | word boundary       | `\b`
+`any`       | any character       | `(?s:.)` (`.` with DOTALL turned on)
+`uany`      | unicode-any         | `\X` (single unicode grapheme)
 
 - `WOB` is special: it is not a character-class, but you can apply the `non-` operator to it. `non-WOB` compiles to `\B`.
 - Oprex-equivalent of regex's `.` with DOTALL turned OFF is `non-linechar` (see `linechar` in *Built-in Character Classes* table).
@@ -507,7 +507,7 @@ Syntax:
 ```
     (unicode ignorecase) -- multiple global flags, scoped flag can be applied globally but not vice versa
     /password/
-        password = (-ignorecase) 'correctHorseBatteryStaple' -- scoped flag, turning off
+        password = (-ignorecase) 'correctHorseBatteryStaple' -- scoped flag, turn-off
 ```
 Compiles to `(?V1wui)(?-i:correctHorseBatteryStaple)`
 
@@ -518,10 +518,238 @@ Compiles to `(?V1wui)(?-i:correctHorseBatteryStaple)`
 Expression can be one of the following:
 
 - String literal
-- Range-of-digits literal
-- Variable(s) lookup
+- String-of-digits range literal
+- A variable name
+- Negation
+- Lookup chain
+- Backreference
 - Alternation block
 - Lookaround block
 - Quantification/repetition
-    
-#### 2.3. Definition/Assignment
+
+--
+### 3. String Literal
+
+Syntax:
+
+- `'single quoted'` or `"double quoted"`
+- Quotes can be escaped, e.g. `'Mother\'s Day'`
+- The output will be properly regex-escaped, e.g. `"A+"` compiles to `A\\+`
+- Backslash-escapes that are not regex-escape will NOT be escaped, e.g. `"\d\t"` compiles to `\\d\t` (the `\d` got escaped but the `\t` didn't)
+
+#### 3.1. Boundaries
+Word boundary (oprex's `WOB`, regex's `\b`) and non-boundary (oprex's `non-WOB`, regex's `\B`) can be easily appended and/or prepended to a string literal using the following syntax:
+ 
+- `.` for word boundary, e.g. `'cat'.` compiles to `cat\b`, `.'cat'` compiles to `\bcat`.
+- `_` for non-boundary, e.g. `'cat'_` compiles to `cat\B`, `_'cat'_` compiles to `\Bcat\B`.
+
+--
+### 4. String-of-Digits Range Literal
+#### 4.1. Between (and including) two numbers
+- Syntax: `"min".."max"` or `'min'..'max'`.
+- `min` can have leading `0` (to require) or `o` (to allow) leading zero(es). Examples:
+  - `'0'..'999'` will NOT match e.g. `007` and `012`.
+  - `'000'..'999'` will match `007` and `012`, but NOT `7` and `12`.
+  - `'oo0'..'999'` will match numbers both with and without leading zeroes.
+
+#### 4.2. Greater than or equal to a number (maxless range)
+- Syntax: `"min"..` or `'min'..`.
+- Optional-leading-zero can be used with maxless range, e.g. `'o1'..`.
+- Mandatory-leading-zero does NOT work with maxless range, e.g. `'01'..` will raise an error.
+
+--
+### 5. Variable
+#### 5.1. Assignment/Definition
+
+Syntax:
+
+- `varname = expression` to define a subexpression
+- `varname: c h a r s` to define a character-class
+- `[varname]` to define a  named capture group, e.g. `[varname] = expression` or `[varname]: c h a r s`
+
+#### 5.2. Scoping
+The following example demonstrates variable scoping in oprex:
+
+```
+    /first/second/third/last/   -- can access direct children
+        first = '1st'
+        second = '2nd'
+        third = /first/x/       -- can access older siblings
+            x = /second/a/b/    -- can access parent's older-siblings
+                a = /third?/x?/ -- can access parent, grandparent, great-grandparent, and so on (recursion)
+                b = /B1/B2/b?/  -- can access self (recursion)
+                    B1 = first  -- can access great-grandparent's (and so on's) older siblings
+*)                  B2 = second
+                		
+                -- B1 is no longer defined beyond this point
+            
+            -- a and b are no longer defined beyond this point
+                
+        -- x is no longer defined beyond this point
+        
+        last = x                -- last's x is different from third's x
+            x = B2              -- B2 is global, so it's accessible here (normally it isn't)
+```
+
+##### 5.2.1. Global Scope
+A variable can be made global by prefixing its definition with `*)`. See `B2` in the example above.
+
+##### 5.2.2. Scoping-Error Examples
+
+- Can't access grandchildren (and great-grandchildren, and so on).
+
+```
+    /x/y/     -- can't access grandchildren
+        x = y
+            y = 'yadda'
+```
+--
+- Can't access younger siblings.
+
+```
+    /x/y/
+        x = y -- can't access younger siblings
+        y = 'yadda'
+```
+--
+- Can't access sibling's children.
+
+```
+    /x/yadda/
+        x = y
+            y = 'yadda'
+        yadda = y -- can't access sibling's children
+```
+--
+- All variable must be referenced by its immediate parent.
+
+```
+    /x/y/
+        x = 'pow'
+        y = 'wow'
+        z = 'how' -- ERROR: defined but not used
+```
+
+```
+    /x/y/
+        pow = 'pow' -- ERROR: not referenced by parent
+        x = pow
+        y = pow
+```
+
+```
+    /x/y/
+        x = pow
+            pow = 'pow'
+*)          wow = 'wow' -- ERROR: not referenced by parent
+        y = wow
+```
+--
+- Global variables still need to be defined-before-used.
+
+```
+    /x/y/
+        x = yadda -- can't access global variable before its definition
+        y = yadda
+*)          yadda = 'yadda'
+```
+
+##### 5.2.3. Recursion
+A variable can refer to itself and/or its parent expressions (immediate parent, grandparent, great-grandparent, and so on). This will generate regex containing recursion. For examples, see *Comma-Separated Values* and *Balanced Parentheses* in the [Examples]() section and *Palindromes* in the [Usage]() section.
+
+--
+### 6. Negation
+
+Syntax:
+
+- `non-` followed by a charclass variable name, e.g. `non-digit`.
+- `not:` followed by charclass member(s), e.g. `not: a i u e o`.
+
+The first form is for easy chaining, e.g. if you need "non-digit followed by non-alphabet" use `/non-digit/non-alpha/`.
+
+Only character-class can be negated, but for the `non-` operator, the built-in variable `WOB` is an exception -- it is not a character-class, but `non-WOB` compiles to `\B`.
+
+--
+### 7. Lookup Chain
+
+Syntax: `/lookup1/lookup2/lookup3/lookupEtc/`
+
+Each lookup can be one of the following:
+
+- A variable name.
+- Negation using `non-`.
+- Match-until operator (the double underscore `__`).
+- Backreference.
+
+#### 7.1. Syntactic Sugars for BOS, BOL, EOS, and EOL
+
+#### 7.2. The Match-Until Operator
+
+The Match-Until operator `__` matches one or more characters until what follows it in the lookup chain. For example:
+
+```
+    /open/__/close/
+        open: (
+        close: )
+```
+The `__` will match one or more characters until closing-parenthesis is encountered. The example will fail on string `()` because `__` eats one-or-more. To make it zero-or-more, append the optionalize operator `?`:
+
+```
+    /open/__?/close/
+        open: (
+        close: )
+```
+#### 7.3. Match-Until Automatic Optimization
+The above example is akin to the "lazy dotstar" idiom in regex `.*?`. The difference is, oprex's `__` will try to make some optimizations in some cases:
+
+- If it is followed by character-class, example:
+
+```
+	/__?/stop/
+		stop: . ;
+```
+Compiles to `[^.;]*+[.;]`. The `__?` uses what follows (the character-class `[.;]`) so it compiles to `[^.;]*+` which is the way to [optimize lazy-dotstar for such case]().
+
+- If it is followed by string literal, example:
+
+```
+	/__?/stop/
+		stop = 'END'
+```
+Compiles to `(?:[^E]++|E(?!ND))*+END`. Again, the `__?` uses what follows (the literal `END`) so it compiles to `(?:[^E]++|E(?!ND))*+` which is the way to [optimize lazy-dotstar for a case like this]().
+
+In any case, **the oprex stays super-readable while giving optimized, high-performance regex** output.
+
+#### 7.4. Non-Optimized Match-Until
+If the `__` is not followed by character-class nor string literal, it will compile to the usual lazy-dotplus `.+?` (or lazy-dotstar `.*?` in the case of `__?`). Example:
+
+```
+/__/any//   -- match all characters except the last one 
+```
+Compiles to `.+?(?s:.)(?m:$)`
+
+#### 7.5. Multiline Match-Until
+If a Match-Until usage falls in unoptimized case, it will compile to the regular lazy-dotstar/dotplus. In such case, the dot in the lazy-dotstar/dotplus will adhere to the DOTALL flag setting (will not match newline characters without DOTALL). So if you want the dot to really match anything, including newline characters, you'll need to turn on the `dotall` flag:
+
+
+```
+(dotall) /__/any/.   -- match all characters (including newlines) except the last one 
+```
+Compiles to `(?s:.+?.\Z)`
+
+--
+### 8. Backreference
+
+--
+### 9. Alternation Block
+#### 9.1. The `FAIL!` Command
+
+--
+### 10. Lookaround Block
+
+--
+### 11. Quantification/Repetition
+#### 11.1. The `?` operator
+
+--
+### 12. Character Class
