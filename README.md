@@ -1,5 +1,5 @@
 # oprex
-Readable, maintainable regex syntax.
+Regex alternative syntax. Make regex readable.
 
 ## Examples
 ##### 1. IPv4 Address
@@ -151,7 +151,7 @@ Compiles to:
 (?=(?:\p{Alphanumeric}*+\P{Alphanumeric}){2})
 ```
 --
-##### 9. Balanced Parentheses <a name="example-balanced-parens"></a>
+##### 9. Balanced Parentheses
 ```oprex
 /non_parens?/balanced_parens/non_parens?/.
     non_parens = @1.. of not: ( ) 
@@ -415,7 +415,7 @@ As you can see, comments in oprex starts with `--` (a la SQL) not with `#` like 
 The *Tutorial* should explain most of the syntax used in *Examples*. The rest are covered here:
 
 ### 1. Match a range of number-strings
-On the *IPv4 Address*, *Date*, and *Time* examples:
+The *IPv4 Address*, *Date*, and *Time* examples use the [String-of-Digits Range Literal]() feature to match number-strings between two specified values (and reject non-numbers string/numbers but having value outside the range):
 
 - `byte = '0'..'255'` (leading-zero not allowed, e.g. won't match `007`)
 - `hh = '1'..'12'`
@@ -478,7 +478,7 @@ The general syntax of oprex is in the form of:
 
 ```
 >>> oprex('''
-...     (flags)
+...     (flags)                -- comments
 ...     expression
 ...         def_x = expression
 ... ''')
@@ -514,18 +514,20 @@ Compiles to `(?V1wui)(?-i:correctHorseBatteryStaple)`
 - `version1` and `word` are turned on by default (hence the `V1w` in the example's output).
 - For what each flag does, refer to the [regex module documentation]().
 
-#### 2.2. Expression
+#### 2.2. Comments
+Comment starts with `--` to the end of the line. Block comment is not supported.
+
+#### 2.3. Expression
 Expression can be one of the following:
 
-- String literal
-- String-of-digits range literal
-- A variable name
-- Negation
-- Lookup chain
-- Backreference
-- Alternation block
-- Lookaround block
-- Quantification/repetition
+- [String literal]()
+- [String-of-digits range literal]()
+- A [variable]() name
+- [Negation]()
+- [Lookup chain]()
+- [Alternation block]()
+- [Lookaround block]()
+- [Quantification/repetition]()
 
 --
 ### 3. String Literal
@@ -580,7 +582,7 @@ The following example demonstrates variable scoping in oprex:
                 b = /B1/B2/b?/  -- can access self (recursion)
                     B1 = first  -- can access great-grandparent's (and so on's) older siblings
 *)                  B2 = second
-                		
+                        
                 -- B1 is no longer defined beyond this point
             
             -- a and b are no longer defined beyond this point
@@ -591,10 +593,10 @@ The following example demonstrates variable scoping in oprex:
             x = B2              -- B2 is global, so it's accessible here (normally it isn't)
 ```
 
-##### 5.2.1. Global Scope
+#### 5.3. Global Scope
 A variable can be made global by prefixing its definition with `*)`. See `B2` in the example above.
 
-##### 5.2.2. Scoping-Error Examples
+#### 5.4. Scoping-Error Examples
 
 - Can't access grandchildren (and great-grandchildren, and so on).
 
@@ -654,36 +656,205 @@ A variable can be made global by prefixing its definition with `*)`. See `B2` in
 *)          yadda = 'yadda'
 ```
 
-##### 5.2.3. Recursion
+#### 5.5. Recursion
 A variable can refer to itself and/or its parent expressions (immediate parent, grandparent, great-grandparent, and so on). This will generate regex containing recursion. For examples, see *Comma-Separated Values* and *Balanced Parentheses* in the [Examples]() section and *Palindromes* in the [Usage]() section.
 
+
 --
-### 6. Negation
+### 6. Character Class
+
+In oprex, the colon symbol `:` is used to start a character class:
+
+- When defining a variable, e.g. `upvowel: A I U E O`
+- When quantifying, using `of:`
+- When negating, using `not:`
+
+After the colon, list out the character-class' members, separated by space.
+
+Example:
+
+```
+<<|
+  |1 of: a i u e o
+  |not: b..d f..h j..n p..t v..z
+  |upvowel
+  
+   upvowel: A I U E O
+```
+
+#### 6.1. Character Literal
+
+In a character class, single-characters are interpreted literally, e.g.
+
+```
+    vowel: a i u e o A I U E O
+    arith: + - * /
+    colon: :
+```
+Can be unicode too:
+
+```
+    basic_math_constant: π e i
+    danger: ⚠ ☣ ☢ ☠
+```
+
+#### 6.2. Escaped Characters
+
+Works as expected:
+
+```
+    newline: \r \n
+```
+Octal, hex, and unicode escapes are also supported 
+
+```
+    xyz: \170 \171 \172
+    xyz: \x78 \x79 \x7A
+    xyz: \u0078 \u0079 \u007A
+    xyz: \U00000078 \U00000079 \U0000007A
+```
+
+#### 6.2. Character Name 
+
+You can also use the character's unicode-name. For example, instead of:
+
+```
+    dash: - – —
+```
+Which is not very clear, you can spell the names out for clarity:
+
+```
+    dash: \N{HYPHEN-MINUS} \N{EN DASH} \N{EM DASH}
+```
+And to make it even clearer, oprex has sugar for that:
+
+```
+    dash: :HYPHEN-MINUS :EN_DASH :EM_DASH
+```
+
+#### 6.3. Includes
+Character-classes can include other character-classes:
+
+```
+	upnum: upper digit
+	base64: alnum + / =
+```
+
+#### 6.4. Unicode Properties 
+To build a character class based on [unicode character properties](http://www.regular-expressions.info/unicode.html#category), use the following syntax:
+
+```
+	money_char: /Number /Currency_Symbol . ,
+	
+	nonalpha: not: /IsAlphabetic
+	nonalpha: not: /Alphabetic
+	nonalpha: /Alphabetic=No
+	nonalpha: /Alphabetic:No
+	
+	japanese_char: /Script=Hiragana /Script=Katakana
+	japanese_char: /Script:Hiragana /Script:Katakana
+	japanese_char: /InHiragana /InKatakana
+	japanese_char: /IsHiragana /IsKatakana
+	japanese_char: /Hiragana /Katakana
+	
+```
+
+#### 6.5. Character Range
+
+Syntax: `from..to` e.g.
+
+```
+    hex: 0..9 a..f A..F
+    grade_char: A..F
+    nonzero: 1..9
+```
+Names and escape codes can be used with range too:
+
+```
+    nonzero: \N{DIGIT ONE}..\N{DIGIT NINE}
+    nonzero: :DIGIT_ONE..:DIGIT_NINE
+    nonzero: \u0031..\u0039
+```
+
+#### 6.6. Character-Class Operation
+
+Operator              | Operation    | Placement
+--------------------- | ------------ | ---------
+`and`                 | intersection | infix (`x and y`)
+`not` (without colon) | subtraction  | infix (`x not y`)
+`not:` (with colon)   | negation     | prefix (`not: x`)
+
+##### 6.7.1. Intersection: `and`
+Examples:
+
+```
+    arabic_number: /Number and /IsArabic
+    greek_alphabet: /Alphabetic and /Script:Greek
+    japanese_number: /Number and /Hiragana /Katakana
+    japanese_number: /Hiragana /Katakana and /Number
+```
+##### 6.7.2. Subtraction: `not`
+```
+    nonzero: digit not 0
+    upnum: alnum not lower
+    nonlatin_alpha: /Alphabetic not /InBasicLatin
+    gaijin_alpha: /Alphabetic not /Hiragana /Katakana
+    consonant: alpha not a i u e o A I U E O
+```
+
+##### 6.7.3. Negation: `not:`
+```
+	non_quote: not: ' "
+	inside_paren: not: ( )
+	csv_data: not: ,
+```
+
+### 7. Character-Class Negation
 
 Syntax:
 
-- `non-` followed by a charclass variable name, e.g. `non-digit`.
-- `not:` followed by charclass member(s), e.g. `not: a i u e o`.
+- `non-` followed by a character-class variable name, e.g. `non-digit`.
+- `not:` followed by character-class member(s), e.g. `not: a i u e o`.
 
 The first form is for easy chaining, e.g. if you need "non-digit followed by non-alphabet" use `/non-digit/non-alpha/`.
 
-Only character-class can be negated, but for the `non-` operator, the built-in variable `WOB` is an exception -- it is not a character-class, but `non-WOB` compiles to `\B`.
+Only character classes can be negated. But for the `non-` operator, the built-in variable `WOB` is an exception: `WOB` is not a character-class, but `non-WOB` compiles to `\B`.
 
 --
-### 7. Lookup Chain
+### 8. Lookup Chain
 
-Syntax: `/lookup1/lookup2/lookup3/lookupEtc/`
+Syntax: `/lookup1/lookup2/lookup3/etc/`
 
 Each lookup can be one of the following:
 
-- A variable name.
-- Negation using `non-`.
-- Match-until operator (the double underscore `__`).
-- Backreference.
+- A [variable]() name
+- [Negation]() using `non-`
+- [Backreference]()
+- [Match-until]() operator (the double underscore `__`)
 
-#### 7.1. Syntactic Sugars for BOS, BOL, EOS, and EOL
+#### 8.1. Syntactic Sugars for BOS, BOL, EOS, and EOL
+To enhance readability, several sugars are available to use with lookup-chain syntax (you might want to first read about `BOS`, `BOL`, `EOS`, and `EOL` in the *Built-in Variables* section):
 
-#### 7.2. The Match-Until Operator
+
+Syntactic Sugar      | Meaning | Example   | Equivalent To | Compiles To
+--------------------- | ------ | ---------- | ------------- | ----------
+`./` at the beginning | `BOS`  | `./digit/` | `/BOS/digit/` | `\A\d` 
+`//` at the beginning | `BOL`  | `//digit/` | `/BOL/digit/` | `(?m:^)\d`
+`/.` at the end       | `EOS`  | `/digit/.` | `/digit/EOS/` | `\d\Z`
+`//` at the end       | `EOL`  | `/digit//` | `/digit/EOL/` | `\d(?m:$)`
+
+#### 8.2. Backreference
+
+Syntax: `=varname`, the varname must be a [named capture group](). Example:
+
+```
+    /number/=number/=number/
+        [number] = digit
+```
+matches three of same numbers e.g. `777` or `000`. For more examples, see *Date* and *Quoted String* in the *Examples* section.
+
+
+#### 8.3. The Match-Until Operator
 
 The Match-Until operator `__` matches one or more characters until what follows it in the lookup chain. For example:
 
@@ -699,28 +870,28 @@ The `__` will match one or more characters until closing-parenthesis is encounte
         open: (
         close: )
 ```
-#### 7.3. Match-Until Automatic Optimization
-The above example is akin to the "lazy dotstar" idiom in regex `.*?`. The difference is, oprex's `__` will try to make some optimizations in some cases:
+#### 8.4. Match-Until Automatic Optimization
+The above example is akin to the regex's "lazy dotstar" idiom `.*?`. The difference is, oprex's `__` will try to make some optimizations in some cases:
 
 - If it is followed by character-class, example:
 
 ```
-	/__?/stop/
-		stop: . ;
+    /__?/stop/
+        stop: . ;
 ```
 Compiles to `[^.;]*+[.;]`. The `__?` uses what follows (the character-class `[.;]`) so it compiles to `[^.;]*+` which is the way to [optimize lazy-dotstar for such case]().
 
 - If it is followed by string literal, example:
 
 ```
-	/__?/stop/
-		stop = 'END'
+    /__?/stop/
+        stop = 'END'
 ```
 Compiles to `(?:[^E]++|E(?!ND))*+END`. Again, the `__?` uses what follows (the literal `END`) so it compiles to `(?:[^E]++|E(?!ND))*+` which is the way to [optimize lazy-dotstar for a case like this]().
 
 In any case, **the oprex stays super-readable while giving optimized, high-performance regex** output.
 
-#### 7.4. Non-Optimized Match-Until
+#### 8.5. Non-Optimized Match-Until
 If the `__` is not followed by character-class nor string literal, it will compile to the usual lazy-dotplus `.+?` (or lazy-dotstar `.*?` in the case of `__?`). Example:
 
 ```
@@ -728,9 +899,8 @@ If the `__` is not followed by character-class nor string literal, it will compi
 ```
 Compiles to `.+?(?s:.)(?m:$)`
 
-#### 7.5. Multiline Match-Until
+#### 8.6. Multiline Match-Until
 If a Match-Until usage falls in unoptimized case, it will compile to the regular lazy-dotstar/dotplus. In such case, the dot in the lazy-dotstar/dotplus will adhere to the DOTALL flag setting (will not match newline characters without DOTALL). So if you want the dot to really match anything, including newline characters, you'll need to turn on the `dotall` flag:
-
 
 ```
 (dotall) /__/any/.   -- match all characters (including newlines) except the last one 
@@ -738,18 +908,229 @@ If a Match-Until usage falls in unoptimized case, it will compile to the regular
 Compiles to `(?s:.+?.\Z)`
 
 --
-### 8. Backreference
-
---
 ### 9. Alternation Block
-#### 9.1. The `FAIL!` Command
+
+Alternation block starts with either `<<|` or `@|` and ends with empty line. `<<|` starts a backtrackable alternation block, while `@|` starts an atomic one.
+
+#### 9.1. Backtrackable Alternation
+```
+    <<|
+      |alt1
+      |alt2
+      |etc
+      
+```
+Each alt in an alternation block can be:
+
+- An [expression](), with restrictions:
+  - It cannot be a lookaround block.
+  - It cannot be another alternation block.
+  - (These limitations force you to refactor sub-alternation/lookaround into a variable. This ensures readability.)
+- A [conditional expression]().
+- [FAIL!]()
+- empty (will always succeed -- it will try to match empty string, which always succeeds).
+
+#### 9.2. Atomic Alternation
+The syntax is similar to the backtrackable one, with one minor difference: atomic alternation starts with `@|` rather than `<<|`. Here's an [excellent reference]() describing the difference between the two. Most of the time they are interexchangable, with the atomic version having better performance. But most is not all, and some cases that require backtracking will not work with the atomic version. For example, the *Palindrome* example shown in the *Usage* section will not work if its alternation block is changed to atomic.
+
+#### 9.3. Conditional Expression
+Syntax:
+
+```
+    <<|               -- can use @| too
+      |[cond1] ? alt1
+      |[cond2] ? alt2
+      |alt_else
+```
+- `cond1` and `cond2` must be names of [capture groups]().
+- Specs of alts can be seen in *Backtrackable Alternation* subsection, with one additional restriction: alts cannot be conditional expression.
+- The last branch of an alternation must NOT be a conditional expression, because (see the following example):
+
+```
+     <<|
+       |[x] ? alpha
+       |[y] ? digit
+```
+If neither x nor y is defined, what should it match? Should it just succeed? Or should it fail? It's not clear. That's why the last branch cannot be a conditional. 
+
+- If you want it to "just succeed", add an empty branch.
+- If you want it to fail, add `FAIL!`.
+- If you want it to match some (non-conditional) expression, put it as the last branch.
+
+Example:
+
+```
+     <<|
+       |[x] ? alpha
+       |[y] ? digit
+       |            -- or FAIL!, or (non-alternation non-lookaround) expression
+```
+
+For more example, see the *Stuff-Inside-Brackets* example in the *Tutorial* section.
+
+#### 9.4. The `FAIL!` Command
+
+`FAIL!` compiles to `(?!)` which [will always fail]().
 
 --
 ### 10. Lookaround Block
 
---
-### 11. Quantification/Repetition
-#### 11.1. The `?` operator
+A lookaround block starts with `<@>` and ends with empty line.
+
+```
+<@>
+            |lookahead>              -- positive lookahead
+            |!lookahead>             -- negative lookahead
+ <lookbehind|                        -- positive lookbehind
+<!lookbehind|                        -- negative lookbehind
+            |match_things_normally|
+                                  |lookahead>
+                                  |!lookahead>
+                       <lookbehind|
+                      <!lookbehind|
+                                  
+```
+Each of the `lookahead`, `lookbehind`, and `match_things_normally` in the above example can be one of:
+
+- A [variable]() name
+- [Negation]() using `non-`
+- [Backreference]()
+- [Lookup Chain]()
+
+#### 10.1. Lookaround Examples
+
+Description                        | Example
+---------------------------------- | ---------------------
+Lookahead a variable               | `|digit>`
+Lookbehind a negation              | `<non-digit|`
+Negative-lookahead a negation      | `|!non-digit>`
+Negative-lookahead a backreference | `|!=captur>`
+Negative-lookahead a lookup-chain  | `|!/captur/=captur/>`
+Negative-lookbehind a lookup-chain | `<!/alpha/digit/|`
+
+#### 10.2. The "Match Things Normally" Part
+
+Lookaheads and lookbehinds match characters, but then gives up the match. They do not consume characters in the string. The "match things normally" part is that, match normally/don't just look around/don't give up the match/do consume the characters. Examples
+
+```
+<@>
+<backslash|
+          |quote|
+```
+```
+<@>
+|!dash>
+|dashes_and_alnums|
+            <!dash|
+```
+
+#### 10.3. A Note About `<@>`
+
+Everywhere else in oprex, the **at**-sign `@` means _**at**omic_:
+
+- In alternation: `@|` starts an *atomic alternation block*.
+- In quantification: quantifiers that start with `@` (e.g. `@1..`) are *possessive quantifiers*, which work atomically.
+
+So how about `<@>`? The `@` there reminds you that [lookarounds are atomic](). With `<` in a lookaround-block means lookbehind, and `>` means lookahead, `<@>` (which looks like an **eye**) is the perfect symbol to begin a **look**around-block. 
 
 --
-### 12. Character Class
+### 11. Quantification/Repetition
+#### 11.1. The `of` keyword
+
+`of` is oprex's keyword for doing quantification/repetition:
+
+```
+    quantifier of expression
+```
+```
+    quantifier of: c h a r s
+```
+For *quantifier* description, see below. For the target, see [expression]() and [character-class]().
+
+#### 11.2. Quantifier
+##### 11.2.1. Repeat N Times: `N of`
+Example (result in comments):
+
+```
+    zipcode = 5 of digit    -- \d{5}
+    byte    = 8 of: 0 1     -- [01]{8}
+```
+--
+##### 11.2.2. Repeat N-or-More: `N.. of`
+```
+    wont_listen = @3.. of "la"          -- (?:la){3,}+
+    hex_number  = @1.. of: 0..9 A..F    -- [0-9A-F]++
+```
+--
+##### 11.2.3. Repeat Min to Max Times: `M..N of`
+```
+    deck = @0..52 of: 2 3 4 5 6 7 8 9 X J Q K A
+    batman_fight = @7..11 of <<|                
+                               |'bam'
+                               |'pow'
+                               |'kapow'
+```
+--
+#### 11.3. Greedy/Lazy/Possessive
+
+In oprex, `@` means atomic, `<<` means allow backtrack. So, on quantifiers:
+
+**`@`** = atomic = **possessive**
+
+**`<<+`** = backtrack to add more = **lazy**
+
+**`<<-`** = backtrack to lessen = **greedy**
+
+The exact syntax is:
+
+Type       | Syntax (max is optional)
+---------- | ------------------------
+possessive | `@min..max`
+greedy     | `min..max <<-`
+lazy       | `min <<+..max`
+
+Example     | Meaning              | Compiles To
+----------- | -------------------- | --------------------------------
+`@1.. of`   | atomic one or more   | `++`
+`1.. <<-`   | match one or more, allow backtrack to reduce the number of matches  | `+`
+`1 <<+..`   | match one, allow backtrack to match more, no max      | `+?`
+`@0..10 of` | atomic zero to ten                                    | `{,10}+`
+`0..10 <<-` | match zero to ten, allow backtrack to lessen          | `{,10}`
+`0 <<+..10` | match zero, may backtrack to match more, maximum ten  | `{,10}?`
+
+#### 11.4. The `?` Operator
+- Can be used as quantifier, i.e. `? of expression`, `? of: c h a r s`
+- Can be applied directly to:
+  - A variable lookup, e.g. `digit?`
+  - Backreference, e.g. `=captur?`
+  - Match-Until operator, i.e. `__?`
+ 
+ Example: `? of /digit?/=captur?/__?/`
+
+#### 11.5. `?` Applied to `1..`
+
+If `?` is applied to an expression while the expression is already quantified by `1..`, it will change the quantifier into `0..` while keeping its greediness/laziness/possessivity.
+
+Example:
+
+```
+    digits?
+        digits = @1.. of digit
+```
+Compiles to `\d*+`.
+
+If we change the quantifier from `@1..` to `1.. <<-`, the output becomes `\d*`, and if  we change it to `1 <<+..`, the output becomes `\d*?`.
+
+This improves readability. Consider the following two examples:
+
+```
+    /quote/contents/quote/              -- contents is not optional
+        quote: "
+        contents = @0.. of not: quote   -- but it allows zero match
+```
+```
+    /quote/contents?/quote/             -- contents is optional
+        quote: "
+        contents = @1.. of not: quote   -- minimum 1 match
+```
+Both compile to the same regex: `"[^"]*+"`. But the second example is better. It more clearly shows that there can be no content between the quotes.
