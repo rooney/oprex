@@ -1091,12 +1091,12 @@ lazy       | `min <<+..max`
 
 Example     | Meaning              | Compiles To
 ----------- | -------------------- | --------------------------------
-`@1.. of`   | atomic one or more   | `++`
-`1.. <<-`   | match one or more, allow backtrack to reduce the number of matches  | `+`
-`1 <<+..`   | match one, allow backtrack to match more, no max      | `+?`
-`@0..10 of` | atomic zero to ten                                    | `{,10}+`
-`0..10 <<-` | match zero to ten, allow backtrack to lessen          | `{,10}`
-`0 <<+..10` | match zero, may backtrack to match more, maximum ten  | `{,10}?`
+`@1..`      | atomic one or more   | `++`
+`1.. <<-`   | match one or more, <br>allow backtrack to reduce the number of matches  | `+`
+`1 <<+..`   | match one, <br>allow backtrack to match more, no max      | `+?`
+`@0..10`    | atomic zero to ten                                    | `{,10}+`
+`0..10 <<-` | match zero to ten, <br>allow backtrack to lessen          | `{,10}`
+`0 <<+..10` | match zero, <br>may backtrack to match more, maximum ten  | `{,10}?`
 
 #### 11.4. The `?` Operator
 - Can be used as quantifier, i.e. `? of expression`, `? of: c h a r s`
