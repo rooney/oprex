@@ -424,16 +424,82 @@ The *IPv4 Address*, *Date*, and *Time* examples use the [String-of-Digits Range 
 - `mm = ss = '00'..'59'`
 - `HH = 'o0'..'23'` (the `o` means optional leading-zero, e.g. will match both `2` and `02`)
 
+--
 ### 2. Backreference
+In the *Date* example:
 
+```
+    /yyyy/separator/mm/=separator/dd/
+```
+And the *Quoted String* example:
+
+```
+    /opening_quote/contents/=opening_quote/
+```
+The `=separator` and `=opening_quote` parts are [Backreference]().
+
+--
 ### 3. Flags
+`(ignorecase)` in *Time* and `(unicode)` in *Password Checks* are example of [Flags]() usage.
 
+--
 ### 4. Match-anything-until
+The `__` in *BEGIN-something-END* example:
 
+```
+    /begin/__/end/
+```
+And in *Password Checks*:
+
+```
+    has_number = /__?/digit/
+    has_min_2_symbols = 2 of /__?/non-alnum/
+```
+
+Are sample uses of the [Match-Until Operator]().
+
+--
 ### 5. Recursion
+In *Comma-Separated Values*:
 
+```
+    more_values = /comma/value/more_values?/
+```
+The `more_values` refers to itself. This is an example of [Recursion](). Other examples can be seen in *E-mail Address*:
+
+```
+    subdomain = /hostname/dot/subdomain?/
+```
+*Balanced Parentheses*:
+<pre>
+    <b>balanced_parens</b> = /open/contents?/close/
+        open: (
+        close: )
+        contents = @1.. of <<|
+                             |non_parens
+                             |<b>balanced_parens</b>
+</pre>                        
+And *Palindrome*:
+<pre>
+    <b>palindrome</b> = <<|
+                   |/letter/<b>palindrome</b>/=letter/
+                   |/letter/=letter/
+                   |letter
+</pre>
+
+--
 ### 6. Global Variable
+In *Quoted String*:
 
+```
+*)      quote: ' "
+```
+And *Comma-Separated Values*:
+
+```
+*)      comma: ,
+```
+The `*)` in the definitions of `quote` and `comma` marks the variables as [Global Variable]() which makes the variables accessible in latter, different scopes.
 
 ## Reference Manual
 ### 1. Built-in Variables
@@ -1092,11 +1158,11 @@ lazy       | `min <<+..max`
 Example     | Meaning              | Compiles To
 ----------- | -------------------- | --------------------------------
 `@1..`      | atomic one or more   | `++`
-`1.. <<-`   | match one or more, <br>allow backtrack to reduce the number of matches  | `+`
-`1 <<+..`   | match one, <br>allow backtrack to match more, no max      | `+?`
-`@0..10`    | atomic zero to ten                                    | `{,10}+`
-`0..10 <<-` | match zero to ten, <br>allow backtrack to lessen          | `{,10}`
-`0 <<+..10` | match zero, <br>may backtrack to match more, maximum ten  | `{,10}?`
+`1.. <<-`   | match one or more<br>allow backtrack to reduce the number of matches                  | `+`
+`1 <<+..`   | match one<br>allow backtrack to match more, no max                                 | `+?`
+`@0..10`    | atomic zero to ten   | `{,10}+`
+`0..10 <<-` | match zero to ten<br>allow backtrack to lessen          | `{,10}`
+`0 <<+..10` | match zero<br>may backtrack to match more, maximum ten  | `{,10}?`
 
 #### 11.4. The `?` Operator
 - Can be used as quantifier, i.e. `? of expression`, `? of: c h a r s`
