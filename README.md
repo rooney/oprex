@@ -501,6 +501,20 @@ And *Comma-Separated Values*:
 ```
 The `*)` in the definitions of `quote` and `comma` marks the variables as [Global Variable]() which makes the variables accessible in latter, different scopes.
 
+--
+### 7. Anchors
+In *Comma-Separated Values*, *Balanced Parentheses*, and *Palindrome*:
+
+```
+    //value/more_values?//
+
+    /non_parens?/balanced_parens/non_parens?/.
+
+    ./palindrome/.
+```
+`./`, `/.`, and `//` are [Anchors]().
+
+
 ## Reference Manual
 ### 1. Built-in Variables
 #### 1.1. Built-in Character Classes
@@ -536,6 +550,7 @@ Name        | Meaning             | Output
 `uany`      | unicode-any         | `\X` (single unicode grapheme)
 
 - `WOB` is special: it is not a character-class, but you can apply the `non-` operator to it. `non-WOB` compiles to `\B`.
+- `wordchar` is special: it can be redefined (other built-ins cannot be redefined). See: [Redefining Wordchar]().
 - Oprex-equivalent of regex's `.` with DOTALL turned OFF is `non-linechar` (see `linechar` in *Built-in Character Classes* table).
 
 --
@@ -898,7 +913,7 @@ Each lookup can be one of the following:
 - [Backreference]()
 - [Match-until]() operator (the double underscore `__`)
 
-#### 8.1. Syntactic Sugars for BOS, BOL, EOS, and EOL
+#### 8.1. Sugar for Achors
 To enhance readability, several sugars are available to use with lookup-chain syntax (you might want to first read about `BOS`, `BOL`, `EOS`, and `EOL` in the *Built-in Variables* section):
 
 
@@ -1200,3 +1215,23 @@ This improves readability. Consider the following two examples:
         contents = @1.. of not: quote   -- minimum 1 match
 ```
 Both compile to the same regex: `"[^"]*+"`. But the second example is better. It more clearly shows that there can be no content between the quotes.
+
+### 12. Redefining `wordchar`
+
+Unlike other built-in variables, `wordhar` can be redefined. This is useful because regex's `\w` means letters, numbers, and underscore; while e.g. in English, what considered *word* chars are letters and maybe hyphen. So, to redefine `wordchar`:
+
+- Just define a variable named `wordchar`.
+- It must be the first definition.
+- It must be a character-class.
+- It must be global.
+- NOTE: it will also affect `WOB` and `non-WOB` (including the prefix/suffix `.` and `_` used with string literal).
+
+Example:
+
+```
+    .'cat'_
+*)      wordchar: alpha -
+```
+Compiles to `(?>(?<=[a-zA-Z\-])(?![a-zA-Z\-])|(?<![a-zA-Z\-])(?=[a-zA-Z\-]))cat(?>(?<=[a-zA-Z\-])(?=[a-zA-Z\-])|(?<![a-zA-Z\-])(?![a-zA-Z\-]))`
+
+
