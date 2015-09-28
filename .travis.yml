@@ -6,7 +6,7 @@ install:
   - pip install coveralls
 script:
   - pip freeze
-  - coverage run --source=oprex nosetests
+  - coverage run --source=oprex,parsetab,tests tests.py
 after_success:
   coveralls
 
