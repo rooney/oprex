@@ -1,11 +1,11 @@
 # oprex
 Regex alternative syntax. Make regex readable.
 
-- [Examples](/rooney/oprex/wiki/Examples)
-- [Installation](/rooney/oprex/wiki/Installation,-How-to-Use)
-- [How to Use](/rooney/oprex/wiki/Installation,-How-to-Use#usage)
-- [Tutorial](/rooney/oprex/wiki/Tutorial)
-- [Reference Manual](/rooney/oprex/wiki/Reference-Manual)
+- [Examples](https://github.com/rooney/oprex/wiki/Examples)
+- [Installation](https://github.com/rooney/oprex/wiki/Installation,-How-to-Use)
+- [How to Use](https://github.com/rooney/oprex/wiki/Installation,-How-to-Use#usage)
+- [Tutorial](https://github.com/rooney/oprex/wiki/Tutorial)
+- [Reference Manual](https://github.com/rooney/oprex/wiki/Reference-Manual)
 
 --
 
