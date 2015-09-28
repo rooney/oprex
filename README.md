@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/rooney/oprex.svg?branch=master)](https://travis-ci.org/rooney/oprex)
+
 # oprex
 Regex alternative syntax. Make regex readable.
 
