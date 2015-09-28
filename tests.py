@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest, regex, os
-from oprex import oprex, OprexSyntaxError
+from __init__ import oprex, OprexSyntaxError
 
 class TestErrorHandling(unittest.TestCase):
     def given(self, oprex_source, expect_error):
