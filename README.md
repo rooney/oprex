@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/rooney/oprex.svg?branch=master)](https://travis-ci.org/rooney/oprex)
-[![Coverage Status](https://coveralls.io/repos/rooney/oprex/badge.svg?branch=master&service=github)](https://coveralls.io/repos/rooney/oprex/badge.svg?branch=master&service=github)
+[![Coverage Status](https://coveralls.io/repos/rooney/oprex/badge.svg?branch=master&service=github)](https://coveralls.io/github/rooney/oprex?branch=master)
 
 # oprex
 Regex alternative syntax. Make regex readable.
