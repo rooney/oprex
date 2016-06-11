@@ -7890,64 +7890,6 @@ class TestMatches(unittest.TestCase):
         no_match=['b', 'Z'])
 
 
-    def test_recursion(self):
-        self.given('''
-            ./palindrome/.
-                palindrome = <<|
-                               |/letter/palindrome/=letter/
-                               |/letter/=letter/
-                               |letter
-
-                    [letter]: alpha
-        ''',
-        expect_full_match=['a', 'aa', 'aaa', 'aaaa', 'aaaaaa', 'kayak', 'amanaplanacanalpanama', 'amorroma', 'racecar', 'tacocat', 'wasitacaroracatisaw', 'noxinnixon', 'dammitimmad'],
-        no_match=['', 'kayaking', 'racecars', 'akayak', 'aracecar', 'lala', 'lalala'])
-
-        self.given('''
-            csv
-                csv = <@>
-                    |/value?/more_values?/|
-                               <!/BOS/EOS/|
-
-                        value = @1.. of non-separator
-*)                          separator: ,
-                        more_values = /separator/value?/more_values?/
-        ''',
-        expect_full_match=[
-            'single value', 
-            'value,value', 'value, value, value', 
-            'has,,,,empties', 'has,,empty', 'trailing,empty,', 'trailing,empties,,,,', ',,,,leading empties', ',leading empties', ',,,,'],
-        no_match=[''])
-
-        self.given('''
-            balanced_parens
-                balanced_parens = /open/text?/close/
-                    open: (
-                    close: )
-                    text = @1.. of <<|
-                                     |non-open
-                                     |non-close
-                                     |balanced_parens
-        ''',
-        expect_full_match=[
-            '(EST)', 
-            '((citation needed))', 
-            '()', 
-            '(())', 
-            '((()))', 
-            '(for example, if I (meaning myself) write like this)', 
-            '(f (g (h)))', 
-            '(((f) g) h)',
-        ],
-        no_match=['(', ')', ')(', '(()', '((())', '((()', 'f(x)'],
-        partial_match={
-            '(do-something a) ; or else' : '(do-something a)',
-            '())'   : '()',
-            '()))'  : '()',
-            '(()))' : '(())',
-        })
-
-
     def test_numrange_shortcut(self):
         self.given(u'''
             '0'..'1'
