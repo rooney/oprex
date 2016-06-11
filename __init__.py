@@ -4,6 +4,11 @@ import argparse, codecs, unicodedata, regex as regexlib
 from ply import lex, yacc
 from collections import namedtuple, deque
 
+try:
+    unicode
+except NameError: # python 3
+    unicode = str
+
 
 def oprex(source_code):
     source_lines = sanitize(source_code)
@@ -93,7 +98,7 @@ tokens = [
     'STRING',
     'VARNAME',
     'WHITESPACE',
-] + reserved.values()
+] + list(reserved.values())
 
 GLOBALMARK   = '*)'
 t_AT         = r'\@'
@@ -250,7 +255,7 @@ class Block(namedtuple('Block', 'variables starting_lineno')):
 
 class Scope(dict):
     types = ('ROOTSCOPE', 'BLOCKSCOPE', 'FLAGSCOPE')
-    ROOTSCOPE, BLOCKSCOPE, FLAGSCOPE = range(3)
+    ROOTSCOPE, BLOCKSCOPE, FLAGSCOPE = tuple(range(3))
     __slots__ = ('starting_lineno', 'type')
     def __init__(self, type, starting_lineno, parent_scope):
         self.starting_lineno = starting_lineno
@@ -400,7 +405,7 @@ class CharClass(Regex):
 class CCItem(namedtuple('CCItem', 'source type value')):
     __slots__ = ()
     op_types = ('unary', 'binary')
-    UNARY_OP, BINARY_OP = range(2)
+    UNARY_OP, BINARY_OP = tuple(range(2))
 
     @staticmethod
     def token(t, type, value):
@@ -410,7 +415,7 @@ class CCItem(namedtuple('CCItem', 'source type value')):
                 regexlib.compile('[' + value + ']')
             except regexlib.error as e:
                 raise OprexSyntaxError(t.lineno, 
-                    '%s compiles to %s which is rejected by the regex engine with error message: %s' % (source, value, e.message))
+                    '%s compiles to %s which is rejected by the regex engine with error message: %s' % (source, value, str(e)))
         t.type = 'CHAR'
         t.value = CCItem(source, type, value)
         return t
@@ -525,7 +530,7 @@ def t_CHARCLASS_prop(t):
 
 def t_CHARCLASS_name(t):
     r''':[\w-]+'''
-    return CCItem.token(t, 'name', '\N{%s}' % t.value[1:].replace('_', ' '))
+    return CCItem.token(t, 'name', r'\N{%s}' % t.value[1:].replace('_', ' '))
 
 
 def t_CHARCLASS_escape(t):
@@ -554,7 +559,7 @@ def t_FLAGSET(t):
     r'\([- \t\w]+\)'
     flags = t.value[1:-1] # exclude the surrounding ( )
     flags = flags.split(' ') # will contain empty strings in case of consecutive spaces, so...
-    flags = filter(lambda flag: flag, flags) # ...exclude empty strings
+    flags = [flag for flag in flags if flag] # ...exclude empty strings
     turn_ons = ''
     turn_offs = ''
     for flag in flags:
@@ -575,7 +580,7 @@ def t_FLAGSET(t):
             regexlib.compile('(?V1)' + test)
     except Exception as e:
         raise OprexSyntaxError(t.lineno, '%s compiles to %s which is rejected by the regex engine with error message: %s' % 
-            (t.value, test, str(e.message)))
+            (t.value, test, str(e)))
     else:
         t.type = 'LPAREN'
         t.extra_tokens = [ExtraToken(t, 'FLAGSET', value=flags), ExtraToken(t, 'RPAREN')]
@@ -624,7 +629,7 @@ def t_STRING(t):
     try:
         t.value = OVERESCAPED_RE.sub(restore_overescaped, value)
     except KeyError as e:
-        raise OprexSyntaxError(t.lineno, e.message)
+        raise OprexSyntaxError(t.lineno, str(e)[1:-1])
     else:
         return t
 
@@ -1267,7 +1272,7 @@ def p_flagged_expr(t):
 def p_scoped_flags(t):
     '''scoped_flags : LPAREN FLAGSET RPAREN WHITESPACE'''
     flags = t[2]
-    for flag_name, global_flag in Flagset.globals.iteritems():
+    for flag_name, global_flag in Flagset.globals.items():
         if global_flag in flags.turn_ons:
             raise OprexSyntaxError(t.lineno(2), "'%s' is a global flag and must be set using global flag syntax, not scoped." % flag_name)
     t[0] = flags
@@ -1612,7 +1617,7 @@ class CharClassExpr(Expr):
             try:
                 var = scope[varname]
             except KeyError as e:
-                raise OprexSyntaxError(self.lineno, "Cannot include '%s': not defined" % e.message)
+                raise OprexSyntaxError(self.lineno, "Cannot include '%s': not defined" % str(e)[1:-1])
             if not isinstance(var.value, CharClass):
                 raise OprexSyntaxError(self.lineno, "Cannot include '%s': not a character class" % varname)
             else:
@@ -1682,7 +1687,7 @@ def p_ranged_char(t):
         regexlib.compile('[%s]' % value)
     except regexlib.error as e:
         raise OprexSyntaxError(t.lineno(0), 
-            '%s compiles to [%s] which is rejected by the regex engine with error message: %s' % (source, value, e.message))
+            '%s compiles to [%s] which is rejected by the regex engine with error message: %s' % (source, value, str(e)))
 
     t[0] = CCItem(source, 'range', value)
 
@@ -1782,7 +1787,7 @@ def p_definition(t):
                 raise OprexSyntaxError(t.lineno(1), errmsg)
         return var
 
-    list_of_variables = map(variable_from, assignment.declarations)
+    list_of_variables = list(map(variable_from, assignment.declarations))
     t[0] = list_of_variables
 
 
@@ -1969,4 +1974,4 @@ if __name__ == "__main__":
     with codecs.open(source_file, 'r') as f:
         source_code = f.read()
 
-    print oprex(source_code)
+    print(oprex(source_code))

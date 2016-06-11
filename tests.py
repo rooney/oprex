@@ -1,17 +1,27 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+
+def to_string(x):
+    if x.__class__.__name__ == 'bytes':
+        return x.decode('utf-8')
+    return x
+
+
 import unittest, regex, os
 from __init__ import oprex, OprexSyntaxError
 
 class TestErrorHandling(unittest.TestCase):
     def given(self, oprex_source, expect_error):
+        oprex_source = to_string(oprex_source)
+        expect_error = to_string(expect_error)
+        
         if expect_error:
             expect_error = '\n' + expect_error
         try:
             oprex(oprex_source)
         except Exception as err:
-            got_error = err.message
+            got_error = str(err)
         else:
             got_error = ''
 
@@ -2400,9 +2410,12 @@ class TestErrorHandling(unittest.TestCase):
         
 class TestOutput(unittest.TestCase):
     def given(self, oprex_source, expect_regex):
+        oprex_source = to_string(oprex_source)
+        expect_regex = to_string(expect_regex)
+
         default_flags = '(?V1w)'
         regex_source = oprex(oprex_source)
-        regex_source = regex_source.replace(default_flags, b'', 1)
+        regex_source = regex_source.replace(default_flags, '', 1)
         if regex_source != expect_regex:
             msg = 'For input: %s\n---------------------------- Got Output: -----------------------------\n%s\n\n------------------------- Expected Output: ---------------------------\n%s'
             raise AssertionError(msg % (
@@ -2543,7 +2556,7 @@ class TestOutput(unittest.TestCase):
             ''',
             expect_regex=b'[\U0001234a\U0001234A\U0001234a]')
         except ValueError as e:
-            if 'narrow Python build' in e.message:
+            if 'narrow Python build' in str(e):
                 pass
             else:
                 raise
@@ -2620,7 +2633,7 @@ class TestOutput(unittest.TestCase):
                     mul: * ×
                     div: / ÷ :
         ''',
-        expect_regex=ur'[+\-*×/÷:]')
+        expect_regex=r'[+\-*×/÷:]')
 
         self.given(u'''
             aUmlaut
@@ -2881,10 +2894,10 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex=u'[\u0061\U00000061\x61\61]')
 
-        self.given(ur'''
+        self.given(r'''
             1 of: \u0061 \U00000061 \x61 \61
         ''',
-        expect_regex=ur'[\u0061\U00000061\x61\61]')
+        expect_regex=r'[\u0061\U00000061\x61\61]')
 
         self.given(br'''
             allowed_escape
@@ -3892,12 +3905,12 @@ class TestOutput(unittest.TestCase):
         ''',
         expect_regex="(?:M&M's){3,}+")
 
-        self.given(ur'''
+        self.given(r'''
             @3.. of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
         ''',
         expect_regex=br'(?:M\N{AMPERSAND}M\N{APOSTROPHE}s){3,}+')
 
-        self.given(ur'''
+        self.given(r'''
             @3.. of '\r\n'
         ''',
         expect_regex=br'(?:\r\n){3,}+')
@@ -6296,8 +6309,10 @@ class TestOutput(unittest.TestCase):
         
 class TestMatches(unittest.TestCase):
     def given(self, oprex_source, fn=regex.match, expect_full_match=[], no_match=[], partial_match={}):
+        oprex_source = to_string(oprex_source)
         regex_source = oprex(oprex_source)
         for text in expect_full_match:
+            text = to_string(text)
             match = fn(regex_source, text)
             partial = match and match.group(0) != text
             if not match or partial:
@@ -6309,6 +6324,7 @@ class TestMatches(unittest.TestCase):
                 ))
 
         for text in no_match:
+            text = to_string(text)
             match = fn(regex_source, text)
             if match:
                 raise AssertionError(u'%s\nis expected NOT to match: %s\n%s\nThe regex is: %s' % (
@@ -6318,7 +6334,8 @@ class TestMatches(unittest.TestCase):
                     regex_source or u'(empty string)',
                 ))
 
-        for text, partmatch in partial_match.iteritems():
+        for text, partmatch in partial_match.items():
+            text = to_string(text)
             match = fn(regex_source, text)
             partial = match and match.group(0) != text and match.group(0) == partmatch
             if not match or not partial:
@@ -6738,7 +6755,7 @@ class TestMatches(unittest.TestCase):
         expect_full_match=[u'\u0061', u'\U00000061', b'\x61', b'\61', b'a'],
         no_match=[b'\u0061', br'\u0061', br'\x61', br'\61'])
 
-        self.given(ur'''
+        self.given(r'''
             1 of: \u0061 \U00000061 \x61 \61
         ''',
         expect_full_match=[u'\u0061', u'\U00000061', b'\x61', b'\61', b'a'],
@@ -6756,14 +6773,14 @@ class TestMatches(unittest.TestCase):
                 unicode_charname: \N{AMPERSAND} \N{BIOHAZARD SIGN}
         ''',
         expect_full_match=[b'&', u'\N{AMPERSAND}', u'\N{BIOHAZARD SIGN}', u'☣'],
-        no_match=[b'\N{AMPERSAND}', br'\N{AMPERSAND}', br'\N{BIOHAZARD SIGN}', b'☣'])
+        no_match=[b'\N{AMPERSAND}', br'\N{AMPERSAND}', br'\N{BIOHAZARD SIGN}'])
 
         self.given(br'''
             unicode_charname
                 unicode_charname: \N{AMPERSAND} :AMPERSAND \N{BIOHAZARD SIGN} :BIOHAZARD_SIGN
         ''',
         expect_full_match=[b'&', u'\N{AMPERSAND}', u'\N{BIOHAZARD SIGN}', u'☣'],
-        no_match=[b'\N{AMPERSAND}', br'\N{AMPERSAND}', br'\N{BIOHAZARD SIGN}', b'☣'])
+        no_match=[b'\N{AMPERSAND}', br'\N{AMPERSAND}', br'\N{BIOHAZARD SIGN}'])
 
 
     def test_atomic_grouping(self):
@@ -7331,7 +7348,7 @@ class TestMatches(unittest.TestCase):
             '\N{BIOHAZARD SIGN}'
         ''',
         expect_full_match=[u'\N{BIOHAZARD SIGN}', u'☣'],
-        no_match=[br'\N{BIOHAZARD SIGN}', b'\N{BIOHAZARD SIGN}', b'\\N{BIOHAZARD SIGN}', b'☣'])
+        no_match=[br'\N{BIOHAZARD SIGN}', b'\N{BIOHAZARD SIGN}', b'\\N{BIOHAZARD SIGN}'])
 
         self.given(br'''
             2 of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
@@ -7339,13 +7356,13 @@ class TestMatches(unittest.TestCase):
         expect_full_match=["M&M'sM&M's"],
         no_match=[br'M\N{AMPERSAND}M\N{APOSTROPHE}s'])
 
-        self.given(ur'''
+        self.given(r'''
             2 of 'M\N{AMPERSAND}M\N{APOSTROPHE}s'
         ''',
         expect_full_match=["M&M'sM&M's"],
         no_match=[br'M\N{AMPERSAND}M\N{APOSTROPHE}s'])
 
-        self.given(ur'''
+        self.given(r'''
             3 of '\t\t'
         ''',
         expect_full_match=[b'\t\t\t\t\t\t'],
@@ -7369,14 +7386,14 @@ class TestMatches(unittest.TestCase):
             linechar
         ''',
         expect_full_match=[b'\n', b'\r', b'\v', b'\f', b'\x0b', b'\x0C'],
-        no_match=[b'\x85', b'\u2028', br'\u2028', u'\u2028', u'\u2029'],
+        no_match=['\x85', b'\u2028', br'\u2028', u'\u2028', u'\u2029'],
         partial_match={'\r\n' : '\r'})
 
         self.given(br'''
             (unicode)
             linechar
         ''',
-        expect_full_match=[b'\n', b'\r', b'\v', b'\f', b'\x0b', b'\x0C', b'\x85', u'\u2028', u'\u2029'],
+        expect_full_match=[b'\n', b'\r', b'\v', b'\f', b'\x0b', b'\x0C', '\x85', u'\u2028', u'\u2029'],
         no_match=[b'\u2028', br'\u2028'],
         partial_match={'\r\n' : '\r'})
 
@@ -7385,7 +7402,7 @@ class TestMatches(unittest.TestCase):
             linechar
         ''',
         expect_full_match=[b'\n'],
-        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', b'\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
+        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', '\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
         partial_match={'\n\r' : '\n'})
 
         self.given(br'''
@@ -7393,7 +7410,7 @@ class TestMatches(unittest.TestCase):
             linechar
         ''',
         expect_full_match=[b'\n'],
-        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', b'\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
+        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', '\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
         partial_match={'\n\r' : '\n'})
 
         self.given(br'''
@@ -7401,7 +7418,7 @@ class TestMatches(unittest.TestCase):
             linechar
         ''',
         expect_full_match=[b'\n'],
-        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', b'\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
+        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', '\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
         partial_match={'\n\r' : '\n'})
 
         self.given(br'''
@@ -7409,7 +7426,7 @@ class TestMatches(unittest.TestCase):
             (-word) linechar
         ''',
         expect_full_match=[b'\n'],
-        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', b'\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
+        no_match=[b'\r', b'\v', b'\f', b'\x0b', b'\x0C', '\x85', u'\u2028', u'\u2029', b'\u2028', br'\u2028'],
         partial_match={'\n\r' : '\n'})
 
 
@@ -8393,7 +8410,7 @@ class TestMatches(unittest.TestCase):
             '010'..'019'
         ''',
         expect_full_match=[b'010', b'011', b'015', b'018', b'019'],
-        no_match=[b'0', b'1', b'10', b'11', b'19' '0010', b'0190', b'0100', b'0190'])
+        no_match=[b'0', b'1', b'10', b'11', b'19', b'0010', b'0190', b'0100', b'0190'])
 
         self.given(u'''
             '00'..'20'
@@ -8721,7 +8738,7 @@ class TestMatches(unittest.TestCase):
             'oo100'..'oo100'
         ''',
         expect_full_match=[b'100', b'0100', b'00100'],
-        no_match=[b'0', b'1', b'10', b'00', b'01', b'010', b'000' '001', b'0010', b'99', b'101'])
+        no_match=[b'0', b'1', b'10', b'00', b'01', b'010', b'000', b'001', b'0010', b'99', b'101'])
 
         self.given(u'''
             'o9999'..'o9999'
@@ -8991,7 +9008,7 @@ class TestMatches(unittest.TestCase):
 class TestSampleFiles(unittest.TestCase):
     def test_sample_files(self):
         try:
-            samples_dir = os.path.join(os.path.dirname(__file__), b'samples')
+            samples_dir = os.path.join(os.path.dirname(__file__), 'samples')
             for f in os.listdir(samples_dir):
                 filename = os.path.join(samples_dir, f)
                 with open(filename) as f:
@@ -9000,7 +9017,7 @@ class TestSampleFiles(unittest.TestCase):
         except OprexSyntaxError as e:
             msg = '\nFile: %s\n' % filename
             msg += contents
-            msg += e.message
+            msg += str(e)
             raise OprexSyntaxError(None, msg)
 
 
